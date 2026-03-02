@@ -9,6 +9,7 @@ import {
   saveToDrive,
 } from '../utils/google-drive';
 import { DRIVE_CLIENT_ID } from '../config/drive';
+import { createRestorePoint } from '../utils/restore-points';
 
 export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error' | 'offline';
 
@@ -44,6 +45,7 @@ export function useDriveSync(
   const mergeWithRemote = useCallback(async () => {
     const remote = await loadFromDrive();
     if (remote && remote.lastSaved > boardRef.current.lastSaved) {
+      createRestorePoint(boardRef.current, 'Before Drive sync');
       onBoardLoaded(remote);
       setSyncStatus('synced');
     } else {

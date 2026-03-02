@@ -54,6 +54,10 @@ export interface OhmBoard {
   liveCapacity: number;
   /** Capacity for the Grounded column (energy segments) */
   groundedCapacity: number;
+  /** ISO timestamp — last time categories were added/removed */
+  categoriesUpdatedAt?: string;
+  /** ISO timestamp — last time any capacity was changed */
+  capacitiesUpdatedAt?: string;
   /** ISO timestamp of last save */
   lastSaved: string;
 }

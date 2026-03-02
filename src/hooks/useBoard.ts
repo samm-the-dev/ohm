@@ -107,17 +107,20 @@ export function useBoard() {
             ? 'groundedCapacity'
             : null;
     if (!field) return;
-    setBoard((prev) => ({ ...prev, [field]: capacity, lastSaved: new Date().toISOString() }));
+    const now = new Date().toISOString();
+    setBoard((prev) => ({ ...prev, [field]: capacity, capacitiesUpdatedAt: now, lastSaved: now }));
   }, []);
 
   /** Add a category to the board */
   const addCategory = useCallback((category: string) => {
     setBoard((prev) => {
       if (prev.categories.includes(category)) return prev;
+      const now = new Date().toISOString();
       return {
         ...prev,
         categories: [...prev.categories, category],
-        lastSaved: new Date().toISOString(),
+        categoriesUpdatedAt: now,
+        lastSaved: now,
       };
     });
   }, []);
@@ -126,15 +129,15 @@ export function useBoard() {
   const removeCategory = useCallback((category: string) => {
     setBoard((prev) => {
       if (!prev.categories.includes(category)) return prev;
+      const now = new Date().toISOString();
       return {
         ...prev,
         categories: prev.categories.filter((c) => c !== category),
         cards: prev.cards.map((card) =>
-          card.category === category
-            ? { ...card, category: '', updatedAt: new Date().toISOString() }
-            : card,
+          card.category === category ? { ...card, category: '', updatedAt: now } : card,
         ),
-        lastSaved: new Date().toISOString(),
+        categoriesUpdatedAt: now,
+        lastSaved: now,
       };
     });
   }, []);

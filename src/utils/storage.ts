@@ -15,6 +15,13 @@ export function sanitizeBoard(board: OhmBoard): OhmBoard {
     board.groundedCapacity = 6;
   }
 
+  if (!board.categoriesUpdatedAt) {
+    board.categoriesUpdatedAt = board.lastSaved;
+  }
+  if (!board.capacitiesUpdatedAt) {
+    board.capacitiesUpdatedAt = board.lastSaved;
+  }
+
   for (const card of board.cards) {
     if (typeof card.energy !== 'number' || card.energy < 0 || card.energy >= ENERGY_CONFIG.length) {
       card.energy = ENERGY.MED;

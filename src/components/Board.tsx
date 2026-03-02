@@ -558,6 +558,8 @@ export function Board() {
         driveConnected={driveConnected}
         onConnectDrive={connect}
         onDisconnectDrive={disconnect}
+        board={board}
+        onReplaceBoard={replaceBoard}
       />
 
       {/* Settings FAB -- mobile only */}
