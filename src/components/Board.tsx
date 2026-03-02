@@ -58,7 +58,7 @@ function CategoryFilter({
       {selected.map((cat) => (
         <span
           key={cat}
-          className="flex items-center gap-1 rounded-full bg-ohm-text/10 px-2 py-0.5 font-body text-[11px] text-ohm-text"
+          className="bg-ohm-text/10 font-body text-ohm-text flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]"
         >
           {cat}
           <button
@@ -74,7 +74,7 @@ function CategoryFilter({
       {available.length > 0 && (
         <div className="relative">
           <div className="relative flex items-center">
-            <Tag size={10} className="absolute left-2 text-ohm-muted" />
+            <Tag size={10} className="text-ohm-muted absolute left-2" />
             <input
               type="text"
               value={query}
@@ -85,11 +85,11 @@ function CategoryFilter({
               onFocus={() => setOpen(true)}
               placeholder={selected.length ? '+ Add' : 'Category...'}
               aria-label="Filter categories"
-              className={`${selected.length ? 'w-16' : 'w-24'} rounded-full border border-ohm-border bg-transparent py-1 pl-6 pr-2 font-body text-[11px] text-ohm-text placeholder:text-ohm-muted/40 focus:outline-none focus:ring-1 focus:ring-ohm-text/10`}
+              className={`${selected.length ? 'w-16' : 'w-24'} border-ohm-border font-body text-ohm-text placeholder:text-ohm-muted/40 focus:ring-ohm-text/10 rounded-full border bg-transparent py-1 pr-2 pl-6 text-[11px] focus:ring-1 focus:outline-hidden`}
             />
           </div>
           {open && matches.length > 0 && (
-            <div className="absolute left-0 top-full z-50 mt-1 max-h-40 w-36 overflow-y-auto rounded-lg border border-ohm-border bg-ohm-surface shadow-lg">
+            <div className="border-ohm-border bg-ohm-surface absolute top-full left-0 z-50 mt-1 max-h-40 w-36 overflow-y-auto rounded-lg border shadow-lg">
               {matches.map((cat) => (
                 <button
                   key={cat}
@@ -99,7 +99,7 @@ function CategoryFilter({
                     setQuery('');
                     setOpen(false);
                   }}
-                  className="block w-full px-3 py-1.5 text-left font-body text-[11px] text-ohm-muted transition-colors hover:bg-ohm-text/5 hover:text-ohm-text"
+                  className="font-body text-ohm-muted hover:bg-ohm-text/5 hover:text-ohm-text block w-full px-3 py-1.5 text-left text-[11px] transition-colors"
                 >
                   {cat}
                 </button>
@@ -243,16 +243,16 @@ export function Board() {
   const activeCard = selectedCard || newCard;
 
   return (
-    <div className="flex min-h-screen flex-col bg-ohm-bg">
+    <div className="bg-ohm-bg flex min-h-screen flex-col">
       {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-ohm-border bg-ohm-bg/90 backdrop-blur-md">
+      <header className="border-ohm-border bg-ohm-bg/90 sticky top-0 z-30 border-b backdrop-blur-md">
         <div className="flex items-center justify-between px-4 py-3">
           {/* Left -- settings (desktop only) */}
           <div className="flex w-20 items-center">
             <button
               type="button"
               onClick={() => setSettingsOpen(true)}
-              className="hidden rounded-md p-1.5 text-ohm-muted transition-colors hover:bg-ohm-surface hover:text-ohm-text md:block"
+              className="text-ohm-muted hover:bg-ohm-surface hover:text-ohm-text hidden rounded-md p-1.5 transition-colors md:block"
               aria-label="Settings"
             >
               <Settings size={16} />
@@ -262,7 +262,7 @@ export function Board() {
           {/* Center -- title */}
           <div className="flex items-center gap-2">
             <Zap size={18} className="text-ohm-spark" />
-            <span className="font-display text-sm font-bold uppercase tracking-widest text-ohm-text">
+            <span className="font-display text-ohm-text text-sm font-bold tracking-widest uppercase">
               Ohm
             </span>
           </div>
@@ -272,7 +272,7 @@ export function Board() {
             <button
               type="button"
               onClick={handleQuickSpark}
-              className="hidden rounded-md p-1.5 text-ohm-spark transition-colors hover:bg-ohm-spark/10 md:block"
+              className="text-ohm-spark hover:bg-ohm-spark/10 hidden rounded-md p-1.5 transition-colors md:block"
               aria-label="Quick spark"
             >
               <Plus size={16} />
@@ -286,15 +286,15 @@ export function Board() {
 
       {/* Reconnect banner */}
       {needsReconnect && !driveConnected && (
-        <div className="flex items-center justify-center gap-3 border-b border-ohm-border bg-ohm-surface px-4 py-2">
+        <div className="border-ohm-border bg-ohm-surface flex items-center justify-center gap-3 border-b px-4 py-2">
           <CloudOff size={14} className="text-ohm-muted" />
-          <span className="font-body text-xs text-ohm-muted">
+          <span className="font-body text-ohm-muted text-xs">
             This board was previously synced with Google Drive.
           </span>
           <button
             type="button"
             onClick={connect}
-            className="font-display text-xs uppercase tracking-wider text-ohm-spark transition-colors hover:text-ohm-spark/80"
+            className="font-display text-ohm-spark hover:text-ohm-spark/80 text-xs tracking-wider uppercase transition-colors"
           >
             Reconnect
           </button>
@@ -303,9 +303,9 @@ export function Board() {
 
       {/* Welcome-back summary */}
       {welcomeBack && (
-        <div className="flex items-center justify-between border-b border-ohm-border bg-ohm-surface px-4 py-2">
-          <div className="flex items-center gap-3 font-body text-xs text-ohm-muted">
-            <Zap size={14} className="shrink-0 text-ohm-spark" />
+        <div className="border-ohm-border bg-ohm-surface flex items-center justify-between border-b px-4 py-2">
+          <div className="font-body text-ohm-muted flex items-center gap-3 text-xs">
+            <Zap size={14} className="text-ohm-spark shrink-0" />
             <span>
               Welcome back!{' '}
               <span className="text-ohm-charging">{welcomeBack.charging} charging</span>
@@ -329,7 +329,7 @@ export function Board() {
           <button
             type="button"
             onClick={dismissWelcome}
-            className="shrink-0 text-ohm-muted hover:text-ohm-text"
+            className="text-ohm-muted hover:text-ohm-text shrink-0"
             aria-label="Dismiss welcome summary"
           >
             <X size={14} />
@@ -338,7 +338,7 @@ export function Board() {
       )}
 
       {/* Filter bar */}
-      <div className="border-b border-ohm-border px-4 py-2">
+      <div className="border-ohm-border border-b px-4 py-2">
         {/* Row 1: Energy chips (always visible) + expand toggle (mobile) */}
         <div className="flex items-center gap-2">
           {ENERGY_CONFIG.map((config, index) => {
@@ -350,7 +350,7 @@ export function Board() {
                 type="button"
                 onClick={() => setEnergyFilter(active ? null : (index as EnergyTag))}
                 aria-pressed={active}
-                className={`flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 font-body text-[11px] transition-colors ${
+                className={`font-body flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] transition-colors ${
                   active ? 'bg-ohm-text/10 text-ohm-text' : 'text-ohm-muted hover:text-ohm-text'
                 }`}
               >
@@ -363,29 +363,29 @@ export function Board() {
           })}
 
           {/* Desktop: inline category + search (hidden on mobile) */}
-          <div className="mx-1 hidden h-3 w-px shrink-0 bg-ohm-border md:block" />
+          <div className="bg-ohm-border mx-1 hidden h-3 w-px shrink-0 md:block" />
           <div className="hidden items-center gap-2 md:flex">
             <CategoryFilter
               categories={board.categories}
               selected={categoryFilter}
               onToggle={toggleCategory}
             />
-            <div className="mx-1 h-3 w-px shrink-0 bg-ohm-border" />
+            <div className="bg-ohm-border mx-1 h-3 w-px shrink-0" />
             <div className="relative flex items-center">
-              <Search size={12} className="absolute left-2 text-ohm-muted" />
+              <Search size={12} className="text-ohm-muted absolute left-2" />
               <input
                 ref={searchRef}
                 type="text"
                 value={searchFilter}
                 onChange={(e) => setSearchFilter(e.target.value)}
                 placeholder="Search..."
-                className="w-32 rounded-full border border-ohm-border bg-transparent py-1 pl-7 pr-2 font-body text-[11px] text-ohm-text placeholder:text-ohm-muted/40 focus:outline-none focus:ring-1 focus:ring-ohm-text/10"
+                className="border-ohm-border font-body text-ohm-text placeholder:text-ohm-muted/40 focus:ring-ohm-text/10 w-32 rounded-full border bg-transparent py-1 pr-2 pl-7 text-[11px] focus:ring-1 focus:outline-hidden"
               />
               {searchFilter && (
                 <button
                   type="button"
                   onClick={() => setSearchFilter('')}
-                  className="absolute right-1.5 text-ohm-muted hover:text-ohm-text"
+                  className="text-ohm-muted hover:text-ohm-text absolute right-1.5"
                 >
                   <X size={10} />
                 </button>
@@ -398,7 +398,7 @@ export function Board() {
 
           {/* Mobile: active advanced filter indicator (when collapsed) */}
           {!filtersExpanded && hasAdvancedFilter && (
-            <span className="flex items-center gap-1 rounded-full bg-ohm-text/10 px-2 py-0.5 font-body text-[10px] text-ohm-text md:hidden">
+            <span className="bg-ohm-text/10 font-body text-ohm-text flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] md:hidden">
               +{advancedFilterCount} filter{advancedFilterCount > 1 ? 's' : ''}
             </span>
           )}
@@ -408,7 +408,7 @@ export function Board() {
             <button
               type="button"
               onClick={resetFilters}
-              className="shrink-0 font-display text-[10px] uppercase tracking-wider text-ohm-muted hover:text-ohm-text"
+              className="font-display text-ohm-muted hover:text-ohm-text shrink-0 text-[10px] tracking-wider uppercase"
             >
               Reset
             </button>
@@ -418,7 +418,7 @@ export function Board() {
           <button
             type="button"
             onClick={() => setFiltersExpanded((prev) => !prev)}
-            className="relative shrink-0 rounded-md p-1 text-ohm-muted transition-colors hover:text-ohm-text md:hidden"
+            className="text-ohm-muted hover:text-ohm-text relative shrink-0 rounded-md p-1 transition-colors md:hidden"
             aria-label={filtersExpanded ? 'Collapse filters' : 'Expand filters'}
           >
             <SlidersHorizontal size={14} />
@@ -434,19 +434,19 @@ export function Board() {
               onToggle={toggleCategory}
             />
             <div className="relative flex items-center">
-              <Search size={12} className="absolute left-2 text-ohm-muted" />
+              <Search size={12} className="text-ohm-muted absolute left-2" />
               <input
                 type="text"
                 value={searchFilter}
                 onChange={(e) => setSearchFilter(e.target.value)}
                 placeholder="Search cards..."
-                className="w-full rounded-full border border-ohm-border bg-transparent py-1.5 pl-7 pr-2 font-body text-xs text-ohm-text placeholder:text-ohm-muted/40 focus:outline-none focus:ring-1 focus:ring-ohm-text/10"
+                className="border-ohm-border font-body text-ohm-text placeholder:text-ohm-muted/40 focus:ring-ohm-text/10 w-full rounded-full border bg-transparent py-1.5 pr-2 pl-7 text-xs focus:ring-1 focus:outline-hidden"
               />
               {searchFilter && (
                 <button
                   type="button"
                   onClick={() => setSearchFilter('')}
-                  className="absolute right-2 text-ohm-muted hover:text-ohm-text"
+                  className="text-ohm-muted hover:text-ohm-text absolute right-2"
                 >
                   <X size={12} />
                 </button>
@@ -474,6 +474,7 @@ export function Board() {
                   column={col}
                   cards={filteredCards(status)}
                   onCardTap={setSelectedCard}
+                  onReorderCards={reorderBatch}
                   capacity={getColumnCapacity(board, status) ?? undefined}
                   defaultExpanded={index === STATUS.LIVE}
                   flash={index === STATUS.POWERED ? poweredFlash : undefined}
@@ -484,8 +485,8 @@ export function Board() {
         </main>
         <DragOverlay>
           {draggingCard && (
-            <div className="rounded-lg border border-ohm-border bg-ohm-surface p-3 shadow-xl">
-              <p className="font-body text-sm font-medium text-ohm-text">{draggingCard.title}</p>
+            <div className="border-ohm-border bg-ohm-surface rounded-lg border p-3 shadow-xl">
+              <p className="font-body text-ohm-text text-sm font-medium">{draggingCard.title}</p>
             </div>
           )}
         </DragOverlay>
@@ -565,7 +566,7 @@ export function Board() {
       <Button
         size="icon"
         onClick={() => setSettingsOpen(true)}
-        className="fixed bottom-6 left-6 z-40 h-14 w-14 rounded-full border border-ohm-border bg-ohm-surface text-ohm-muted shadow-md transition-transform hover:text-ohm-text active:scale-95 md:hidden"
+        className="border-ohm-border bg-ohm-surface text-ohm-muted hover:bg-ohm-surface hover:text-ohm-text fixed bottom-6 left-6 z-40 h-14 w-14 rounded-full border shadow-md transition-transform active:scale-95 md:hidden"
         aria-label="Settings"
       >
         <Settings size={20} />
@@ -575,7 +576,7 @@ export function Board() {
       <Button
         size="icon"
         onClick={handleQuickSpark}
-        className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-ohm-spark text-ohm-bg shadow-lg shadow-ohm-spark/30 transition-transform hover:bg-ohm-spark/90 active:scale-95 md:hidden"
+        className="bg-ohm-spark text-ohm-bg shadow-ohm-spark/30 hover:bg-ohm-spark/90 fixed right-6 bottom-6 z-40 h-14 w-14 rounded-full shadow-lg transition-transform active:scale-95 md:hidden"
         aria-label="Quick spark"
       >
         <Zap size={24} />

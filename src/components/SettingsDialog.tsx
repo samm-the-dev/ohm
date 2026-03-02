@@ -176,7 +176,7 @@ export function SettingsDialog({
       <DialogContent className="sm:max-w-md">
         <div className="mb-3 flex items-center gap-2">
           <Settings size={16} className="text-ohm-muted" />
-          <DialogTitle className="font-display text-xs uppercase tracking-widest text-ohm-muted">
+          <DialogTitle className="font-display text-ohm-muted text-xs tracking-widest uppercase">
             Settings
           </DialogTitle>
         </div>
@@ -184,7 +184,7 @@ export function SettingsDialog({
 
         {/* Categories */}
         <div className="mb-5">
-          <span className="mb-2 block font-display text-[10px] uppercase tracking-widest text-ohm-muted">
+          <span className="font-display text-ohm-muted mb-2 block text-[10px] tracking-widest uppercase">
             Categories
           </span>
           <div className="flex flex-col gap-1.5">
@@ -208,14 +208,14 @@ export function SettingsDialog({
                     }
                   }}
                   aria-label={`Rename category ${cat}`}
-                  className="flex-1 border-ohm-border bg-ohm-bg px-3 py-1.5 font-body text-sm text-ohm-text focus-visible:ring-ohm-spark/20 focus-visible:ring-offset-0"
+                  className="border-ohm-border bg-ohm-bg font-body text-ohm-text focus-visible:ring-ohm-spark/20 flex-1 px-3 py-1.5 text-sm focus-visible:ring-offset-0"
                 />
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
                   onClick={() => onRemoveCategory(cat)}
-                  className="h-9 w-9 shrink-0 text-ohm-live/60 hover:bg-transparent hover:text-ohm-live"
+                  className="text-ohm-live/60 hover:text-ohm-live h-9 w-9 shrink-0 hover:bg-transparent"
                   aria-label={`Remove ${cat} category`}
                 >
                   <Trash2 size={14} />
@@ -235,12 +235,12 @@ export function SettingsDialog({
               onChange={(e) => setNewCategoryName(e.target.value)}
               placeholder="New category..."
               aria-label="New category name"
-              className="flex-1 border-ohm-border bg-ohm-bg px-3 py-1.5 font-body text-sm text-ohm-text placeholder:text-ohm-muted/40 focus-visible:ring-ohm-spark/20 focus-visible:ring-offset-0"
+              className="border-ohm-border bg-ohm-bg font-body text-ohm-text placeholder:text-ohm-muted/40 focus-visible:ring-ohm-spark/20 flex-1 px-3 py-1.5 text-sm focus-visible:ring-offset-0"
             />
             <Button
               type="submit"
               disabled={!newCategoryName.trim()}
-              className="bg-ohm-spark/20 font-display text-xs uppercase tracking-wider text-ohm-spark hover:bg-ohm-spark/30 active:bg-ohm-spark/40"
+              className="bg-ohm-spark/20 font-display text-ohm-spark hover:bg-ohm-spark/30 active:bg-ohm-spark/40 text-xs tracking-wider uppercase"
             >
               Add
             </Button>
@@ -249,7 +249,7 @@ export function SettingsDialog({
 
         {/* Capacity */}
         <div>
-          <span className="mb-2 block font-display text-[10px] uppercase tracking-widest text-ohm-muted">
+          <span className="font-display text-ohm-muted mb-2 block text-[10px] tracking-widest uppercase">
             Energy Capacity
           </span>
           {CAPACITY_ROWS.map(({ label, status, key, color }) => {
@@ -257,7 +257,7 @@ export function SettingsDialog({
             return (
               <div key={status} className="mt-2 flex items-center gap-3">
                 <span
-                  className={`w-20 font-display text-[10px] uppercase tracking-widest ${color}`}
+                  className={`font-display w-20 text-[10px] tracking-widest uppercase ${color}`}
                 >
                   {label}
                 </span>
@@ -266,19 +266,19 @@ export function SettingsDialog({
                   size="icon"
                   onClick={() => onSetCapacity(status, Math.max(1, value - 1))}
                   disabled={value <= 1}
-                  className="h-8 w-8 border-ohm-border text-ohm-muted hover:text-ohm-text"
+                  className="border-ohm-border text-ohm-muted hover:text-ohm-text h-8 w-8"
                   aria-label={`Decrease ${label} capacity`}
                 >
                   <Minus size={14} />
                 </Button>
-                <span className="min-w-[2ch] text-center font-display text-lg font-bold text-ohm-text">
+                <span className="font-display text-ohm-text min-w-[2ch] text-center text-lg font-bold">
                   {value}
                 </span>
                 <Button
                   variant="outline"
                   size="icon"
                   onClick={() => onSetCapacity(status, value + 1)}
-                  className="h-8 w-8 border-ohm-border text-ohm-muted hover:text-ohm-text"
+                  className="border-ohm-border text-ohm-muted hover:text-ohm-text h-8 w-8"
                   aria-label={`Increase ${label} capacity`}
                 >
                   <Plus size={14} />
@@ -290,17 +290,17 @@ export function SettingsDialog({
 
         {/* Google Drive */}
         {driveAvailable && (
-          <div className="mt-5 border-t border-ohm-border pt-5">
-            <span className="mb-2 block font-display text-[10px] uppercase tracking-widest text-ohm-muted">
+          <div className="border-ohm-border mt-5 border-t pt-5">
+            <span className="font-display text-ohm-muted mb-2 block text-[10px] tracking-widest uppercase">
               Google Drive Sync
             </span>
             {driveConnected ? (
               <div className="flex items-center justify-between">
-                <span className="font-body text-sm text-ohm-powered">Connected</span>
+                <span className="font-body text-ohm-powered text-sm">Connected</span>
                 <Button
                   variant="outline"
                   onClick={onDisconnectDrive}
-                  className="border-ohm-border text-xs text-ohm-muted hover:text-ohm-live"
+                  className="border-ohm-border text-ohm-muted hover:text-ohm-live text-xs"
                 >
                   Disconnect
                 </Button>
@@ -308,29 +308,29 @@ export function SettingsDialog({
             ) : (
               <Button
                 onClick={onConnectDrive}
-                className="w-full bg-ohm-spark/20 font-display text-xs uppercase tracking-wider text-ohm-spark hover:bg-ohm-spark/30"
+                className="bg-ohm-spark/20 font-display text-ohm-spark hover:bg-ohm-spark/30 w-full text-xs tracking-wider uppercase"
               >
                 Connect Google Drive
               </Button>
             )}
-            <p className="mt-1.5 font-body text-[11px] text-ohm-muted/60">
+            <p className="font-body text-ohm-muted/60 mt-1.5 text-[11px]">
               Sync your board across devices. Data stored privately in app storage.
             </p>
           </div>
         )}
 
         {/* Advanced */}
-        <div className="mt-5 border-t border-ohm-border pt-4">
+        <div className="border-ohm-border mt-5 border-t pt-4">
           <button
             type="button"
             onClick={handleToggleAdvanced}
-            className="flex w-full items-center gap-2 text-left"
+            className="focus-visible:ring-ring flex w-full items-center gap-2 rounded-sm text-left focus-visible:ring-1 focus-visible:outline-hidden"
           >
             <ChevronDown
               size={14}
               className={`text-ohm-muted transition-transform ${advancedOpen ? 'rotate-0' : '-rotate-90'}`}
             />
-            <span className="font-display text-[10px] uppercase tracking-widest text-ohm-muted">
+            <span className="font-display text-ohm-muted text-[10px] tracking-widest uppercase">
               Advanced
             </span>
           </button>
@@ -342,7 +342,7 @@ export function SettingsDialog({
                 <Button
                   variant="outline"
                   onClick={handleExport}
-                  className="flex-1 gap-1.5 border-ohm-border text-xs text-ohm-muted hover:text-ohm-text"
+                  className="border-ohm-border text-ohm-muted hover:text-ohm-text flex-1 gap-1.5 text-xs"
                 >
                   <Download size={14} />
                   Export
@@ -350,7 +350,7 @@ export function SettingsDialog({
                 <Button
                   variant="outline"
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex-1 gap-1.5 border-ohm-border text-xs text-ohm-muted hover:text-ohm-text"
+                  className="border-ohm-border text-ohm-muted hover:text-ohm-text flex-1 gap-1.5 text-xs"
                 >
                   <Upload size={14} />
                   Import
@@ -367,29 +367,29 @@ export function SettingsDialog({
 
               {/* Import mode picker */}
               {importPending && (
-                <div className="rounded-md border border-ohm-spark/30 bg-ohm-spark/5 p-3">
-                  <p className="mb-2 font-body text-xs text-ohm-text">
+                <div className="border-ohm-spark/30 bg-ohm-spark/5 rounded-md border p-3">
+                  <p className="font-body text-ohm-text mb-2 text-xs">
                     Import {importPending.cards.length} card
                     {importPending.cards.length !== 1 ? 's' : ''}.
                   </p>
                   <div className="flex gap-2">
                     <Button
                       onClick={handleImportMerge}
-                      className="flex-1 bg-ohm-spark/20 text-xs text-ohm-spark hover:bg-ohm-spark/30"
+                      className="bg-ohm-spark/20 text-ohm-spark hover:bg-ohm-spark/30 flex-1 text-xs"
                     >
                       Merge
                     </Button>
                     <Button
                       variant="outline"
                       onClick={handleImportReplace}
-                      className="flex-1 border-ohm-border text-xs text-ohm-muted hover:text-ohm-live"
+                      className="border-ohm-border text-ohm-muted hover:text-ohm-live flex-1 text-xs"
                     >
                       Overwrite
                     </Button>
                     <Button
                       variant="outline"
                       onClick={() => setImportPending(null)}
-                      className="border-ohm-border px-2 text-xs text-ohm-muted hover:text-ohm-text"
+                      className="border-ohm-border text-ohm-muted hover:text-ohm-text px-2 text-xs"
                     >
                       <X size={14} />
                     </Button>
@@ -400,32 +400,32 @@ export function SettingsDialog({
               {/* Restore points */}
               <div>
                 <div className="mb-2 flex items-center justify-between">
-                  <span className="font-display text-[10px] uppercase tracking-widest text-ohm-muted">
+                  <span className="font-display text-ohm-muted text-[10px] tracking-widest uppercase">
                     Restore Points
                   </span>
                   <Button
                     variant="outline"
                     onClick={handleCreateRestorePoint}
-                    className="h-6 gap-1 border-ohm-border px-2 text-[10px] text-ohm-muted hover:text-ohm-text"
+                    className="border-ohm-border text-ohm-muted hover:text-ohm-text h-6 gap-1 px-2 text-[10px]"
                   >
                     <Save size={10} />
                     Save
                   </Button>
                 </div>
                 {restorePoints.length === 0 ? (
-                  <p className="font-body text-[11px] text-ohm-muted/60">No restore points yet.</p>
+                  <p className="font-body text-ohm-muted/60 text-[11px]">No restore points yet.</p>
                 ) : (
                   <div className="flex max-h-40 flex-col gap-1 overflow-y-auto">
                     {[...restorePoints].reverse().map((rp) => (
                       <div
                         key={rp.id}
-                        className="flex items-center justify-between rounded-md border border-ohm-border bg-ohm-bg px-2 py-1.5"
+                        className="border-ohm-border bg-ohm-bg flex items-center justify-between rounded-md border px-2 py-1.5"
                       >
                         <div className="min-w-0 flex-1">
-                          <span className="block truncate font-body text-xs text-ohm-text">
+                          <span className="font-body text-ohm-text block truncate text-xs">
                             {rp.label}
                           </span>
-                          <span className="font-body text-[10px] text-ohm-muted/60">
+                          <span className="font-body text-ohm-muted/60 text-[10px]">
                             {formatDate(rp.createdAt)} — {rp.board.cards.length} card
                             {rp.board.cards.length !== 1 ? 's' : ''}
                           </span>
@@ -434,7 +434,7 @@ export function SettingsDialog({
                           <button
                             type="button"
                             onClick={() => handleRestore(rp)}
-                            className={`rounded-sm p-1 text-ohm-muted transition-colors ${
+                            className={`text-ohm-muted rounded-sm p-1 transition-colors ${
                               confirmRestoreId === rp.id
                                 ? 'bg-ohm-spark/20 text-ohm-spark'
                                 : 'hover:text-ohm-text'
@@ -453,7 +453,7 @@ export function SettingsDialog({
                           <button
                             type="button"
                             onClick={() => handleDeleteRestorePoint(rp.id)}
-                            className="rounded-sm p-1 text-ohm-muted transition-colors hover:text-ohm-live"
+                            className="text-ohm-muted hover:text-ohm-live rounded-sm p-1 transition-colors"
                             aria-label={`Delete restore point ${rp.label}`}
                           >
                             <Trash2 size={12} />

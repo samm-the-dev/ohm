@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import type { OhmCard, OhmColumn as OhmColumnType } from '../types/board';
@@ -8,6 +8,7 @@ interface ColumnProps {
   column: OhmColumnType;
   cards: OhmCard[];
   onCardTap: (card: OhmCard) => void;
+  onReorderCards?: (orderedIds: string[], movedId: string) => void;
   capacity?: { used: number; total: number };
   defaultExpanded?: boolean;
   flash?: boolean;
@@ -24,17 +25,31 @@ export function Column({
   column,
   cards,
   onCardTap,
+  onReorderCards,
   capacity,
   defaultExpanded = false,
   flash,
 }: ColumnProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
+  const handleReorder = useCallback(
+    (idx: number, cardId: string, dir: -1 | 1) => {
+      if (!onReorderCards) return;
+      const newIdx = idx + dir;
+      if (newIdx < 0 || newIdx >= cards.length) return;
+      const ids = cards.map((c) => c.id);
+      ids.splice(idx, 1);
+      ids.splice(newIdx, 0, cardId);
+      onReorderCards(ids, cardId);
+    },
+    [cards, onReorderCards],
+  );
+
   return (
     <div className="flex w-full min-w-0 flex-col rounded-xl md:w-auto md:flex-1">
       {/* Column header — mobile: button toggle, desktop: static */}
       <div
-        className={`sticky top-0 z-10 mb-1 flex w-full items-center rounded-lg bg-ohm-bg/80 px-3 py-2 backdrop-blur-sm ${flash ? 'animate-completion-flash' : ''}`}
+        className={`bg-ohm-bg/80 sticky top-0 z-10 mb-1 flex w-full items-center rounded-lg px-3 py-2 backdrop-blur-xs ${flash ? 'animate-completion-flash' : ''}`}
       >
         {/* Mobile toggle button — full width for easy tapping */}
         <button
@@ -42,19 +57,19 @@ export function Column({
           onClick={() => setExpanded((prev) => !prev)}
           aria-expanded={expanded}
           aria-controls={`column-cards-${column.label}`}
-          className="flex w-full items-center gap-2 md:hidden"
+          className="focus-visible:ring-ring flex w-full items-center gap-2 rounded-sm focus-visible:ring-1 focus-visible:outline-hidden md:hidden"
         >
           <span className="text-ohm-muted">
             {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           </span>
           <div className={`h-2 w-2 rounded-full bg-${column.color}`} />
-          <span className="font-display text-xs font-bold uppercase tracking-widest text-ohm-text">
+          <span className="font-display text-ohm-text text-xs font-bold tracking-widest uppercase">
             {column.label}
           </span>
-          <span className="ml-1 font-body text-[10px] text-ohm-muted">{cards.length}</span>
+          <span className="font-body text-ohm-muted ml-1 text-[10px]">{cards.length}</span>
           {capacity && (
             <span
-              className={`ml-auto shrink-0 font-display text-[10px] font-bold ${capacity.used > capacity.total ? 'animate-pulse' : ''}`}
+              className={`font-display ml-auto shrink-0 text-[10px] font-bold ${capacity.used > capacity.total ? 'animate-pulse' : ''}`}
               style={{ color: capacityColor(capacity.used, capacity.total) }}
             >
               {capacity.used}/{capacity.total}
@@ -64,13 +79,13 @@ export function Column({
         {/* Desktop static header */}
         <div className="hidden items-center gap-2 md:flex md:w-full">
           <div className={`h-2 w-2 rounded-full bg-${column.color}`} />
-          <span className="font-display text-xs font-bold uppercase tracking-widest text-ohm-text">
+          <span className="font-display text-ohm-text text-xs font-bold tracking-widest uppercase">
             {column.label}
           </span>
-          <span className="ml-1 font-body text-[10px] text-ohm-muted">{cards.length}</span>
+          <span className="font-body text-ohm-muted ml-1 text-[10px]">{cards.length}</span>
           {capacity && (
             <span
-              className={`ml-auto shrink-0 font-display text-[10px] font-bold ${capacity.used > capacity.total ? 'animate-pulse' : ''}`}
+              className={`font-display ml-auto shrink-0 text-[10px] font-bold ${capacity.used > capacity.total ? 'animate-pulse' : ''}`}
               style={{ color: capacityColor(capacity.used, capacity.total) }}
             >
               {capacity.used}/{capacity.total}
@@ -85,11 +100,16 @@ export function Column({
           id={`column-cards-${column.label}`}
           className={`flex-col gap-2 px-2 pb-4 ${expanded ? 'flex min-h-[60px]' : 'hidden'} md:flex md:min-h-[100px]`}
         >
-          {cards.map((card) => (
-            <Card key={card.id} card={card} onTap={onCardTap} />
+          {cards.map((card, idx) => (
+            <Card
+              key={card.id}
+              card={card}
+              onTap={onCardTap}
+              onReorder={(dir) => handleReorder(idx, card.id, dir)}
+            />
           ))}
           {cards.length === 0 && (
-            <div className="py-8 text-center font-body text-xs italic text-ohm-muted/40">
+            <div className="font-body text-ohm-muted/40 py-8 text-center text-xs italic">
               {column.description}
             </div>
           )}

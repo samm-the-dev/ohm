@@ -123,17 +123,15 @@ export function CardDetail({
         {/* Title */}
         <div className="mb-4">
           {isPowered && !isNew ? (
-            <p className="font-body text-sm font-medium text-ohm-text">{editing.title}</p>
+            <p className="font-body text-ohm-text text-sm font-medium">{editing.title}</p>
           ) : (
             <Input
               ref={titleRef}
               value={editing.title}
               onChange={(e) => setEditing((prev) => ({ ...prev, title: e.target.value }))}
               aria-label="Card title"
-              autoComplete="off"
-              data-form-type="other"
               placeholder={isNew ? "What's the idea?" : undefined}
-              className={`${accent.border} bg-ohm-bg font-body text-sm font-medium text-ohm-text placeholder:text-ohm-muted/50 ${accent.ring} focus-visible:ring-offset-0`}
+              className={`${accent.border} bg-ohm-bg font-body text-ohm-text placeholder:text-ohm-muted/50 text-sm font-medium ${accent.ring} focus-visible:ring-offset-0`}
             />
           )}
         </div>
@@ -142,13 +140,13 @@ export function CardDetail({
         <div className="mb-3">
           <label
             htmlFor="card-description"
-            className="mb-1 block font-display text-[10px] uppercase tracking-widest text-ohm-muted"
+            className="font-display text-ohm-muted mb-1 block text-[10px] tracking-widest uppercase"
           >
             Description
           </label>
           {isPowered && !isNew ? (
-            <p className="font-body text-sm text-ohm-muted">
-              {editing.description || <span className="italic text-ohm-muted/40">None</span>}
+            <p className="font-body text-ohm-muted text-sm">
+              {editing.description || <span className="text-ohm-muted/40 italic">None</span>}
             </p>
           ) : (
             <Textarea
@@ -160,16 +158,15 @@ export function CardDetail({
                 autoSize(e.target);
               }}
               placeholder="Notes, context, details..."
-              autoComplete="off"
               rows={2}
-              className={`resize-none ${accent.border} bg-ohm-bg font-body text-sm text-ohm-text placeholder:text-ohm-muted/50 ${accent.ring} focus-visible:ring-offset-0`}
+              className={`resize-none ${accent.border} bg-ohm-bg font-body text-ohm-text placeholder:text-ohm-muted/50 text-sm ${accent.ring} focus-visible:ring-offset-0`}
             />
           )}
         </div>
 
         {/* Tasks */}
         <div className="mb-3">
-          <span className="mb-2 flex items-center gap-1 font-display text-[10px] uppercase tracking-widest text-ohm-muted">
+          <span className="font-display text-ohm-muted mb-2 flex items-center gap-1 text-[10px] tracking-widest uppercase">
             <List size={10} />
             Tasks
           </span>
@@ -178,16 +175,14 @@ export function CardDetail({
               {editing.tasks.map((note, index) => (
                 <div key={index} className="flex items-center gap-2">
                   {isPowered ? (
-                    <span className="min-w-0 flex-1 rounded-md border border-ohm-border bg-ohm-bg px-3 py-2 font-body text-sm text-ohm-text">
+                    <span className="border-ohm-border bg-ohm-bg font-body text-ohm-text min-w-0 flex-1 rounded-md border px-3 py-2 text-sm">
                       {note}
                     </span>
                   ) : (
                     <Input
                       value={note}
                       onChange={(e) => handleUpdateNote(index, e.target.value)}
-                      autoComplete="off"
-                      data-form-type="other"
-                      className={`flex-1 ${accent.border} bg-ohm-bg font-body text-sm text-ohm-text ${accent.ring} focus-visible:ring-offset-0`}
+                      className={`flex-1 ${accent.border} bg-ohm-bg font-body text-ohm-text text-sm ${accent.ring} focus-visible:ring-offset-0`}
                     />
                   )}
                   {!isPowered && (
@@ -196,7 +191,7 @@ export function CardDetail({
                       variant="ghost"
                       size="icon"
                       onClick={() => handleRemoveNote(index)}
-                      className="h-9 w-9 shrink-0 text-ohm-live/60 hover:bg-transparent hover:text-ohm-live"
+                      className="text-ohm-live/60 hover:text-ohm-live h-9 w-9 shrink-0 hover:bg-transparent"
                       aria-label={`Delete task: ${note}`}
                     >
                       <Trash2 size={14} />
@@ -218,27 +213,25 @@ export function CardDetail({
                 value={newNote}
                 onChange={(e) => setNewNote(e.target.value)}
                 placeholder="Add a task..."
-                autoComplete="off"
-                data-form-type="other"
-                className={`flex-1 ${accent.border} bg-ohm-bg font-body text-sm text-ohm-text placeholder:text-ohm-muted/50 ${accent.ring} focus-visible:ring-offset-0`}
+                className={`flex-1 ${accent.border} bg-ohm-bg font-body text-ohm-text placeholder:text-ohm-muted/50 text-sm ${accent.ring} focus-visible:ring-offset-0`}
               />
               <Button
                 type="submit"
                 disabled={!newNote.trim()}
-                className="bg-ohm-spark/20 font-display text-xs uppercase tracking-wider text-ohm-spark hover:bg-ohm-spark/30 active:bg-ohm-spark/40"
+                className="bg-ohm-spark/20 font-display text-ohm-spark hover:bg-ohm-spark/30 active:bg-ohm-spark/40 text-xs tracking-wider uppercase"
               >
                 Add
               </Button>
             </form>
           )}
           {editing.tasks.length === 0 && isPowered && (
-            <p className="font-body text-sm italic text-ohm-muted/40">No tasks</p>
+            <p className="font-body text-ohm-muted/40 text-sm italic">No tasks</p>
           )}
         </div>
 
         {/* Energy tag */}
         <div className="mb-3">
-          <span className="mb-2 block font-display text-[10px] uppercase tracking-widest text-ohm-muted">
+          <span className="font-display text-ohm-muted mb-2 block text-[10px] tracking-widest uppercase">
             Energy
           </span>
           {isPowered && !isNew ? (
@@ -267,7 +260,7 @@ export function CardDetail({
                     onClick={() =>
                       setEditing((prev) => ({ ...prev, energy: index as OhmCard['energy'] }))
                     }
-                    className={`gap-1.5 font-body text-xs ${
+                    className={`font-body gap-1.5 text-xs ${
                       selected ? `${ec.border} ${ec.bg}` : `${ec.dimBorder} bg-ohm-bg`
                     }`}
                   >
@@ -285,7 +278,7 @@ export function CardDetail({
         {/* Category */}
         {!isPowered && (
           <div className="mb-4">
-            <span className="mb-2 block font-display text-[10px] uppercase tracking-widest text-ohm-muted">
+            <span className="font-display text-ohm-muted mb-2 block text-[10px] tracking-widest uppercase">
               Category
             </span>
             <div className="flex flex-wrap gap-2">
@@ -319,7 +312,7 @@ export function CardDetail({
               <button
                 type="button"
                 onClick={onOpenSettings}
-                className="rounded-md border border-ohm-text/20 p-1.5 text-ohm-text/70 transition-colors hover:text-ohm-text"
+                className="border-ohm-text/20 text-ohm-text/70 hover:text-ohm-text focus-visible:ring-ring rounded-md border p-1.5 transition-colors focus-visible:ring-1 focus-visible:outline-hidden"
                 aria-label="Manage categories"
               >
                 <Settings size={14} />
@@ -331,17 +324,17 @@ export function CardDetail({
         {/* Powered: show category as read-only if set */}
         {isPowered && editing.category && (
           <div className="mb-4">
-            <span className="mb-1 block font-display text-[10px] uppercase tracking-widest text-ohm-muted">
+            <span className="font-display text-ohm-muted mb-1 block text-[10px] tracking-widest uppercase">
               Category
             </span>
-            <p className="font-body text-sm text-ohm-muted">{editing.category}</p>
+            <p className="font-body text-ohm-muted text-sm">{editing.category}</p>
           </div>
         )}
 
         {/* Status -- contextual transitions only (hidden for new cards) */}
         {!isNew && availableTransitions.length > 0 && (
           <div className="mb-5">
-            <span className="mb-2 block font-display text-[10px] uppercase tracking-widest text-ohm-muted">
+            <span className="font-display text-ohm-muted mb-2 block text-[10px] tracking-widest uppercase">
               Move to
             </span>
             <div className="flex gap-2">
@@ -354,7 +347,7 @@ export function CardDetail({
                     variant="outline"
                     size="sm"
                     onClick={() => handleStatusChange(status)}
-                    className={`${targetAccent.border} bg-ohm-bg font-body text-xs uppercase text-ohm-muted hover:text-ohm-text`}
+                    className={`${targetAccent.border} bg-ohm-bg font-body text-ohm-muted hover:text-ohm-text text-xs uppercase`}
                   >
                     {col.label}
                   </Button>
@@ -365,13 +358,13 @@ export function CardDetail({
         )}
 
         {/* Actions */}
-        <div className="flex items-center justify-between border-t border-ohm-border pt-3">
+        <div className="border-ohm-border flex items-center justify-between border-t pt-3">
           {!isNew ? (
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="font-display text-xs uppercase tracking-wider text-ohm-live hover:bg-transparent hover:text-ohm-live/80"
+                  className="font-display text-ohm-live hover:text-ohm-live/80 text-xs tracking-wider uppercase hover:bg-transparent"
                 >
                   Delete
                 </Button>
@@ -407,7 +400,7 @@ export function CardDetail({
               <Button
                 variant="ghost"
                 onClick={onClose}
-                className="font-display text-xs uppercase tracking-wider text-ohm-muted hover:text-ohm-text"
+                className="font-display text-ohm-muted hover:text-ohm-text text-xs tracking-wider uppercase"
               >
                 Close
               </Button>
@@ -416,14 +409,14 @@ export function CardDetail({
                 <Button
                   variant="ghost"
                   onClick={onClose}
-                  className="font-display text-xs uppercase tracking-wider text-ohm-muted hover:text-ohm-text"
+                  className="font-display text-ohm-muted hover:text-ohm-text text-xs tracking-wider uppercase"
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={handleSave}
                   disabled={isNew && !editing.title.trim()}
-                  className="bg-ohm-powered/20 font-display text-xs uppercase tracking-wider text-ohm-powered hover:bg-ohm-powered/30 active:bg-ohm-powered/40"
+                  className="bg-ohm-powered/20 font-display text-ohm-powered hover:bg-ohm-powered/30 active:bg-ohm-powered/40 text-xs tracking-wider uppercase"
                 >
                   Save
                 </Button>
@@ -434,7 +427,7 @@ export function CardDetail({
 
         {/* Timestamps -- only for existing cards */}
         {!isNew && (
-          <div className="mt-3 font-body text-[11px] text-ohm-muted/60">
+          <div className="font-body text-ohm-muted/60 mt-3 text-[11px]">
             Created {new Date(card.createdAt).toLocaleDateString()} &middot; Updated{' '}
             {new Date(card.updatedAt).toLocaleDateString()}
           </div>

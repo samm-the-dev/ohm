@@ -10,11 +10,12 @@ import { Badge } from './ui/badge';
 interface CardProps {
   card: OhmCard;
   onTap: (card: OhmCard) => void;
+  onReorder?: (direction: -1 | 1) => void;
 }
 
 const STALE_THRESHOLD_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
 
-export function Card({ card, onTap }: CardProps) {
+export function Card({ card, onTap, onReorder }: CardProps) {
   const energyInfo = ENERGY_CONFIG[card.energy]!;
   const EnergyIcon = energyInfo.icon;
 
@@ -43,12 +44,16 @@ export function Card({ card, onTap }: CardProps) {
       {...attributes}
       role="button"
       tabIndex={0}
-      className="rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      aria-roledescription="sortable"
+      className="focus-visible:ring-ring rounded-xl focus-visible:ring-2 focus-visible:outline-hidden"
       onClick={() => onTap(card)}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           onTap(card);
+        } else if (onReorder && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+          e.preventDefault();
+          onReorder(e.key === 'ArrowUp' ? -1 : 1);
         }
       }}
     >
@@ -60,14 +65,14 @@ export function Card({ card, onTap }: CardProps) {
           <button
             type="button"
             {...listeners}
-            className="-ml-1 mt-px shrink-0 cursor-grab touch-none rounded p-0.5 text-ohm-muted/40 transition-colors hover:text-ohm-muted active:cursor-grabbing md:opacity-0 md:group-hover:opacity-100"
+            className="text-ohm-muted/40 hover:text-ohm-muted mt-px -ml-1 shrink-0 cursor-grab touch-none rounded p-0.5 transition-colors active:cursor-grabbing md:opacity-0 md:group-hover:opacity-100"
             aria-label="Drag to reorder"
             tabIndex={-1}
             onClick={(e) => e.stopPropagation()}
           >
             <GripVertical size={14} />
           </button>
-          <p className="min-w-0 flex-1 font-body text-sm font-medium leading-snug text-ohm-text">
+          <p className="font-body text-ohm-text min-w-0 flex-1 text-sm leading-snug font-medium">
             {card.title}
           </p>
         </div>
@@ -79,7 +84,7 @@ export function Card({ card, onTap }: CardProps) {
             title={energyInfo.label}
           >
             <EnergyIcon size={10} />
-            <span className="font-body text-[10px] uppercase tracking-wider">
+            <span className="font-body text-[10px] tracking-wider uppercase">
               {energyInfo.label}
             </span>
           </span>
@@ -88,7 +93,7 @@ export function Card({ card, onTap }: CardProps) {
           {card.category && (
             <Badge
               variant="secondary"
-              className="rounded bg-ohm-bg px-1.5 py-0.5 font-body text-[10px] font-medium uppercase tracking-wider text-ohm-muted"
+              className="bg-ohm-bg font-body text-ohm-muted rounded px-1.5 py-0.5 text-[10px] font-medium tracking-wider uppercase"
             >
               {card.category}
             </Badge>
@@ -97,7 +102,7 @@ export function Card({ card, onTap }: CardProps) {
 
         {/* Notes preview */}
         {card.tasks.length > 0 && (
-          <div className="mt-2 flex flex-col gap-1 border-t border-ohm-border pt-1.5 text-xs text-ohm-muted">
+          <div className="border-ohm-border text-ohm-muted mt-2 flex flex-col gap-1 border-t pt-1.5 text-xs">
             {card.tasks.map((note, i) => (
               <div key={i} className="flex items-start gap-1">
                 <ArrowRight size={12} className="mt-0.5 shrink-0" />
