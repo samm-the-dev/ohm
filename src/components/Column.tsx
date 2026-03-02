@@ -38,8 +38,8 @@ export function Column({
       const newIdx = idx + dir;
       if (newIdx < 0 || newIdx >= cards.length) return;
       const ids = cards.map((c) => c.id);
-      const [removed] = ids.splice(idx, 1);
-      ids.splice(newIdx, 0, removed!);
+      ids.splice(idx, 1);
+      ids.splice(newIdx, 0, cardId);
       onReorderCards(ids, cardId);
     },
     [cards, onReorderCards],
