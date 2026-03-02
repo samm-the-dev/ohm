@@ -26,6 +26,7 @@ import {
   type RestorePoint,
 } from '../utils/restore-points';
 import { toastImportComplete } from '../utils/toast';
+import { getAuthLevel } from '../utils/google-drive';
 
 interface SettingsDialogProps {
   isOpen: boolean;
@@ -59,6 +60,42 @@ const CAPACITY_ROWS = [
   },
   { label: 'Live', status: STATUS.LIVE, key: 'live' as const, color: 'text-ohm-live' },
 ];
+
+const AUTH_LEVEL_SEGMENTS = ['Local', 'Sync', 'Persist'] as const;
+const AUTH_LEVEL_DESCRIPTIONS = [
+  'Storage unavailable',
+  'Local only',
+  'Sync (re-auth on refresh)',
+  'Persistent sync',
+] as const;
+
+function AuthLevelIndicator() {
+  const level = getAuthLevel();
+  return (
+    <div>
+      <span className="font-display text-ohm-muted text-[10px] tracking-widest uppercase">
+        Storage Level
+      </span>
+      <div className="mt-1.5 flex gap-1">
+        {AUTH_LEVEL_SEGMENTS.map((label, i) => (
+          <div key={label} className="flex-1">
+            <div
+              className={`h-1.5 rounded-full transition-colors ${
+                i < level ? 'bg-ohm-powered/60' : 'bg-ohm-border'
+              }`}
+            />
+            <span className="font-body text-ohm-muted/60 mt-0.5 block text-center text-[9px]">
+              {label}
+            </span>
+          </div>
+        ))}
+      </div>
+      <p className="font-body text-ohm-muted/40 mt-1 text-[10px]">
+        {AUTH_LEVEL_DESCRIPTIONS[level]}
+      </p>
+    </div>
+  );
+}
 
 export function SettingsDialog({
   isOpen,
@@ -396,6 +433,9 @@ export function SettingsDialog({
                   </div>
                 </div>
               )}
+
+              {/* Auth level indicator */}
+              <AuthLevelIndicator />
 
               {/* Restore points */}
               <div>

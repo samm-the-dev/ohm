@@ -5,6 +5,7 @@ import {
   requestAccessToken,
   disconnectDrive,
   isAuthenticated,
+  silentRefresh,
   loadFromDrive,
   saveToDrive,
 } from '../utils/google-drive';
@@ -73,12 +74,24 @@ export function useDriveSync(
       return false;
     };
 
-    const onReady = () => {
-      // GIS implicit flow can't silently refresh tokens (requires a popup),
-      // so just prompt the user to reconnect via a button click.
-      if (wasPreviouslySynced()) {
-        setNeedsReconnect(true);
+    const onReady = async () => {
+      if (!wasPreviouslySynced()) return;
+
+      // Code flow: try silent refresh (uses stored refresh token)
+      const token = await silentRefresh();
+      if (token) {
+        setDriveConnected(true);
+        setSyncStatus('syncing');
+        try {
+          await mergeWithRemote();
+        } catch {
+          setSyncStatus('error');
+        }
+        return;
       }
+
+      // No refresh token or it failed -- show reconnect banner
+      setNeedsReconnect(true);
     };
 
     if (tryInit()) {

@@ -19,6 +19,32 @@ declare namespace google.accounts.oauth2 {
   }
 
   function initTokenClient(config: TokenClientConfig): TokenClient;
+
+  // --- Authorization code flow (used with server-side token exchange) ---
+
+  interface CodeClient {
+    requestCode(): void;
+    callback: (response: CodeResponse) => void;
+  }
+
+  interface CodeResponse {
+    code: string;
+    scope: string;
+    error?: string;
+    error_description?: string;
+  }
+
+  interface CodeClientConfig {
+    client_id: string;
+    scope: string;
+    ux_mode: 'popup' | 'redirect';
+    redirect_uri?: string;
+    callback: (response: CodeResponse) => void;
+    error_callback?: (error: { type: string; message: string }) => void;
+  }
+
+  function initCodeClient(config: CodeClientConfig): CodeClient;
+
   function revoke(token: string, callback?: () => void): void;
   function hasGrantedAllScopes(response: TokenResponse, ...scopes: string[]): boolean;
 }

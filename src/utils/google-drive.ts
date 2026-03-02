@@ -4,20 +4,72 @@
  * Uses Google Identity Services (GIS) for OAuth and raw fetch
  * calls to the Drive REST API v3. Stores the board as a single
  * JSON file in appDataFolder (hidden, app-specific storage).
+ *
+ * Supports two auth flows:
+ * - **Code flow** (when TOKEN_EXCHANGE_URL is set): authorization code
+ *   exchanged via a Cloud Function for access + refresh tokens.
+ *   Refresh tokens persist in localStorage for silent reconnect.
+ * - **Implicit flow** (fallback): original popup-based token request.
+ *   Tokens are memory-only, lost on page refresh.
  */
 
 import type { OhmBoard } from '../types/board';
-import { DRIVE_CLIENT_ID, DRIVE_FILE_NAME, DRIVE_MIME_TYPE, DRIVE_SCOPE } from '../config/drive';
+import {
+  DRIVE_CLIENT_ID,
+  DRIVE_FILE_NAME,
+  DRIVE_MIME_TYPE,
+  DRIVE_SCOPE,
+  TOKEN_EXCHANGE_URL,
+} from '../config/drive';
 import { sanitizeBoard } from './storage';
 
-// --- Token state (module-level, not persisted) ---
+// --- Flow selection ---
+
+const useCodeFlow = !!TOKEN_EXCHANGE_URL;
+const APP_ID = 'ohm';
+
+// --- Token state ---
 
 let accessToken: string | null = null;
 let tokenExpiry = 0;
+
+// Implicit flow client
 let tokenClient: google.accounts.oauth2.TokenClient | null = null;
+
+// Code flow client
+let codeClient: google.accounts.oauth2.CodeClient | null = null;
+
+// localStorage keys for code flow persistence
+const REFRESH_TOKEN_KEY = 'ohm-drive-refresh-token';
+const ACCESS_TOKEN_KEY = 'ohm-drive-access-token';
+const TOKEN_EXPIRY_KEY = 'ohm-drive-token-expiry';
 
 export function isAuthenticated(): boolean {
   return !!accessToken && Date.now() < tokenExpiry;
+}
+
+/**
+ * Detect the current persistence level for diagnostics.
+ * 0 = localStorage unavailable
+ * 1 = localStorage only (no cloud sync)
+ * 2 = OAuth popup sync (tokens lost on refresh)
+ * 3 = Persistent auth via Cloud Function (silent reconnect)
+ */
+export function getAuthLevel(): 0 | 1 | 2 | 3 {
+  try {
+    const key = '__ohm_ls_test__';
+    localStorage.setItem(key, '1');
+    localStorage.removeItem(key);
+  } catch {
+    return 0;
+  }
+  if (!DRIVE_CLIENT_ID || typeof google === 'undefined' || !google.accounts?.oauth2) {
+    return 1;
+  }
+  if (!useCodeFlow) {
+    return 2;
+  }
+  return 3;
 }
 
 /** Expose debug helpers on window for console inspection. */
@@ -44,24 +96,169 @@ if (import.meta.env.DEV) {
   });
 }
 
-/** Initialize the GIS token client. Returns false if GIS or client ID unavailable. */
+// --- Initialization ---
+
+/** Initialize the GIS client. Returns false if GIS or client ID unavailable. */
 export function initDriveAuth(): boolean {
   if (!DRIVE_CLIENT_ID) return false;
   if (typeof google === 'undefined' || !google.accounts?.oauth2) return false;
 
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: DRIVE_CLIENT_ID,
-    scope: DRIVE_SCOPE,
-    callback: () => {}, // overridden per requestAccessToken call
-  });
+  if (useCodeFlow) {
+    codeClient = google.accounts.oauth2.initCodeClient({
+      client_id: DRIVE_CLIENT_ID,
+      scope: DRIVE_SCOPE,
+      ux_mode: 'popup',
+      callback: () => {}, // overridden per requestAccessToken call
+    });
+  } else {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: DRIVE_CLIENT_ID,
+      scope: DRIVE_SCOPE,
+      callback: () => {}, // overridden per requestAccessToken call
+    });
+  }
   return true;
 }
 
+// --- Token persistence helpers (code flow) ---
+
+function storeTokens(access: string, expiry: number, refresh?: string): void {
+  localStorage.setItem(ACCESS_TOKEN_KEY, access);
+  localStorage.setItem(TOKEN_EXPIRY_KEY, String(expiry));
+  if (refresh) {
+    localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
+  }
+}
+
+function clearStoredTokens(): void {
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(TOKEN_EXPIRY_KEY);
+}
+
+// --- Silent refresh (code flow) ---
+
+let refreshPromise: Promise<string | null> | null = null;
+
 /**
- * Request an access token (requires user gesture — browser blocks popups otherwise).
- * @param prompt — '' skips consent if grant exists, 'consent' always prompts.
+ * Attempt to silently restore or refresh an access token.
+ * Returns the access token or null if no refresh token / revoked.
+ */
+export function silentRefresh(): Promise<string | null> {
+  if (!useCodeFlow) return Promise.resolve(null);
+  // Deduplicate concurrent refresh calls
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = doSilentRefresh().finally(() => {
+    refreshPromise = null;
+  });
+  return refreshPromise;
+}
+
+async function doSilentRefresh(): Promise<string | null> {
+  // Check localStorage for a non-expired cached access token
+  const cachedToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+  const cachedExpiry = Number(localStorage.getItem(TOKEN_EXPIRY_KEY) || '0');
+  if (cachedToken && Date.now() < cachedExpiry - 60_000) {
+    accessToken = cachedToken;
+    tokenExpiry = cachedExpiry;
+    return accessToken;
+  }
+
+  // Need a refresh token to get a new access token
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+  if (!refreshToken) return null;
+
+  try {
+    const res = await fetch(TOKEN_EXCHANGE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-App-Id': APP_ID },
+      body: JSON.stringify({ action: 'refresh', refresh_token: refreshToken }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      console.error('[Ohm] Silent refresh failed:', res.status, err);
+      // Refresh token is invalid/revoked -- clear it
+      if (res.status === 400 || res.status === 401) {
+        clearStoredTokens();
+      }
+      return null;
+    }
+
+    const data = await res.json();
+    accessToken = data.access_token;
+    tokenExpiry = Date.now() + data.expires_in * 1000;
+    storeTokens(accessToken!, tokenExpiry);
+    return accessToken;
+  } catch (err) {
+    console.error('[Ohm] Silent refresh network error:', err);
+    return null;
+  }
+}
+
+// --- Token request ---
+
+/**
+ * Request an access token.
+ * - Code flow: prompt='' tries silent refresh, prompt='consent' opens code popup.
+ * - Implicit flow: prompt='' skips consent if grant exists, 'consent' always prompts.
  */
 export function requestAccessToken(prompt: '' | 'consent' = 'consent'): Promise<string | null> {
+  // --- Code flow ---
+  if (useCodeFlow) {
+    // Silent attempt: use refresh token
+    if (prompt === '') {
+      return silentRefresh();
+    }
+
+    // Interactive: open popup to get authorization code, then exchange it
+    return new Promise((resolve) => {
+      if (!codeClient) {
+        resolve(null);
+        return;
+      }
+
+      codeClient.callback = async (response) => {
+        if (response.error) {
+          console.error('[Ohm] Code auth error:', response.error_description);
+          resolve(null);
+          return;
+        }
+
+        try {
+          const res = await fetch(TOKEN_EXCHANGE_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-App-Id': APP_ID },
+            body: JSON.stringify({
+              action: 'exchange',
+              code: response.code,
+              redirect_uri: 'postmessage',
+            }),
+          });
+
+          if (!res.ok) {
+            const err = await res.json().catch(() => null);
+            console.error('[Ohm] Token exchange failed:', res.status, err);
+            resolve(null);
+            return;
+          }
+
+          const data = await res.json();
+          accessToken = data.access_token;
+          tokenExpiry = Date.now() + data.expires_in * 1000;
+          storeTokens(accessToken!, tokenExpiry, data.refresh_token);
+          resolve(accessToken);
+        } catch (err) {
+          console.error('[Ohm] Token exchange network error:', err);
+          resolve(null);
+        }
+      };
+
+      codeClient.requestCode();
+    });
+  }
+
+  // --- Implicit flow (fallback) ---
   return new Promise((resolve) => {
     if (!tokenClient) {
       resolve(null);
@@ -86,7 +283,7 @@ export function requestAccessToken(prompt: '' | 'consent' = 'consent'): Promise<
   });
 }
 
-/** Revoke token and clear state. */
+/** Revoke token and clear all state. */
 export function disconnectDrive(): void {
   if (accessToken) {
     google.accounts.oauth2.revoke(accessToken);
@@ -94,6 +291,9 @@ export function disconnectDrive(): void {
   accessToken = null;
   tokenExpiry = 0;
   cachedFileId = null;
+  if (useCodeFlow) {
+    clearStoredTokens();
+  }
 }
 
 // --- Internal helpers ---
@@ -103,6 +303,11 @@ let cachedFileId: string | null = null;
 
 async function getHeaders(): Promise<HeadersInit> {
   if (!isAuthenticated()) {
+    // Try silent refresh first (code flow only)
+    if (useCodeFlow) {
+      const token = await silentRefresh();
+      if (token) return { Authorization: `Bearer ${token}` };
+    }
     const token = await requestAccessToken();
     if (!token) throw new Error('Not authenticated with Google Drive');
   }
