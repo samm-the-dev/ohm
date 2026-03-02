@@ -32,10 +32,7 @@ export function useBoard() {
 
   /** Quick-add a card to Charging (minimal friction, optional details) */
   const quickAdd = useCallback(
-    (
-      title: string,
-      overrides?: Partial<Pick<OhmCard, 'description' | 'energy' | 'category' | 'nextStep'>>,
-    ) => {
+    (title: string, overrides?: Partial<Pick<OhmCard, 'description' | 'energy' | 'category'>>) => {
       const card = createCard(title, overrides);
       setBoard((prev) => addCardToBoard(prev, card));
       return card;
@@ -44,11 +41,11 @@ export function useBoard() {
   );
 
   /** Move a card to a new status */
-  const move = useCallback((cardId: string, newStatus: ColumnStatus, whereILeftOff?: string) => {
+  const move = useCallback((cardId: string, newStatus: ColumnStatus) => {
     setBoard((prev) => {
       const card = prev.cards.find((c) => c.id === cardId);
       if (!card) return prev;
-      const updated = moveCard(card, newStatus, whereILeftOff);
+      const updated = moveCard(card, newStatus);
       return updateCardInBoard(prev, updated);
     });
   }, []);
@@ -61,6 +58,14 @@ export function useBoard() {
   /** Delete a card */
   const deleteCard = useCallback((cardId: string) => {
     setBoard((prev) => removeCardFromBoard(prev, cardId));
+  }, []);
+
+  /** Restore a previously deleted card (idempotent — no-op if already present) */
+  const restoreCard = useCallback((card: OhmCard) => {
+    setBoard((prev) => {
+      if (prev.cards.some((c) => c.id === card.id)) return prev;
+      return addCardToBoard(prev, card);
+    });
   }, []);
 
   /** Reorder a card within a column */
@@ -107,17 +112,20 @@ export function useBoard() {
             ? 'groundedCapacity'
             : null;
     if (!field) return;
-    setBoard((prev) => ({ ...prev, [field]: capacity, lastSaved: new Date().toISOString() }));
+    const now = new Date().toISOString();
+    setBoard((prev) => ({ ...prev, [field]: capacity, capacitiesUpdatedAt: now, lastSaved: now }));
   }, []);
 
   /** Add a category to the board */
   const addCategory = useCallback((category: string) => {
     setBoard((prev) => {
       if (prev.categories.includes(category)) return prev;
+      const now = new Date().toISOString();
       return {
         ...prev,
         categories: [...prev.categories, category],
-        lastSaved: new Date().toISOString(),
+        categoriesUpdatedAt: now,
+        lastSaved: now,
       };
     });
   }, []);
@@ -126,15 +134,35 @@ export function useBoard() {
   const removeCategory = useCallback((category: string) => {
     setBoard((prev) => {
       if (!prev.categories.includes(category)) return prev;
+      const now = new Date().toISOString();
       return {
         ...prev,
         categories: prev.categories.filter((c) => c !== category),
         cards: prev.cards.map((card) =>
-          card.category === category
-            ? { ...card, category: '', updatedAt: new Date().toISOString() }
-            : card,
+          card.category === category ? { ...card, category: '', updatedAt: now } : card,
         ),
-        lastSaved: new Date().toISOString(),
+        categoriesUpdatedAt: now,
+        lastSaved: now,
+      };
+    });
+  }, []);
+
+  /** Rename a category and update all cards using it */
+  const renameCategory = useCallback((oldName: string, newName: string) => {
+    setBoard((prev) => {
+      const trimmed = newName.trim();
+      if (!trimmed || trimmed === oldName) return prev;
+      if (!prev.categories.includes(oldName)) return prev;
+      if (prev.categories.includes(trimmed)) return prev;
+      const now = new Date().toISOString();
+      return {
+        ...prev,
+        categories: prev.categories.map((c) => (c === oldName ? trimmed : c)),
+        cards: prev.cards.map((card) =>
+          card.category === oldName ? { ...card, category: trimmed, updatedAt: now } : card,
+        ),
+        categoriesUpdatedAt: now,
+        lastSaved: now,
       };
     });
   }, []);
@@ -151,11 +179,13 @@ export function useBoard() {
     move,
     updateCard,
     deleteCard,
+    restoreCard,
     reorder,
     reorderBatch,
     setCapacity,
     addCategory,
     removeCategory,
+    renameCategory,
     replaceBoard,
   };
 }

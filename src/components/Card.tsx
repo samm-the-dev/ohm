@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, GripVertical } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { OhmCard } from '../types/board';
@@ -25,7 +25,6 @@ export function Card({ card, onTap }: CardProps) {
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    touchAction: 'none' as const,
   };
 
   const [isStale, setIsStale] = useState(false);
@@ -42,7 +41,6 @@ export function Card({ card, onTap }: CardProps) {
       ref={setNodeRef}
       style={style}
       {...attributes}
-      {...listeners}
       role="button"
       tabIndex={0}
       className="rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -55,12 +53,24 @@ export function Card({ card, onTap }: CardProps) {
       }}
     >
       <CardContainer
-        className={`border-ohm-border bg-ohm-surface p-3 shadow-none transition-all duration-150 active:scale-[0.98] ${isDragging ? 'z-50 opacity-40' : isStale ? 'opacity-50' : ''}`}
+        className={`group border-ohm-border bg-ohm-surface p-3 shadow-none transition-all duration-150 active:scale-[0.98] ${isDragging ? 'z-50 opacity-40' : isStale ? 'opacity-50' : ''}`}
       >
-        {/* Title */}
-        <p className="pr-6 font-body text-sm font-medium leading-snug text-ohm-text">
-          {card.title}
-        </p>
+        {/* Title row with drag handle */}
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            {...listeners}
+            className="-ml-1 mt-px shrink-0 cursor-grab touch-none rounded p-0.5 text-ohm-muted/40 transition-colors hover:text-ohm-muted active:cursor-grabbing md:opacity-0 md:group-hover:opacity-100"
+            aria-label="Drag to reorder"
+            tabIndex={-1}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <GripVertical size={14} />
+          </button>
+          <p className="min-w-0 flex-1 font-body text-sm font-medium leading-snug text-ohm-text">
+            {card.title}
+          </p>
+        </div>
 
         {/* Meta row */}
         <div className="mt-2 flex items-center gap-2">
@@ -85,25 +95,15 @@ export function Card({ card, onTap }: CardProps) {
           )}
         </div>
 
-        {/* Next step for active cards (not powered) */}
-        {card.status !== STATUS.POWERED && card.nextStep && (
-          <div className="mt-2 flex items-start gap-1 border-t border-ohm-border pt-1.5 text-xs text-ohm-muted">
-            <ArrowRight size={12} className="mt-0.5 shrink-0" />
-            <span>
-              {card.nextStep.length > 60 ? card.nextStep.slice(0, 60) + '...' : card.nextStep}
-            </span>
-          </div>
-        )}
-
-        {/* Where I left off indicator for grounded cards */}
-        {card.status === STATUS.GROUNDED && card.whereILeftOff && (
-          <div className="mt-2 flex items-start gap-1 border-t border-ohm-border pt-1.5 text-xs text-ohm-muted">
-            <ArrowRight size={12} className="mt-0.5 shrink-0" />
-            <span>
-              {card.whereILeftOff.length > 60
-                ? card.whereILeftOff.slice(0, 60) + '...'
-                : card.whereILeftOff}
-            </span>
+        {/* Notes preview */}
+        {card.tasks.length > 0 && (
+          <div className="mt-2 flex flex-col gap-1 border-t border-ohm-border pt-1.5 text-xs text-ohm-muted">
+            {card.tasks.map((note, i) => (
+              <div key={i} className="flex items-start gap-1">
+                <ArrowRight size={12} className="mt-0.5 shrink-0" />
+                <span>{note.length > 60 ? note.slice(0, 60) + '...' : note}</span>
+              </div>
+            ))}
           </div>
         )}
       </CardContainer>

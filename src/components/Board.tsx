@@ -23,6 +23,7 @@ import { Column } from './Column';
 import { CardDetail } from './CardDetail';
 import { SettingsDialog } from './SettingsDialog';
 import { SyncIndicator } from './SyncIndicator';
+import { toastCardMoved, toastCardDeleted, toastQuickAdd } from '../utils/toast';
 
 function CategoryFilter({
   categories,
@@ -117,9 +118,11 @@ export function Board() {
     quickAdd,
     updateCard,
     deleteCard,
+    restoreCard,
     reorderBatch,
     addCategory,
     removeCategory,
+    renameCategory,
     setCapacity,
     replaceBoard,
   } = useBoard();
@@ -129,7 +132,7 @@ export function Board() {
     activationConstraint: { distance: 8 },
   });
   const touchSensor = useSensor(TouchSensor, {
-    activationConstraint: { delay: 250, tolerance: 5 },
+    activationConstraint: { delay: 150, tolerance: 5 },
   });
   const sensors = useSensors(pointerSensor, touchSensor);
 
@@ -192,25 +195,8 @@ export function Board() {
 
   const { summary: welcomeBack, dismiss: dismissWelcome } = useWelcomeBack(board);
 
-  // Completion flash — trigger when Powered card count increases
+  // Completion flash — column header animation (toast handled in onSave)
   const [poweredFlash, setPoweredFlash] = useState(false);
-  const prevPoweredCountRef = useRef<number | null>(null);
-  const poweredCount = board.cards.filter((c) => c.status === STATUS.POWERED).length;
-
-  useEffect(() => {
-    const shouldFlash =
-      prevPoweredCountRef.current !== null && poweredCount > prevPoweredCountRef.current;
-    prevPoweredCountRef.current = poweredCount;
-
-    if (shouldFlash) {
-      const start = setTimeout(() => setPoweredFlash(true), 0);
-      const end = setTimeout(() => setPoweredFlash(false), 1000);
-      return () => {
-        clearTimeout(start);
-        clearTimeout(end);
-      };
-    }
-  }, [poweredCount]);
 
   const [selectedCard, setSelectedCard] = useState<OhmCard | null>(null);
   const [newCard, setNewCard] = useState<OhmCard | null>(null);
@@ -515,19 +501,31 @@ export function Board() {
             if (newCard) {
               quickAdd(updated.title, {
                 description: updated.description || undefined,
-                nextStep: updated.nextStep || undefined,
                 energy: updated.energy,
                 category: updated.category || undefined,
               });
+              toastQuickAdd(updated.title);
             } else {
+              const original = board.cards.find((c) => c.id === updated.id);
               updateCard(updated);
+              if (original && updated.status !== original.status) {
+                toastCardMoved(updated, updated.status);
+                if (updated.status === STATUS.POWERED) {
+                  setPoweredFlash(true);
+                  setTimeout(() => setPoweredFlash(false), 1000);
+                }
+              }
             }
             setSelectedCard(null);
             setNewCard(null);
           }}
           onDelete={(id) => {
+            const deletedCard = board.cards.find((c) => c.id === id);
             deleteCard(id);
             setSelectedCard(null);
+            if (deletedCard) {
+              toastCardDeleted(deletedCard, () => restoreCard(deletedCard));
+            }
           }}
           onClose={() => {
             setSelectedCard(null);
@@ -548,6 +546,7 @@ export function Board() {
         categories={board.categories}
         onAddCategory={addCategory}
         onRemoveCategory={removeCategory}
+        onRenameCategory={renameCategory}
         capacities={{
           charging: board.chargingCapacity,
           live: board.liveCapacity,
@@ -558,6 +557,8 @@ export function Board() {
         driveConnected={driveConnected}
         onConnectDrive={connect}
         onDisconnectDrive={disconnect}
+        board={board}
+        onReplaceBoard={replaceBoard}
       />
 
       {/* Settings FAB -- mobile only */}

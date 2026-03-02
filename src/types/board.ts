@@ -2,7 +2,7 @@ import type { ComponentType } from 'react';
 import { EnergySmall, EnergyMedium, EnergyLarge } from '../components/ui/energy-icons';
 
 /** Named status indices — positions in the COLUMNS array */
-export const STATUS = { CHARGING: 0, LIVE: 1, GROUNDED: 2, POWERED: 3 } as const;
+export const STATUS = { CHARGING: 0, GROUNDED: 1, LIVE: 2, POWERED: 3 } as const;
 export type ColumnStatus = (typeof STATUS)[keyof typeof STATUS];
 
 /** Named energy indices — positions in the ENERGY_CONFIG array */
@@ -16,10 +16,8 @@ export interface OhmCard {
   /** Free-form notes or context about the card */
   description: string;
   status: ColumnStatus;
-  /** The single next concrete action — may be empty at capture, expected before going live */
-  nextStep: string;
-  /** Context note captured when moving to grounded */
-  whereILeftOff: string;
+  /** User-managed tasks — persists across column moves */
+  tasks: string[];
   /** Energy tag for filtering */
   energy: EnergyTag;
   /** Optional project/category tag */
@@ -40,6 +38,8 @@ export interface OhmColumn {
   label: string;
   description: string;
   color: string;
+  /** Hex color for runtime use (toasts, canvas, etc.) */
+  hex: string;
 }
 
 /** Full board state — what gets persisted to Google Drive */
@@ -54,6 +54,10 @@ export interface OhmBoard {
   liveCapacity: number;
   /** Capacity for the Grounded column (energy segments) */
   groundedCapacity: number;
+  /** ISO timestamp — last time categories were added/removed */
+  categoriesUpdatedAt?: string;
+  /** ISO timestamp — last time any capacity was changed */
+  capacitiesUpdatedAt?: string;
   /** ISO timestamp of last save */
   lastSaved: string;
 }
@@ -64,21 +68,25 @@ export const COLUMNS: readonly OhmColumn[] = [
     label: 'Charging',
     description: 'Captured ideas -- shape with a clear next step',
     color: 'ohm-charging',
+    hex: '#f97316',
+  },
+  {
+    label: 'Grounded',
+    description: 'Defined and ready -- waiting for bandwidth',
+    color: 'ohm-grounded',
+    hex: '#6366f1',
   },
   {
     label: 'Live',
     description: 'Actively working on it',
     color: 'ohm-live',
-  },
-  {
-    label: 'Grounded',
-    description: 'Paused -- with context to pick back up',
-    color: 'ohm-grounded',
+    hex: '#ef4444',
   },
   {
     label: 'Powered',
     description: 'Done -- circuit complete',
     color: 'ohm-powered',
+    hex: '#22c55e',
   },
 ];
 
@@ -126,12 +134,12 @@ export const STATUS_CLASSES: readonly {
     ring: 'focus-visible:ring-ohm-charging/20',
   },
   {
-    border: 'border-ohm-live/30',
-    ring: 'focus-visible:ring-ohm-live/20',
-  },
-  {
     border: 'border-ohm-grounded/30',
     ring: 'focus-visible:ring-ohm-grounded/20',
+  },
+  {
+    border: 'border-ohm-live/30',
+    ring: 'focus-visible:ring-ohm-live/20',
   },
   {
     border: 'border-ohm-powered/30',
@@ -140,6 +148,7 @@ export const STATUS_CLASSES: readonly {
 ];
 
 /** Spark accent -- used for new card creation (not tied to a column status) */
+export const SPARK_HEX = '#fbbf24';
 export const SPARK_CLASSES = {
   border: 'border-ohm-spark/30',
   ring: 'focus-visible:ring-ohm-spark/20',
@@ -147,9 +156,9 @@ export const SPARK_CLASSES = {
 
 /** Valid transitions from each status */
 export const VALID_TRANSITIONS: readonly (readonly ColumnStatus[])[] = [
-  [STATUS.LIVE], // charging -> live
+  [STATUS.GROUNDED, STATUS.LIVE, STATUS.POWERED], // charging -> any
+  [STATUS.LIVE, STATUS.POWERED], // grounded -> live, powered
   [STATUS.GROUNDED, STATUS.POWERED], // live -> grounded, powered
-  [STATUS.LIVE], // grounded -> live
   [STATUS.CHARGING], // powered -> charging
 ];
 

@@ -9,7 +9,7 @@ import {
   SPARK_CLASSES,
   VALID_TRANSITIONS,
 } from '../types/board';
-import { Settings, ArrowRight, MapPin } from 'lucide-react';
+import { Settings, List, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from './ui/dialog';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
@@ -46,8 +46,10 @@ export function CardDetail({
   isNew,
 }: CardDetailProps) {
   const [editing, setEditing] = useState(card);
-  const [nextStepNudge, setNextStepNudge] = useState(false);
+  const [newNote, setNewNote] = useState('');
   const titleRef = useRef<HTMLInputElement>(null);
+
+  const isPowered = editing.status === STATUS.POWERED;
 
   // Auto-focus title for new cards
   useEffect(() => {
@@ -67,30 +69,35 @@ export function CardDetail({
 
   const handleSave = () => {
     if (isNew && !editing.title.trim()) return;
-    onSave({ ...editing, updatedAt: new Date().toISOString() });
+    const pendingTask = newNote.trim();
+    const finalTasks = pendingTask ? [...editing.tasks, pendingTask] : editing.tasks;
+    onSave({ ...editing, tasks: finalTasks, updatedAt: new Date().toISOString() });
     onClose();
   };
 
   const handleStatusChange = (newStatus: ColumnStatus) => {
-    // Nudge if moving to Live without a nextStep
-    if (newStatus === STATUS.LIVE && !editing.nextStep.trim()) {
-      setNextStepNudge(true);
-    } else {
-      setNextStepNudge(false);
-    }
+    setEditing((prev) => ({ ...prev, status: newStatus }));
+  };
 
-    setEditing((prev) => {
-      const updated = { ...prev, status: newStatus };
-      // Clear whereILeftOff when leaving grounded
-      if (prev.status === STATUS.GROUNDED && newStatus !== STATUS.GROUNDED) {
-        updated.whereILeftOff = '';
-      }
-      // Clear nextStep when completing
-      if (newStatus === STATUS.POWERED) {
-        updated.nextStep = '';
-      }
-      return updated;
-    });
+  const handleAddNote = () => {
+    const trimmed = newNote.trim();
+    if (!trimmed) return;
+    setEditing((prev) => ({ ...prev, tasks: [...prev.tasks, trimmed] }));
+    setNewNote('');
+  };
+
+  const handleUpdateNote = (index: number, value: string) => {
+    setEditing((prev) => ({
+      ...prev,
+      tasks: prev.tasks.map((n, i) => (i === index ? value : n)),
+    }));
+  };
+
+  const handleRemoveNote = (index: number) => {
+    setEditing((prev) => ({
+      ...prev,
+      tasks: prev.tasks.filter((_, i) => i !== index),
+    }));
   };
 
   const accent = isNew ? SPARK_CLASSES : STATUS_CLASSES[editing.status]!;
@@ -98,11 +105,6 @@ export function CardDetail({
   const availableTransitions = hasChangedStatus
     ? [card.status]
     : (VALID_TRANSITIONS[card.status] ?? []);
-
-  // Conditional field visibility
-  const showNextStep = editing.status === STATUS.CHARGING || editing.status === STATUS.LIVE;
-  const showWhereILeftOff = editing.status === STATUS.GROUNDED;
-  const showEnergy = editing.status === STATUS.CHARGING || editing.status === STATUS.LIVE;
 
   return (
     <Dialog
@@ -112,22 +114,28 @@ export function CardDetail({
       }}
     >
       <DialogContent>
-        {/* Header — title + close */}
+        {/* Header -- title + close */}
         <DialogTitle className="sr-only">{editing.title || 'Card details'}</DialogTitle>
         <DialogDescription className="sr-only">
           {isNew ? 'Create a new card' : 'Edit card details'}
         </DialogDescription>
+
+        {/* Title */}
         <div className="mb-4">
-          <Input
-            ref={titleRef}
-            value={editing.title}
-            onChange={(e) => setEditing((prev) => ({ ...prev, title: e.target.value }))}
-            aria-label="Card title"
-            autoComplete="off"
-            data-form-type="other"
-            placeholder={isNew ? "What's the idea?" : undefined}
-            className={`${accent.border} bg-ohm-bg font-body text-sm font-medium text-ohm-text placeholder:text-ohm-muted/50 ${accent.ring} focus-visible:ring-offset-0`}
-          />
+          {isPowered && !isNew ? (
+            <p className="font-body text-sm font-medium text-ohm-text">{editing.title}</p>
+          ) : (
+            <Input
+              ref={titleRef}
+              value={editing.title}
+              onChange={(e) => setEditing((prev) => ({ ...prev, title: e.target.value }))}
+              aria-label="Card title"
+              autoComplete="off"
+              data-form-type="other"
+              placeholder={isNew ? "What's the idea?" : undefined}
+              className={`${accent.border} bg-ohm-bg font-body text-sm font-medium text-ohm-text placeholder:text-ohm-muted/50 ${accent.ring} focus-visible:ring-offset-0`}
+            />
+          )}
         </div>
 
         {/* Description */}
@@ -138,79 +146,114 @@ export function CardDetail({
           >
             Description
           </label>
-          <Textarea
-            ref={descRef}
-            id="card-description"
-            value={editing.description}
-            onChange={(e) => {
-              setEditing((prev) => ({ ...prev, description: e.target.value }));
-              autoSize(e.target);
-            }}
-            placeholder="Notes, context, details..."
-            autoComplete="off"
-            rows={2}
-            className={`resize-none ${accent.border} bg-ohm-bg font-body text-sm text-ohm-text placeholder:text-ohm-muted/50 ${accent.ring} focus-visible:ring-offset-0`}
-          />
-        </div>
-
-        {/* Next Step -- visible for charging and live */}
-        {showNextStep && (
-          <div className="mb-3">
-            <label
-              htmlFor="card-next-step"
-              className="mb-1 flex items-center gap-1 font-display text-[10px] uppercase tracking-widest text-ohm-muted"
-            >
-              <ArrowRight size={10} />
-              Next Step
-            </label>
-            <Input
-              id="card-next-step"
-              value={editing.nextStep}
-              onChange={(e) => {
-                setEditing((prev) => ({ ...prev, nextStep: e.target.value }));
-                if (nextStepNudge && e.target.value.trim()) setNextStepNudge(false);
-              }}
-              placeholder="What's the one concrete action?"
-              autoComplete="off"
-              data-form-type="other"
-              className={`${nextStepNudge ? 'border-ohm-spark/60 ring-1 ring-ohm-spark/20' : accent.border} bg-ohm-bg font-body text-sm text-ohm-text placeholder:text-ohm-muted/50 ${accent.ring} focus-visible:ring-offset-0`}
-            />
-            {nextStepNudge && (
-              <p className="mt-1 font-body text-[10px] text-ohm-spark/80">
-                Tip: defining your next step helps you start faster
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* Where I Left Off -- visible only for grounded */}
-        {showWhereILeftOff && (
-          <div className="mb-3">
-            <label
-              htmlFor="card-where-left-off"
-              className="mb-1 flex items-center gap-1 font-display text-[10px] uppercase tracking-widest text-ohm-muted"
-            >
-              <MapPin size={10} />
-              Where I Left Off
-            </label>
+          {isPowered && !isNew ? (
+            <p className="font-body text-sm text-ohm-muted">
+              {editing.description || <span className="italic text-ohm-muted/40">None</span>}
+            </p>
+          ) : (
             <Textarea
-              id="card-where-left-off"
-              value={editing.whereILeftOff}
-              onChange={(e) => setEditing((prev) => ({ ...prev, whereILeftOff: e.target.value }))}
-              placeholder="Context for future you..."
+              ref={descRef}
+              id="card-description"
+              value={editing.description}
+              onChange={(e) => {
+                setEditing((prev) => ({ ...prev, description: e.target.value }));
+                autoSize(e.target);
+              }}
+              placeholder="Notes, context, details..."
               autoComplete="off"
               rows={2}
               className={`resize-none ${accent.border} bg-ohm-bg font-body text-sm text-ohm-text placeholder:text-ohm-muted/50 ${accent.ring} focus-visible:ring-offset-0`}
             />
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* Energy tag -- visible for charging and live */}
-        {showEnergy && (
-          <div className="mb-3">
-            <span className="mb-2 block font-display text-[10px] uppercase tracking-widest text-ohm-muted">
-              Energy
-            </span>
+        {/* Tasks */}
+        <div className="mb-3">
+          <span className="mb-2 flex items-center gap-1 font-display text-[10px] uppercase tracking-widest text-ohm-muted">
+            <List size={10} />
+            Tasks
+          </span>
+          {editing.tasks.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              {editing.tasks.map((note, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  {isPowered ? (
+                    <span className="min-w-0 flex-1 rounded-md border border-ohm-border bg-ohm-bg px-3 py-2 font-body text-sm text-ohm-text">
+                      {note}
+                    </span>
+                  ) : (
+                    <Input
+                      value={note}
+                      onChange={(e) => handleUpdateNote(index, e.target.value)}
+                      autoComplete="off"
+                      data-form-type="other"
+                      className={`flex-1 ${accent.border} bg-ohm-bg font-body text-sm text-ohm-text ${accent.ring} focus-visible:ring-offset-0`}
+                    />
+                  )}
+                  {!isPowered && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleRemoveNote(index)}
+                      className="h-9 w-9 shrink-0 text-ohm-live/60 hover:bg-transparent hover:text-ohm-live"
+                      aria-label={`Delete task: ${note}`}
+                    >
+                      <Trash2 size={14} />
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          {!isPowered && (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleAddNote();
+              }}
+              className="mt-2 flex gap-2"
+            >
+              <Input
+                value={newNote}
+                onChange={(e) => setNewNote(e.target.value)}
+                placeholder="Add a task..."
+                autoComplete="off"
+                data-form-type="other"
+                className={`flex-1 ${accent.border} bg-ohm-bg font-body text-sm text-ohm-text placeholder:text-ohm-muted/50 ${accent.ring} focus-visible:ring-offset-0`}
+              />
+              <Button
+                type="submit"
+                disabled={!newNote.trim()}
+                className="bg-ohm-spark/20 font-display text-xs uppercase tracking-wider text-ohm-spark hover:bg-ohm-spark/30 active:bg-ohm-spark/40"
+              >
+                Add
+              </Button>
+            </form>
+          )}
+          {editing.tasks.length === 0 && isPowered && (
+            <p className="font-body text-sm italic text-ohm-muted/40">No tasks</p>
+          )}
+        </div>
+
+        {/* Energy tag */}
+        <div className="mb-3">
+          <span className="mb-2 block font-display text-[10px] uppercase tracking-widest text-ohm-muted">
+            Energy
+          </span>
+          {isPowered && !isNew ? (
+            (() => {
+              const ec = ENERGY_CLASSES[editing.energy]!;
+              const config = ENERGY_CONFIG[editing.energy]!;
+              const Icon = config.icon;
+              return (
+                <span className={`flex items-center gap-1.5 ${ec.text}`}>
+                  <Icon size={14} />
+                  <span className="font-body text-sm">{config.label}</span>
+                </span>
+              );
+            })()
+          ) : (
             <div className="flex flex-wrap gap-2">
               {ENERGY_CONFIG.map((config, index) => {
                 const Icon = config.icon;
@@ -236,52 +279,64 @@ export function CardDetail({
                 );
               })}
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Category */}
-        <div className="mb-4">
-          <span className="mb-2 block font-display text-[10px] uppercase tracking-widest text-ohm-muted">
-            Category
-          </span>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setEditing((prev) => ({ ...prev, category: '' }))}
-              className={`font-body text-xs ${
-                !editing.category
-                  ? 'border-ohm-text/30 bg-ohm-text/10 text-ohm-text'
-                  : 'border-ohm-border bg-ohm-bg text-ohm-muted hover:text-ohm-text'
-              }`}
-            >
-              None
-            </Button>
-            {categories.map((cat) => (
+        {!isPowered && (
+          <div className="mb-4">
+            <span className="mb-2 block font-display text-[10px] uppercase tracking-widest text-ohm-muted">
+              Category
+            </span>
+            <div className="flex flex-wrap gap-2">
               <Button
-                key={cat}
                 variant="outline"
                 size="sm"
-                onClick={() => setEditing((prev) => ({ ...prev, category: cat }))}
+                onClick={() => setEditing((prev) => ({ ...prev, category: '' }))}
                 className={`font-body text-xs ${
-                  editing.category === cat
+                  !editing.category
                     ? 'border-ohm-text/30 bg-ohm-text/10 text-ohm-text'
                     : 'border-ohm-border bg-ohm-bg text-ohm-muted hover:text-ohm-text'
                 }`}
               >
-                {cat}
+                None
               </Button>
-            ))}
-            <button
-              type="button"
-              onClick={onOpenSettings}
-              className="rounded-md border border-ohm-text/20 p-1.5 text-ohm-text/70 transition-colors hover:text-ohm-text"
-              aria-label="Manage categories"
-            >
-              <Settings size={14} />
-            </button>
+              {categories.map((cat) => (
+                <Button
+                  key={cat}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEditing((prev) => ({ ...prev, category: cat }))}
+                  className={`font-body text-xs ${
+                    editing.category === cat
+                      ? 'border-ohm-text/30 bg-ohm-text/10 text-ohm-text'
+                      : 'border-ohm-border bg-ohm-bg text-ohm-muted hover:text-ohm-text'
+                  }`}
+                >
+                  {cat}
+                </Button>
+              ))}
+              <button
+                type="button"
+                onClick={onOpenSettings}
+                className="rounded-md border border-ohm-text/20 p-1.5 text-ohm-text/70 transition-colors hover:text-ohm-text"
+                aria-label="Manage categories"
+              >
+                <Settings size={14} />
+              </button>
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Powered: show category as read-only if set */}
+        {isPowered && editing.category && (
+          <div className="mb-4">
+            <span className="mb-1 block font-display text-[10px] uppercase tracking-widest text-ohm-muted">
+              Category
+            </span>
+            <p className="font-body text-sm text-ohm-muted">{editing.category}</p>
+          </div>
+        )}
 
         {/* Status -- contextual transitions only (hidden for new cards) */}
         {!isNew && availableTransitions.length > 0 && (
@@ -348,20 +403,32 @@ export function CardDetail({
             <span />
           )}
           <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              onClick={onClose}
-              className="font-display text-xs uppercase tracking-wider text-ohm-muted hover:text-ohm-text"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSave}
-              disabled={isNew && !editing.title.trim()}
-              className="bg-ohm-powered/20 font-display text-xs uppercase tracking-wider text-ohm-powered hover:bg-ohm-powered/30 active:bg-ohm-powered/40"
-            >
-              Save
-            </Button>
+            {isPowered && !isNew && !hasChangedStatus ? (
+              <Button
+                variant="ghost"
+                onClick={onClose}
+                className="font-display text-xs uppercase tracking-wider text-ohm-muted hover:text-ohm-text"
+              >
+                Close
+              </Button>
+            ) : (
+              <>
+                <Button
+                  variant="ghost"
+                  onClick={onClose}
+                  className="font-display text-xs uppercase tracking-wider text-ohm-muted hover:text-ohm-text"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSave}
+                  disabled={isNew && !editing.title.trim()}
+                  className="bg-ohm-powered/20 font-display text-xs uppercase tracking-wider text-ohm-powered hover:bg-ohm-powered/30 active:bg-ohm-powered/40"
+                >
+                  Save
+                </Button>
+              </>
+            )}
           </div>
         </div>
 

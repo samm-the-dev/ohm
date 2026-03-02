@@ -9,7 +9,7 @@ export function generateId(): string {
 /** Create a new card with minimal input (quick capture) */
 export function createCard(
   title: string,
-  overrides?: Partial<Pick<OhmCard, 'description' | 'energy' | 'category' | 'nextStep'>>,
+  overrides?: Partial<Pick<OhmCard, 'description' | 'energy' | 'category'>>,
 ): OhmCard {
   const now = new Date().toISOString();
   return {
@@ -17,8 +17,7 @@ export function createCard(
     title,
     description: overrides?.description ?? '',
     status: STATUS.CHARGING,
-    nextStep: overrides?.nextStep ?? '',
-    whereILeftOff: '',
+    tasks: [],
     energy: overrides?.energy ?? ENERGY.MED,
     category: overrides?.category ?? '',
     createdAt: now,
@@ -27,21 +26,12 @@ export function createCard(
   };
 }
 
-/** Move a card to a new column, applying transition side effects */
-export function moveCard(card: OhmCard, newStatus: ColumnStatus, whereILeftOff?: string): OhmCard {
+/** Move a card to a new column */
+export function moveCard(card: OhmCard, newStatus: ColumnStatus): OhmCard {
   return {
     ...card,
     status: newStatus,
     updatedAt: new Date().toISOString(),
-    // Set whereILeftOff when grounding, clear when leaving grounded
-    whereILeftOff:
-      newStatus === STATUS.GROUNDED
-        ? whereILeftOff !== undefined
-          ? whereILeftOff
-          : card.whereILeftOff
-        : '',
-    // Clear nextStep when completing
-    nextStep: newStatus === STATUS.POWERED ? '' : card.nextStep,
   };
 }
 
@@ -53,8 +43,8 @@ export function getColumnCards(board: OhmBoard, status: ColumnStatus): OhmCard[]
 /** Capacity field names indexed by ColumnStatus (Powered has no capacity) */
 const CAPACITY_FIELDS = [
   'chargingCapacity', // STATUS.CHARGING = 0
-  'liveCapacity', // STATUS.LIVE = 1
-  'groundedCapacity', // STATUS.GROUNDED = 2
+  'groundedCapacity', // STATUS.GROUNDED = 1
+  'liveCapacity', // STATUS.LIVE = 2
   null, // STATUS.POWERED = 3 (no capacity)
 ] as const satisfies readonly (keyof OhmBoard | null)[];
 
