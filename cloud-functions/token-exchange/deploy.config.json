@@ -1,0 +1,5 @@
+{
+  "functionName": "ohm-token-exchange",
+  "entryPoint": "ohmTokenExchange",
+  "secrets": "GOOGLE_CLIENT_ID=ohm-client-id:latest,GOOGLE_CLIENT_SECRET=ohm-client-secret:latest"
+}

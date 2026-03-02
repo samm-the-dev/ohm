@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "deploy": "npm run build && gcloud functions deploy ohm-token-exchange --gen2 --runtime=nodejs22 --trigger-http --allow-unauthenticated --entry-point=ohmTokenExchange --source=. --region=us-central1 --set-secrets=GOOGLE_CLIENT_ID=ohm-client-id:latest,GOOGLE_CLIENT_SECRET=ohm-client-secret:latest"
+    "deploy": "powershell -ExecutionPolicy Bypass -File deploy-cloud-function.ps1"
   },
   "dependencies": {
     "@google-cloud/functions-framework": "^3.0.0"
