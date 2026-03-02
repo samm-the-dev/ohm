@@ -1,7 +1,6 @@
+import { createLocalStorage } from '../../.planet-smars/lib/local-storage-sync';
 import type { OhmBoard } from '../types/board';
 import { createDefaultBoard, ENERGY_CONFIG, COLUMNS, STATUS, ENERGY } from '../types/board';
-
-const STORAGE_KEY = 'ohm-board';
 
 /** Coerce invalid field values to safe defaults -- index-range validation */
 export function sanitizeBoard(board: OhmBoard): OhmBoard {
@@ -37,36 +36,12 @@ export function sanitizeBoard(board: OhmBoard): OhmBoard {
   return board;
 }
 
-/** Save board to localStorage (fallback / offline mode) */
-export function saveToLocal(board: OhmBoard): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(board));
-  } catch (e) {
-    console.error('[Ohm] Failed to save to localStorage:', e);
-  }
-}
+const localSync = createLocalStorage<OhmBoard>({
+  storageKey: 'ohm-board',
+  logPrefix: '[Ohm]',
+  version: 1,
+  sanitize: sanitizeBoard,
+  createDefault: createDefaultBoard,
+});
 
-/** Load board from localStorage */
-export function loadFromLocal(): OhmBoard {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as OhmBoard;
-      if (parsed.version === 1) {
-        return sanitizeBoard(parsed);
-      }
-    }
-  } catch (e) {
-    console.error('[Ohm] Failed to load from localStorage:', e);
-  }
-  return createDefaultBoard();
-}
-
-/** Clear local storage */
-export function clearLocal(): void {
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-  } catch (e) {
-    console.error('[Ohm] Failed to clear localStorage:', e);
-  }
-}
+export const { saveToLocal, loadFromLocal, clearLocal } = localSync;

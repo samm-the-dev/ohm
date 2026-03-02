@@ -1,28 +1,16 @@
 /**
- * Tests for the google-drive auth layer.
+ * Tests for the Drive sync factory.
  *
- * These tests cover the dual-flow token management (code flow vs implicit)
- * by mocking the config module to control which flow is active, and mocking
- * fetch for Cloud Function calls.
+ * Each test creates a fresh factory instance -- no vi.resetModules()
+ * needed since state lives in closures, not module scope.
  */
 
 import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
+import { createDriveSync } from '../../.planet-smars/lib/google-drive-sync';
+import type { DriveSyncConfig } from '../../.planet-smars/lib/google-drive-sync';
 
-// --- Mocks must be declared before imports ---
+// --- GIS mocks ---
 
-// Default: code flow enabled
-const mockConfig = {
-  DRIVE_CLIENT_ID: 'test-client-id',
-  DRIVE_FILE_NAME: 'ohm-board.json',
-  DRIVE_MIME_TYPE: 'application/json',
-  DRIVE_SCOPE: 'https://www.googleapis.com/auth/drive.appdata',
-  TOKEN_EXCHANGE_URL: 'https://example.com/token-exchange',
-};
-
-vi.mock('../config/drive', () => mockConfig);
-vi.mock('./storage', () => ({ sanitizeBoard: (b: unknown) => b }));
-
-// Mock GIS on the global google namespace
 const mockRequestCode = vi.fn();
 const mockRequestAccessToken = vi.fn();
 const mockRevoke = vi.fn();
@@ -41,28 +29,40 @@ function setupGoogleGlobal() {
   };
 }
 
-// We need to re-import the module fresh for each test group to reset module-level state
-async function importFresh() {
-  // Clear the module cache so module-level variables reset
-  vi.resetModules();
-  // Re-apply mocks after resetModules
-  vi.doMock('../config/drive', () => ({ ...mockConfig }));
-  vi.doMock('./storage', () => ({ sanitizeBoard: (b: unknown) => b }));
-  return import('./google-drive');
+// --- Factory helper ---
+
+const KEY_PREFIX = 'test-drive';
+const REFRESH_KEY = `${KEY_PREFIX}-refresh-token`;
+const ACCESS_KEY = `${KEY_PREFIX}-access-token`;
+const EXPIRY_KEY = `${KEY_PREFIX}-token-expiry`;
+const TOKEN_URL = 'https://example.com/token-exchange';
+
+function createSync(overrides: Partial<DriveSyncConfig<unknown>> = {}) {
+  return createDriveSync<unknown>({
+    clientId: 'test-client-id',
+    fileName: 'test-board.json',
+    mimeType: 'application/json',
+    scope: 'https://www.googleapis.com/auth/drive.appdata',
+    tokenExchangeUrl: TOKEN_URL,
+    appId: 'test',
+    storageKeyPrefix: KEY_PREFIX,
+    logPrefix: '[Test]',
+    sanitize: (b) => b,
+    ...overrides,
+  });
 }
 
-describe('google-drive auth - code flow', () => {
+describe('Drive sync - code flow', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     localStorage.clear();
-    mockConfig.TOKEN_EXCHANGE_URL = 'https://example.com/token-exchange';
     setupGoogleGlobal();
     global.fetch = vi.fn();
   });
 
-  it('initDriveAuth initializes code client when TOKEN_EXCHANGE_URL is set', async () => {
-    const mod = await importFresh();
-    const result = mod.initDriveAuth();
+  it('initDriveAuth initializes code client when tokenExchangeUrl is set', () => {
+    const sync = createSync();
+    const result = sync.initDriveAuth();
     expect(result).toBe(true);
     const gis = (globalThis as Record<string, unknown>).google as {
       accounts: { oauth2: Record<string, Mock> };
@@ -74,57 +74,55 @@ describe('google-drive auth - code flow', () => {
   });
 
   it('silentRefresh returns null when no refresh token is stored', async () => {
-    const mod = await importFresh();
-    const result = await mod.silentRefresh();
+    const sync = createSync();
+    const result = await sync.silentRefresh();
     expect(result).toBeNull();
   });
 
   it('silentRefresh restores from cached access token in localStorage', async () => {
-    const futureExpiry = Date.now() + 3600_000; // 1 hour from now
-    localStorage.setItem('ohm-drive-access-token', 'cached-token');
-    localStorage.setItem('ohm-drive-token-expiry', String(futureExpiry));
-    localStorage.setItem('ohm-drive-refresh-token', 'refresh-token');
+    const futureExpiry = Date.now() + 3600_000;
+    localStorage.setItem(ACCESS_KEY, 'cached-token');
+    localStorage.setItem(EXPIRY_KEY, String(futureExpiry));
+    localStorage.setItem(REFRESH_KEY, 'refresh-token');
 
-    const mod = await importFresh();
-    const result = await mod.silentRefresh();
+    const sync = createSync();
+    const result = await sync.silentRefresh();
     expect(result).toBe('cached-token');
-    expect(mod.isAuthenticated()).toBe(true);
-    // Should not have called fetch (used cache)
+    expect(sync.isAuthenticated()).toBe(true);
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
   it('silentRefresh calls Cloud Function when cached token is expired', async () => {
     const pastExpiry = Date.now() - 1000;
-    localStorage.setItem('ohm-drive-access-token', 'old-token');
-    localStorage.setItem('ohm-drive-token-expiry', String(pastExpiry));
-    localStorage.setItem('ohm-drive-refresh-token', 'my-refresh-token');
+    localStorage.setItem(ACCESS_KEY, 'old-token');
+    localStorage.setItem(EXPIRY_KEY, String(pastExpiry));
+    localStorage.setItem(REFRESH_KEY, 'my-refresh-token');
 
     (global.fetch as Mock).mockResolvedValueOnce({
       ok: true,
       json: async () => ({ access_token: 'fresh-token', expires_in: 3600 }),
     });
 
-    const mod = await importFresh();
-    const result = await mod.silentRefresh();
+    const sync = createSync();
+    const result = await sync.silentRefresh();
     expect(result).toBe('fresh-token');
-    expect(mod.isAuthenticated()).toBe(true);
+    expect(sync.isAuthenticated()).toBe(true);
 
     expect(global.fetch).toHaveBeenCalledWith(
-      'https://example.com/token-exchange',
+      TOKEN_URL,
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({ action: 'refresh', refresh_token: 'my-refresh-token' }),
       }),
     );
 
-    // Should have stored the new token
-    expect(localStorage.getItem('ohm-drive-access-token')).toBe('fresh-token');
+    expect(localStorage.getItem(ACCESS_KEY)).toBe('fresh-token');
   });
 
   it('silentRefresh clears stored tokens on 401 from Cloud Function', async () => {
-    localStorage.setItem('ohm-drive-refresh-token', 'revoked-token');
-    localStorage.setItem('ohm-drive-access-token', 'old');
-    localStorage.setItem('ohm-drive-token-expiry', '0');
+    localStorage.setItem(REFRESH_KEY, 'revoked-token');
+    localStorage.setItem(ACCESS_KEY, 'old');
+    localStorage.setItem(EXPIRY_KEY, '0');
 
     (global.fetch as Mock).mockResolvedValueOnce({
       ok: false,
@@ -132,16 +130,16 @@ describe('google-drive auth - code flow', () => {
       json: async () => ({ error: 'invalid_grant' }),
     });
 
-    const mod = await importFresh();
-    const result = await mod.silentRefresh();
+    const sync = createSync();
+    const result = await sync.silentRefresh();
     expect(result).toBeNull();
-    expect(localStorage.getItem('ohm-drive-refresh-token')).toBeNull();
-    expect(localStorage.getItem('ohm-drive-access-token')).toBeNull();
+    expect(localStorage.getItem(REFRESH_KEY)).toBeNull();
+    expect(localStorage.getItem(ACCESS_KEY)).toBeNull();
   });
 
   it('silentRefresh deduplicates concurrent calls', async () => {
-    localStorage.setItem('ohm-drive-refresh-token', 'token');
-    localStorage.setItem('ohm-drive-token-expiry', '0');
+    localStorage.setItem(REFRESH_KEY, 'token');
+    localStorage.setItem(EXPIRY_KEY, '0');
 
     let resolveRefresh!: (value: unknown) => void;
     (global.fetch as Mock).mockReturnValueOnce(
@@ -150,16 +148,13 @@ describe('google-drive auth - code flow', () => {
       }),
     );
 
-    const mod = await importFresh();
+    const sync = createSync();
 
-    // Start two concurrent refreshes
-    const p1 = mod.silentRefresh();
-    const p2 = mod.silentRefresh();
+    const p1 = sync.silentRefresh();
+    const p2 = sync.silentRefresh();
 
-    // Only one fetch call should have been made
     expect(global.fetch).toHaveBeenCalledTimes(1);
 
-    // Resolve the single fetch
     resolveRefresh({
       ok: true,
       json: async () => ({ access_token: 'deduped', expires_in: 3600 }),
@@ -171,17 +166,17 @@ describe('google-drive auth - code flow', () => {
   });
 
   it('requestAccessToken with prompt="" delegates to silentRefresh', async () => {
-    localStorage.setItem('ohm-drive-refresh-token', 'rt');
-    localStorage.setItem('ohm-drive-token-expiry', '0');
+    localStorage.setItem(REFRESH_KEY, 'rt');
+    localStorage.setItem(EXPIRY_KEY, '0');
 
     (global.fetch as Mock).mockResolvedValueOnce({
       ok: true,
       json: async () => ({ access_token: 'silent-token', expires_in: 3600 }),
     });
 
-    const mod = await importFresh();
-    mod.initDriveAuth();
-    const result = await mod.requestAccessToken('');
+    const sync = createSync();
+    sync.initDriveAuth();
+    const result = await sync.requestAccessToken('');
     expect(result).toBe('silent-token');
   });
 
@@ -195,20 +190,18 @@ describe('google-drive auth - code flow', () => {
       }),
     });
 
-    const mod = await importFresh();
-    mod.initDriveAuth();
+    const sync = createSync();
+    sync.initDriveAuth();
 
-    const tokenPromise = mod.requestAccessToken('consent');
+    const tokenPromise = sync.requestAccessToken('consent');
 
-    // Simulate GIS calling the callback with an authorization code
     mockCodeClient.callback({ code: 'auth-code-123', scope: 'drive.appdata' });
 
     const result = await tokenPromise;
     expect(result).toBe('new-access');
 
-    // Verify the exchange request
     expect(global.fetch).toHaveBeenCalledWith(
-      'https://example.com/token-exchange',
+      TOKEN_URL,
       expect.objectContaining({
         body: JSON.stringify({
           action: 'exchange',
@@ -218,29 +211,28 @@ describe('google-drive auth - code flow', () => {
       }),
     );
 
-    // Verify tokens were stored
-    expect(localStorage.getItem('ohm-drive-refresh-token')).toBe('new-refresh');
-    expect(localStorage.getItem('ohm-drive-access-token')).toBe('new-access');
+    expect(localStorage.getItem(REFRESH_KEY)).toBe('new-refresh');
+    expect(localStorage.getItem(ACCESS_KEY)).toBe('new-access');
   });
 
   it('disconnectDrive clears stored tokens', async () => {
-    localStorage.setItem('ohm-drive-refresh-token', 'rt');
-    localStorage.setItem('ohm-drive-access-token', 'at');
-    localStorage.setItem('ohm-drive-token-expiry', '999');
+    localStorage.setItem(REFRESH_KEY, 'rt');
+    localStorage.setItem(ACCESS_KEY, 'at');
+    localStorage.setItem(EXPIRY_KEY, '999');
 
-    const mod = await importFresh();
-    // Set accessToken in module state so revoke is called
-    mod.initDriveAuth();
-    // Manually get a token first
-    localStorage.setItem('ohm-drive-access-token', 'active-token');
-    localStorage.setItem('ohm-drive-token-expiry', String(Date.now() + 3600_000));
-    await mod.silentRefresh();
+    const sync = createSync();
+    sync.initDriveAuth();
 
-    mod.disconnectDrive();
-    expect(localStorage.getItem('ohm-drive-refresh-token')).toBeNull();
-    expect(localStorage.getItem('ohm-drive-access-token')).toBeNull();
-    expect(localStorage.getItem('ohm-drive-token-expiry')).toBeNull();
-    expect(mod.isAuthenticated()).toBe(false);
+    // Load a token into module state via silentRefresh
+    localStorage.setItem(ACCESS_KEY, 'active-token');
+    localStorage.setItem(EXPIRY_KEY, String(Date.now() + 3600_000));
+    await sync.silentRefresh();
+
+    sync.disconnectDrive();
+    expect(localStorage.getItem(REFRESH_KEY)).toBeNull();
+    expect(localStorage.getItem(ACCESS_KEY)).toBeNull();
+    expect(localStorage.getItem(EXPIRY_KEY)).toBeNull();
+    expect(sync.isAuthenticated()).toBe(false);
   });
 });
 
@@ -252,65 +244,54 @@ describe('getAuthLevel', () => {
     global.fetch = vi.fn();
   });
 
-  it('returns 0 when localStorage is unavailable', async () => {
-    mockConfig.TOKEN_EXCHANGE_URL = 'https://example.com/token-exchange';
-    const mod = await importFresh();
-
-    // Make localStorage.setItem throw
+  it('returns 0 when localStorage is unavailable', () => {
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new DOMException('QuotaExceededError');
     });
 
-    expect(mod.getAuthLevel()).toBe(0);
+    const sync = createSync();
+    expect(sync.getAuthLevel()).toBe(0);
   });
 
-  it('returns 1 when no DRIVE_CLIENT_ID is configured', async () => {
-    mockConfig.DRIVE_CLIENT_ID = '';
-    mockConfig.TOKEN_EXCHANGE_URL = 'https://example.com/token-exchange';
-    const mod = await importFresh();
-    expect(mod.getAuthLevel()).toBe(1);
-    mockConfig.DRIVE_CLIENT_ID = 'test-client-id'; // restore
+  it('returns 1 when no clientId is configured', () => {
+    const sync = createSync({ clientId: '' });
+    expect(sync.getAuthLevel()).toBe(1);
   });
 
-  it('returns 1 when GIS is not loaded', async () => {
-    mockConfig.TOKEN_EXCHANGE_URL = 'https://example.com/token-exchange';
+  it('returns 1 when GIS is not loaded', () => {
     delete (globalThis as Record<string, unknown>).google;
-    const mod = await importFresh();
-    expect(mod.getAuthLevel()).toBe(1);
+    const sync = createSync();
+    expect(sync.getAuthLevel()).toBe(1);
   });
 
-  it('returns 2 when GIS is loaded but TOKEN_EXCHANGE_URL is empty (implicit flow)', async () => {
-    mockConfig.TOKEN_EXCHANGE_URL = '';
-    const mod = await importFresh();
-    expect(mod.getAuthLevel()).toBe(2);
+  it('returns 2 when GIS is loaded but tokenExchangeUrl is empty (implicit flow)', () => {
+    const sync = createSync({ tokenExchangeUrl: '' });
+    expect(sync.getAuthLevel()).toBe(2);
   });
 
-  it('returns 2 when code flow is configured but no refresh token stored', async () => {
-    mockConfig.TOKEN_EXCHANGE_URL = 'https://example.com/token-exchange';
-    const mod = await importFresh();
-    expect(mod.getAuthLevel()).toBe(2);
+  it('returns 2 when code flow is configured but no refresh token stored', () => {
+    const sync = createSync();
+    expect(sync.getAuthLevel()).toBe(2);
   });
 
-  it('returns 3 when code flow is configured and refresh token is stored', async () => {
-    mockConfig.TOKEN_EXCHANGE_URL = 'https://example.com/token-exchange';
-    localStorage.setItem('ohm-drive-refresh-token', 'stored-token');
-    const mod = await importFresh();
-    expect(mod.getAuthLevel()).toBe(3);
+  it('returns 3 when code flow is configured and refresh token is stored', () => {
+    localStorage.setItem(REFRESH_KEY, 'stored-token');
+    const sync = createSync();
+    expect(sync.getAuthLevel()).toBe(3);
   });
 });
 
-describe('google-drive auth - implicit flow fallback', () => {
+describe('Drive sync - implicit flow fallback', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     localStorage.clear();
-    mockConfig.TOKEN_EXCHANGE_URL = '';
     setupGoogleGlobal();
     global.fetch = vi.fn();
   });
 
-  it('initDriveAuth initializes token client when TOKEN_EXCHANGE_URL is empty', async () => {
-    const mod = await importFresh();
-    const result = mod.initDriveAuth();
+  it('initDriveAuth initializes token client when tokenExchangeUrl is empty', () => {
+    const sync = createSync({ tokenExchangeUrl: '' });
+    const result = sync.initDriveAuth();
     expect(result).toBe(true);
     const gis = (globalThis as Record<string, unknown>).google as {
       accounts: { oauth2: Record<string, Mock> };
@@ -320,18 +301,17 @@ describe('google-drive auth - implicit flow fallback', () => {
   });
 
   it('silentRefresh returns null in implicit flow', async () => {
-    const mod = await importFresh();
-    const result = await mod.silentRefresh();
+    const sync = createSync({ tokenExchangeUrl: '' });
+    const result = await sync.silentRefresh();
     expect(result).toBeNull();
   });
 
   it('requestAccessToken uses GIS token client in implicit flow', async () => {
-    const mod = await importFresh();
-    mod.initDriveAuth();
+    const sync = createSync({ tokenExchangeUrl: '' });
+    sync.initDriveAuth();
 
-    const tokenPromise = mod.requestAccessToken('consent');
+    const tokenPromise = sync.requestAccessToken('consent');
 
-    // Simulate GIS callback
     mockTokenClient.callback({
       access_token: 'implicit-token',
       expires_in: 3600,
@@ -339,14 +319,14 @@ describe('google-drive auth - implicit flow fallback', () => {
 
     const result = await tokenPromise;
     expect(result).toBe('implicit-token');
-    expect(mod.isAuthenticated()).toBe(true);
+    expect(sync.isAuthenticated()).toBe(true);
   });
 
   it('requestAccessToken returns null on error in implicit flow', async () => {
-    const mod = await importFresh();
-    mod.initDriveAuth();
+    const sync = createSync({ tokenExchangeUrl: '' });
+    sync.initDriveAuth();
 
-    const tokenPromise = mod.requestAccessToken('consent');
+    const tokenPromise = sync.requestAccessToken('consent');
 
     mockTokenClient.callback({
       access_token: '',

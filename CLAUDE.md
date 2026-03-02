@@ -35,6 +35,6 @@ A kanban app using an electrical metaphor to map energy cycles into a visual wor
 
 Dual-flow OAuth: authorization code flow (persistent) when `VITE_TOKEN_EXCHANGE_URL` is set, implicit flow (session-only) as fallback. See `src/utils/google-drive.ts`.
 
-### Cloud Function (`cloud-functions/token-exchange/`)
+### Cloud Function
 
-GCP Cloud Run function (gen2, Node 22, us-central1) that proxies OAuth token exchange/refresh, keeping the client secret server-side. Deployed to project `ohm-adhd-kanban`. **No CI deploy** -- changes to the function require manual redeploy via `npm run deploy` from that directory (needs `gcloud` CLI authenticated). See the companion doc at `planet-smars/templates/ai-context/gcp-oauth-token-exchange.md` for full setup details.
+GCP Cloud Function (gen2, runs on Cloud Run, Node 22, us-central1) that proxies OAuth token exchange/refresh, keeping the client secret server-side. Deployed to project `ohm-adhd-kanban`. Function source is shared via the planet-smars submodule at `.planet-smars/google-cloud-auth/function/`. Deploy config is at `google-cloud-auth.config.json` (repo root). **No CI deploy** -- changes require manual redeploy: `powershell -ExecutionPolicy Bypass -File .planet-smars/google-cloud-auth/deploy.ps1` (needs `gcloud` CLI authenticated). See `planet-smars/templates/ai-context/google-cloud-auth.md` for full setup details.
