@@ -64,11 +64,13 @@ describe('google-drive auth - code flow', () => {
     const mod = await importFresh();
     const result = mod.initDriveAuth();
     expect(result).toBe(true);
-    const gis = (globalThis as any).google.accounts.oauth2;
-    expect(gis.initCodeClient).toHaveBeenCalledWith(
+    const gis = (globalThis as Record<string, unknown>).google as {
+      accounts: { oauth2: Record<string, Mock> };
+    };
+    expect(gis.accounts.oauth2.initCodeClient).toHaveBeenCalledWith(
       expect.objectContaining({ client_id: 'test-client-id', ux_mode: 'popup' }),
     );
-    expect(gis.initTokenClient).not.toHaveBeenCalled();
+    expect(gis.accounts.oauth2.initTokenClient).not.toHaveBeenCalled();
   });
 
   it('silentRefresh returns null when no refresh token is stored', async () => {
@@ -272,7 +274,7 @@ describe('getAuthLevel', () => {
 
   it('returns 1 when GIS is not loaded', async () => {
     mockConfig.TOKEN_EXCHANGE_URL = 'https://example.com/token-exchange';
-    delete (globalThis as any).google;
+    delete (globalThis as Record<string, unknown>).google;
     const mod = await importFresh();
     expect(mod.getAuthLevel()).toBe(1);
   });
@@ -283,8 +285,15 @@ describe('getAuthLevel', () => {
     expect(mod.getAuthLevel()).toBe(2);
   });
 
-  it('returns 3 when TOKEN_EXCHANGE_URL is set (code flow)', async () => {
+  it('returns 2 when code flow is configured but no refresh token stored', async () => {
     mockConfig.TOKEN_EXCHANGE_URL = 'https://example.com/token-exchange';
+    const mod = await importFresh();
+    expect(mod.getAuthLevel()).toBe(2);
+  });
+
+  it('returns 3 when code flow is configured and refresh token is stored', async () => {
+    mockConfig.TOKEN_EXCHANGE_URL = 'https://example.com/token-exchange';
+    localStorage.setItem('ohm-drive-refresh-token', 'stored-token');
     const mod = await importFresh();
     expect(mod.getAuthLevel()).toBe(3);
   });
@@ -303,9 +312,11 @@ describe('google-drive auth - implicit flow fallback', () => {
     const mod = await importFresh();
     const result = mod.initDriveAuth();
     expect(result).toBe(true);
-    const gis = (globalThis as any).google.accounts.oauth2;
-    expect(gis.initTokenClient).toHaveBeenCalled();
-    expect(gis.initCodeClient).not.toHaveBeenCalled();
+    const gis = (globalThis as Record<string, unknown>).google as {
+      accounts: { oauth2: Record<string, Mock> };
+    };
+    expect(gis.accounts.oauth2.initTokenClient).toHaveBeenCalled();
+    expect(gis.accounts.oauth2.initCodeClient).not.toHaveBeenCalled();
   });
 
   it('silentRefresh returns null in implicit flow', async () => {

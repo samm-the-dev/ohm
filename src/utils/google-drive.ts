@@ -66,7 +66,7 @@ export function getAuthLevel(): 0 | 1 | 2 | 3 {
   if (!DRIVE_CLIENT_ID || typeof google === 'undefined' || !google.accounts?.oauth2) {
     return 1;
   }
-  if (!useCodeFlow) {
+  if (!useCodeFlow || !localStorage.getItem(REFRESH_TOKEN_KEY)) {
     return 2;
   }
   return 3;
