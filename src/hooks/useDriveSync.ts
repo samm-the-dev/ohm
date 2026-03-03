@@ -11,6 +11,7 @@ import {
 } from '../utils/google-drive';
 import { DRIVE_CLIENT_ID } from '../config/drive';
 import { createRestorePoint } from '../utils/restore-points';
+import { toastSyncResult } from '../utils/toast';
 
 export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error' | 'offline';
 
@@ -43,16 +44,17 @@ export function useDriveSync(
   const boardRef = useRef(currentBoard);
 
   /** Compare remote vs local timestamps and merge the newer version */
-  const mergeWithRemote = useCallback(async () => {
+  const mergeWithRemote = useCallback(async (): Promise<boolean> => {
     const remote = await loadFromDrive();
     if (remote && remote.lastSaved > boardRef.current.lastSaved) {
       createRestorePoint(boardRef.current, 'Before Drive sync');
       onBoardLoaded(remote);
       setSyncStatus('synced');
-    } else {
-      const ok = await saveToDrive(boardRef.current);
-      setSyncStatus(ok ? 'synced' : 'error');
+      return true;
     }
+    const ok = await saveToDrive(boardRef.current);
+    setSyncStatus(ok ? 'synced' : 'error');
+    return ok;
   }, [onBoardLoaded]);
 
   // Keep boardRef current
@@ -182,9 +184,11 @@ export function useDriveSync(
     if (!driveConnected || !navigator.onLine) return;
     setSyncStatus('syncing');
     try {
-      await mergeWithRemote();
+      const ok = await mergeWithRemote();
+      toastSyncResult(ok);
     } catch {
       setSyncStatus('error');
+      toastSyncResult(false);
     }
   }, [driveConnected, mergeWithRemote]);
 

@@ -10,6 +10,7 @@ import {
   Save,
   Trash2,
   RotateCcw,
+  MonitorDown,
 } from 'lucide-react';
 import type { OhmBoard, ColumnStatus } from '../types/board';
 import { STATUS } from '../types/board';
@@ -27,6 +28,7 @@ import {
 } from '../utils/restore-points';
 import { toastImportComplete } from '../utils/toast';
 import { getAuthLevel } from '../utils/google-drive';
+import { useInstallPrompt } from '../hooks/useInstallPrompt';
 
 interface SettingsDialogProps {
   isOpen: boolean;
@@ -113,6 +115,7 @@ export function SettingsDialog({
   board,
   onReplaceBoard,
 }: SettingsDialogProps) {
+  const { isInstallable, installApp } = useInstallPrompt();
   const [newCategoryName, setNewCategoryName] = useState('');
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [restorePoints, setRestorePoints] = useState<RestorePoint[]>([]);
@@ -359,6 +362,20 @@ export function SettingsDialog({
             <p className="font-body text-ohm-muted/60 mt-1.5 text-[11px]">
               Sync your board across devices. Data stored privately in app storage.
             </p>
+          </div>
+        )}
+
+        {/* Install PWA */}
+        {isInstallable && (
+          <div className="border-ohm-border mt-5 border-t pt-5">
+            <Button
+              onClick={installApp}
+              variant="outline"
+              className="border-ohm-border text-ohm-muted hover:text-ohm-text w-full gap-2 text-xs"
+            >
+              <MonitorDown size={14} />
+              Install App
+            </Button>
           </div>
         )}
 
