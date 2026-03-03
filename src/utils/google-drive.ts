@@ -5,7 +5,7 @@
  * configured with Ohm-specific values.
  */
 
-import { createDriveSync } from '../../.planet-smars/lib/google-drive-sync';
+import { createDriveSync } from '../../.toolbox/lib/google-drive-sync';
 import type { OhmBoard } from '../types/board';
 import {
   DRIVE_CLIENT_ID,

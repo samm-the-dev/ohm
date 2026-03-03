@@ -1,4 +1,4 @@
-import { createLocalStorage } from '../../.planet-smars/lib/local-storage-sync';
+import { createLocalStorage } from '../../.toolbox/lib/local-storage-sync';
 import type { OhmBoard } from '../types/board';
 import { createDefaultBoard, ENERGY_CONFIG, COLUMNS, STATUS, ENERGY } from '../types/board';
 
