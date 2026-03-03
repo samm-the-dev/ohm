@@ -36,9 +36,11 @@ export function useInstallPrompt() {
     const prompt = deferredPrompt.current;
     if (!prompt) return;
     await prompt.prompt();
-    // If dismissed, keep the button visible so the user can try again.
-    // If accepted, the appinstalled listener handles cleanup.
     await prompt.userChoice;
+    // prompt() is single-use — clear the ref and hide the button.
+    // A future beforeinstallprompt event will re-enable it if the browser offers again.
+    deferredPrompt.current = null;
+    setIsInstallable(false);
   }, []);
 
   return { isInstallable, installApp } as const;
