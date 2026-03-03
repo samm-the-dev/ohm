@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import { createElement } from 'react';
 import { toast } from 'sonner';
-import { Zap, Trash2, PackageCheck, Link } from 'lucide-react';
+import { Zap, Trash2, PackageCheck, Link, Cloud, CloudAlert } from 'lucide-react';
 import type { ColumnStatus, OhmCard } from '../types/board';
 import { STATUS, COLUMNS, SPARK_HEX } from '../types/board';
 
@@ -9,6 +9,8 @@ const zapIcon = createElement(Zap, { size: 14 });
 const trashIcon = createElement(Trash2, { size: 14 });
 const packageIcon = createElement(PackageCheck, { size: 14 });
 const linkIcon = createElement(Link, { size: 14 });
+const cloudIcon = createElement(Cloud, { size: 14 });
+const cloudAlertIcon = createElement(CloudAlert, { size: 14 });
 
 function accentStyle(hex: string = SPARK_HEX): CSSProperties {
   return { borderLeft: `3px solid ${hex}`, '--ohm-accent': hex } as CSSProperties;
@@ -61,5 +63,14 @@ export function toastLinkCopied() {
     duration: 2000,
     style: accentStyle(),
     icon: linkIcon,
+  });
+}
+
+export function toastSyncResult(success: boolean) {
+  const col = success ? COLUMNS[STATUS.POWERED]! : COLUMNS[STATUS.LIVE]!;
+  toast(success ? 'Synced to Drive' : 'Drive sync failed', {
+    duration: 2000,
+    style: accentStyle(col.hex),
+    icon: success ? cloudIcon : cloudAlertIcon,
   });
 }

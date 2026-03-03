@@ -11,6 +11,7 @@ import {
 } from '../utils/google-drive';
 import { DRIVE_CLIENT_ID } from '../config/drive';
 import { createRestorePoint } from '../utils/restore-points';
+import { toastSyncResult } from '../utils/toast';
 
 export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error' | 'offline';
 
@@ -183,8 +184,10 @@ export function useDriveSync(
     setSyncStatus('syncing');
     try {
       await mergeWithRemote();
+      toastSyncResult(true);
     } catch {
       setSyncStatus('error');
+      toastSyncResult(false);
     }
   }, [driveConnected, mergeWithRemote]);
 
