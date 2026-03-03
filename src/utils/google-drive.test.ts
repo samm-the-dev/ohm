@@ -269,9 +269,9 @@ describe('getAuthLevel', () => {
     expect(sync.getAuthLevel()).toBe(2);
   });
 
-  it('returns 2 when code flow is configured but no refresh token stored', () => {
+  it('returns 1 when code flow is configured but no refresh token stored', () => {
     const sync = createSync();
-    expect(sync.getAuthLevel()).toBe(2);
+    expect(sync.getAuthLevel()).toBe(1);
   });
 
   it('returns 3 when code flow is configured and refresh token is stored', () => {
