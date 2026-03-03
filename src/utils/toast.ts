@@ -1,13 +1,14 @@
 import type { CSSProperties } from 'react';
 import { createElement } from 'react';
 import { toast } from 'sonner';
-import { Zap, Trash2, PackageCheck } from 'lucide-react';
+import { Zap, Trash2, PackageCheck, Link } from 'lucide-react';
 import type { ColumnStatus, OhmCard } from '../types/board';
 import { STATUS, COLUMNS, SPARK_HEX } from '../types/board';
 
 const zapIcon = createElement(Zap, { size: 14 });
 const trashIcon = createElement(Trash2, { size: 14 });
 const packageIcon = createElement(PackageCheck, { size: 14 });
+const linkIcon = createElement(Link, { size: 14 });
 
 function accentStyle(hex: string = SPARK_HEX): CSSProperties {
   return { borderLeft: `3px solid ${hex}`, '--ohm-accent': hex } as CSSProperties;
@@ -52,5 +53,13 @@ export function toastImportComplete(cardCount: number) {
     duration: 3000,
     style: accentStyle(),
     icon: packageIcon,
+  });
+}
+
+export function toastLinkCopied() {
+  toast('Link copied', {
+    duration: 2000,
+    style: accentStyle(),
+    icon: linkIcon,
   });
 }

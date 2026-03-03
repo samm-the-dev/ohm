@@ -1,5 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Zap, Settings, Plus, CloudOff, SlidersHorizontal, Search, X, Tag } from 'lucide-react';
+import {
+  Zap,
+  Settings,
+  Plus,
+  CloudOff,
+  SlidersHorizontal,
+  Search,
+  X,
+  Tag,
+  Share2,
+} from 'lucide-react';
 import {
   DndContext,
   DragOverlay,
@@ -23,7 +33,7 @@ import { Column } from './Column';
 import { CardDetail } from './CardDetail';
 import { SettingsDialog } from './SettingsDialog';
 import { SyncIndicator } from './SyncIndicator';
-import { toastCardMoved, toastCardDeleted, toastQuickAdd } from '../utils/toast';
+import { toastCardMoved, toastCardDeleted, toastQuickAdd, toastLinkCopied } from '../utils/toast';
 
 function CategoryFilter({
   categories,
@@ -240,6 +250,16 @@ export function Board() {
     setNewCard(createCard(''));
   };
 
+  const handleShare = async () => {
+    const url = window.location.href;
+    if (navigator.share) {
+      await navigator.share({ title: 'Ohm', url }).catch(() => {});
+    } else {
+      await navigator.clipboard.writeText(url);
+      toastLinkCopied();
+    }
+  };
+
   const activeCard = selectedCard || newCard;
 
   return (
@@ -247,8 +267,8 @@ export function Board() {
       {/* Header */}
       <header className="border-ohm-border bg-ohm-bg/90 sticky top-0 z-30 border-b backdrop-blur-md">
         <div className="flex items-center justify-between px-4 py-3">
-          {/* Left -- settings (desktop only) */}
-          <div className="flex w-20 items-center">
+          {/* Left -- settings (desktop only) + sync status */}
+          <div className="flex w-20 items-center gap-1">
             <button
               type="button"
               onClick={() => setSettingsOpen(true)}
@@ -257,6 +277,9 @@ export function Board() {
             >
               <Settings size={16} />
             </button>
+            {driveAvailable && (
+              <SyncIndicator connected={driveConnected} status={syncStatus} onSync={manualSync} />
+            )}
           </div>
 
           {/* Center -- title */}
@@ -267,7 +290,7 @@ export function Board() {
             </span>
           </div>
 
-          {/* Right -- quick spark (desktop) + sync indicator */}
+          {/* Right -- quick spark (desktop) + share */}
           <div className="flex w-20 items-center justify-end gap-1">
             <button
               type="button"
@@ -277,9 +300,14 @@ export function Board() {
             >
               <Plus size={16} />
             </button>
-            {driveAvailable && (
-              <SyncIndicator connected={driveConnected} status={syncStatus} onSync={manualSync} />
-            )}
+            <button
+              type="button"
+              onClick={handleShare}
+              className="text-ohm-muted hover:bg-ohm-surface hover:text-ohm-text rounded-md p-1.5 transition-colors"
+              aria-label="Share link"
+            >
+              <Share2 size={16} />
+            </button>
           </div>
         </div>
       </header>
