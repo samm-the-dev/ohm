@@ -66,6 +66,15 @@ export function toastLinkCopied() {
   });
 }
 
+export function toastLinkFailed() {
+  const col = COLUMNS[STATUS.LIVE]!;
+  toast("Couldn't copy link", {
+    duration: 3000,
+    style: accentStyle(col.hex),
+    icon: linkIcon,
+  });
+}
+
 export function toastSyncResult(success: boolean) {
   const col = success ? COLUMNS[STATUS.POWERED]! : COLUMNS[STATUS.LIVE]!;
   toast(success ? 'Synced to Drive' : 'Drive sync failed', {

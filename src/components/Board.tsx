@@ -33,7 +33,13 @@ import { Column } from './Column';
 import { CardDetail } from './CardDetail';
 import { SettingsDialog } from './SettingsDialog';
 import { SyncIndicator } from './SyncIndicator';
-import { toastCardMoved, toastCardDeleted, toastQuickAdd, toastLinkCopied } from '../utils/toast';
+import {
+  toastCardMoved,
+  toastCardDeleted,
+  toastQuickAdd,
+  toastLinkCopied,
+  toastLinkFailed,
+} from '../utils/toast';
 
 function CategoryFilter({
   categories,
@@ -255,8 +261,12 @@ export function Board() {
     if (navigator.share) {
       await navigator.share({ title: 'Ohm', url }).catch(() => {});
     } else {
-      await navigator.clipboard.writeText(url);
-      toastLinkCopied();
+      try {
+        await navigator.clipboard.writeText(url);
+        toastLinkCopied();
+      } catch {
+        toastLinkFailed();
+      }
     }
   };
 
