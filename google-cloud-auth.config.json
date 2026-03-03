@@ -2,5 +2,5 @@
   "functionName": "ohm-token-exchange",
   "entryPoint": "tokenExchange",
   "secrets": "GOOGLE_CLIENT_ID=ohm-client-id:latest,GOOGLE_CLIENT_SECRET=ohm-client-secret:latest",
-  "envVars": "ALLOWED_ORIGINS=https://ohm.samm-the.dev,https://samm-the-dev.github.io"
+  "envVars": "^;^ALLOWED_ORIGINS=https://ohm.samm-the.dev,https://samm-the-dev.github.io"
 }
