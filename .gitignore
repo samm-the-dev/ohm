@@ -4,5 +4,6 @@ dist
 .vite
 *.local
 *.tsbuildinfo
+.vercel
 .DS_Store
 axe-audit.json

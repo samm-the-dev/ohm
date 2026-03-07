@@ -1,4 +1,4 @@
-@.toolbox/templates/ai-context/CLAUDE.md
+@.toolbox/ai-context/CLAUDE.md
 
 ---
 
