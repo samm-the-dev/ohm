@@ -11,6 +11,7 @@ import {
   Trash2,
   RotateCcw,
   MonitorDown,
+  Clock,
 } from 'lucide-react';
 import type { OhmBoard, ColumnStatus } from '../types/board';
 import { STATUS } from '../types/board';
@@ -29,6 +30,10 @@ import {
 import { toastImportComplete } from '../utils/toast';
 import { getAuthLevel } from '../utils/google-drive';
 import { useInstallPrompt } from '../hooks/useInstallPrompt';
+import type { Activity } from '../types/activity';
+import type { StoredSchedule } from '../types/schedule';
+import type { EnergyTag } from '../types/board';
+import { ActivityManager } from './ActivityManager';
 
 interface SettingsDialogProps {
   isOpen: boolean;
@@ -39,6 +44,17 @@ interface SettingsDialogProps {
   onRenameCategory: (oldName: string, newName: string) => void;
   capacities: { charging: number; live: number; grounded: number };
   onSetCapacity: (status: ColumnStatus, capacity: number) => void;
+  timeFeatures?: boolean;
+  windowSize?: number;
+  onSetTimeFeatures?: (enabled: boolean) => void;
+  onSetWindowSize?: (size: number) => void;
+  activities?: Activity[];
+  onAddActivity?: (
+    name: string,
+    opts?: { description?: string; schedule?: StoredSchedule; energy?: EnergyTag },
+  ) => Promise<Activity>;
+  onUpdateActivity?: (id: string, changes: Partial<Omit<Activity, 'id'>>) => Promise<void>;
+  onDeleteActivity?: (id: string) => Promise<void>;
   driveAvailable?: boolean;
   driveConnected?: boolean;
   onConnectDrive?: () => void;
@@ -108,6 +124,14 @@ export function SettingsDialog({
   onRenameCategory,
   capacities,
   onSetCapacity,
+  timeFeatures,
+  windowSize,
+  onSetTimeFeatures,
+  onSetWindowSize,
+  activities,
+  onAddActivity,
+  onUpdateActivity,
+  onDeleteActivity,
   driveAvailable,
   driveConnected,
   onConnectDrive,
@@ -337,6 +361,78 @@ export function SettingsDialog({
             );
           })}
         </div>
+
+        {/* Time Features */}
+        {onSetTimeFeatures && (
+          <div className="border-ohm-border mt-5 border-t pt-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Clock size={14} className="text-ohm-muted" />
+                <span className="font-display text-ohm-muted text-[10px] tracking-widest uppercase">
+                  Schedule
+                </span>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={!!timeFeatures}
+                onClick={() => onSetTimeFeatures(!timeFeatures)}
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                  timeFeatures ? 'bg-ohm-spark' : 'bg-ohm-border'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
+                    timeFeatures ? 'translate-x-4' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+            <p className="font-body text-ohm-muted/60 mt-1.5 text-[11px]">
+              Enable recurring activities with a rolling schedule window.
+            </p>
+            {timeFeatures && onSetWindowSize && (
+              <div className="mt-3 flex items-center gap-3">
+                <span className="font-display text-ohm-muted w-20 text-[10px] tracking-widest uppercase">
+                  Window
+                </span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => onSetWindowSize(Math.max(1, (windowSize ?? 7) - 1))}
+                  disabled={(windowSize ?? 7) <= 1}
+                  className="border-ohm-border text-ohm-muted hover:text-ohm-text h-8 w-8"
+                  aria-label="Decrease window size"
+                >
+                  <Minus size={14} />
+                </Button>
+                <span className="font-display text-ohm-text min-w-[2ch] text-center text-lg font-bold">
+                  {windowSize ?? 7}
+                </span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => onSetWindowSize((windowSize ?? 7) + 1)}
+                  className="border-ohm-border text-ohm-muted hover:text-ohm-text h-8 w-8"
+                  aria-label="Increase window size"
+                >
+                  <Plus size={14} />
+                </Button>
+                <span className="font-body text-ohm-muted/60 text-[10px]">days</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Activities */}
+        {timeFeatures && activities && onAddActivity && onUpdateActivity && onDeleteActivity && (
+          <ActivityManager
+            activities={activities}
+            onAdd={onAddActivity}
+            onUpdate={onUpdateActivity}
+            onDelete={onDeleteActivity}
+          />
+        )}
 
         {/* Google Drive */}
         {driveAvailable && (

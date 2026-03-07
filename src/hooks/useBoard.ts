@@ -167,6 +167,18 @@ export function useBoard() {
     });
   }, []);
 
+  /** Toggle time features on/off */
+  const setTimeFeatures = useCallback((enabled: boolean) => {
+    const now = new Date().toISOString();
+    setBoard((prev) => ({ ...prev, timeFeatures: enabled, lastSaved: now }));
+  }, []);
+
+  /** Update rolling window size */
+  const setWindowSize = useCallback((size: number) => {
+    const now = new Date().toISOString();
+    setBoard((prev) => ({ ...prev, windowSize: Math.max(1, size), lastSaved: now }));
+  }, []);
+
   /** Replace the entire board (used by Drive sync when remote is newer) */
   const replaceBoard = useCallback((newBoard: OhmBoard) => {
     setBoard(newBoard);
@@ -186,6 +198,8 @@ export function useBoard() {
     addCategory,
     removeCategory,
     renameCategory,
+    setTimeFeatures,
+    setWindowSize,
     replaceBoard,
   };
 }

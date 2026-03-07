@@ -26,6 +26,7 @@ import type { OhmCard, EnergyTag, ColumnStatus } from '../types/board';
 import { STATUS, COLUMNS, ENERGY_CONFIG, ENERGY_CLASSES } from '../types/board';
 import { createCard, getColumnCards, getColumnCapacity } from '../utils/board-utils';
 import { useBoard } from '../hooks/useBoard';
+import { useActivities } from '../hooks/useActivities';
 import { useDriveSync } from '../hooks/useDriveSync';
 import { useWelcomeBack } from '../hooks/useWelcomeBack';
 import { Button } from './ui/button';
@@ -140,8 +141,21 @@ export function Board() {
     removeCategory,
     renameCategory,
     setCapacity,
+    setTimeFeatures,
+    setWindowSize,
     replaceBoard,
   } = useBoard();
+
+  const { activities, addActivity, updateActivity, deleteActivity, refreshWindow } = useActivities(
+    board.windowSize,
+  );
+
+  // Refresh activity instances when time features are enabled
+  useEffect(() => {
+    if (board.timeFeatures) {
+      void refreshWindow();
+    }
+  }, [board.timeFeatures, refreshWindow]);
 
   // Drag-and-drop sensors
   const pointerSensor = useSensor(PointerSensor, {
@@ -598,6 +612,14 @@ export function Board() {
           grounded: board.groundedCapacity,
         }}
         onSetCapacity={setCapacity}
+        timeFeatures={board.timeFeatures}
+        windowSize={board.windowSize}
+        onSetTimeFeatures={setTimeFeatures}
+        onSetWindowSize={setWindowSize}
+        activities={activities}
+        onAddActivity={addActivity}
+        onUpdateActivity={updateActivity}
+        onDeleteActivity={deleteActivity}
         driveAvailable={driveAvailable}
         driveConnected={driveConnected}
         onConnectDrive={connect}
