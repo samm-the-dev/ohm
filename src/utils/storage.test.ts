@@ -33,23 +33,6 @@ describe('sanitizeBoard', () => {
     expect(result.liveCapacity).toBe(6);
   });
 
-  it('migrates legacy per-column capacities to energyBudget', () => {
-    const legacy = {
-      version: 1 as const,
-      cards: [],
-      categories: [],
-      chargingCapacity: 12,
-      groundedCapacity: 6,
-      liveCapacity: 6,
-      lastSaved: '2026-01-01T00:00:00.000Z',
-    };
-    const result = sanitizeBoard(legacy as unknown as OhmBoard);
-    expect(result.energyBudget).toBe(18);
-    expect(result.liveCapacity).toBe(6);
-    expect((result as Record<string, unknown>).chargingCapacity).toBeUndefined();
-    expect((result as Record<string, unknown>).groundedCapacity).toBeUndefined();
-  });
-
   it('backfills missing timestamp fields from lastSaved', () => {
     const board = makeBoard();
     const result = sanitizeBoard(board);

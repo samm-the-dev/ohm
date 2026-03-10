@@ -11,15 +11,6 @@ import {
 
 /** Coerce invalid field values to safe defaults -- index-range validation */
 export function sanitizeBoard(board: OhmBoard): OhmBoard {
-  // Migrate from per-column capacities to unified energy budget
-  const legacy = board as Record<string, unknown>;
-  if ('chargingCapacity' in legacy && !('energyBudget' in legacy)) {
-    const charging = typeof legacy.chargingCapacity === 'number' ? legacy.chargingCapacity : 12;
-    const grounded = typeof legacy.groundedCapacity === 'number' ? legacy.groundedCapacity : 6;
-    board.energyBudget = charging + grounded;
-    delete legacy.chargingCapacity;
-    delete legacy.groundedCapacity;
-  }
   if (typeof board.energyBudget !== 'number' || !(board.energyBudget >= 1)) {
     board.energyBudget = 42;
   }
