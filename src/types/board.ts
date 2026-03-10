@@ -17,10 +17,11 @@ export const WINDOW_DEFAULT = 4;
 export const LIVE_DEFAULT = 10;
 export const BUDGET_DEFAULT = WINDOW_DEFAULT * LIVE_DEFAULT;
 
-/** Interpolate hue from green (120) at energy 1 to red (0) at energy 6 */
+/** Interpolate hue from indigo (239) at energy 1 through green (~120) to red (0) at energy 6.
+ *  Grounded-indigo → calm teal → green sweet-spot → warm orange → red. */
 export function energyColor(value: number): string {
   const ratio = Math.min(Math.max((value - ENERGY_MIN) / (ENERGY_MAX - ENERGY_MIN), 0), 1);
-  const hue = 120 * (1 - ratio);
+  const hue = 239 * (1 - ratio);
   return `hsl(${hue}, 80%, 50%)`;
 }
 
