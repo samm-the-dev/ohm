@@ -339,6 +339,7 @@ export function SettingsDialog({
                 type="button"
                 role="switch"
                 aria-checked={!!timeFeatures}
+                aria-label="Schedule"
                 onClick={() => onSetTimeFeatures(!timeFeatures)}
                 className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
                   timeFeatures ? 'bg-ohm-spark' : 'bg-ohm-border'
@@ -394,6 +395,7 @@ export function SettingsDialog({
                   type="button"
                   role="switch"
                   aria-checked={!!autoBudget}
+                  aria-label="Auto total budget"
                   onClick={() => onSetAutoBudget(!autoBudget)}
                   className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors ${
                     autoBudget ? 'bg-ohm-spark' : 'bg-ohm-border'

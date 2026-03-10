@@ -83,8 +83,8 @@ function ActivityForm({ initial, onSubmit, onCancel }: ActivityFormProps) {
     onSubmit(trimmed, {
       description: description.trim() || undefined,
       schedule: {
-        repeatFrequency: schedule.byDay ? 'P1W' : 'P1D',
         ...schedule,
+        repeatFrequency: schedule.byDay ? 'P1W' : 'P1D',
       } as StoredSchedule,
       energy,
     });

@@ -68,6 +68,17 @@ export function useBoard() {
     setBoard((prev) => removeCardFromBoard(prev, cardId));
   }, []);
 
+  /** Delete multiple cards in a single state update */
+  const deleteCards = useCallback((cardIds: string[]) => {
+    if (cardIds.length === 0) return;
+    const idSet = new Set(cardIds);
+    setBoard((prev) => ({
+      ...prev,
+      cards: prev.cards.filter((c) => !idSet.has(c.id)),
+      lastSaved: new Date().toISOString(),
+    }));
+  }, []);
+
   /** Restore a previously deleted card (idempotent — no-op if already present) */
   const restoreCard = useCallback((card: OhmCard) => {
     setBoard((prev) => {
@@ -264,6 +275,7 @@ export function useBoard() {
     move,
     updateCard,
     deleteCard,
+    deleteCards,
     restoreCard,
     reorder,
     reorderBatch,

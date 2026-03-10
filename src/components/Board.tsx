@@ -160,6 +160,7 @@ export function Board() {
     move,
     updateCard,
     deleteCard,
+    deleteCards,
     restoreCard,
     reorderBatch,
     addCategory,
@@ -253,10 +254,10 @@ export function Board() {
     const trailingStart = new Date();
     trailingStart.setDate(trailingStart.getDate() - ((board.windowSize ?? 7) - 1));
     const expired = getExpiredPowered(board, toISODate(trailingStart));
-    for (const card of expired) {
-      deleteCard(card.id);
+    if (expired.length > 0) {
+      deleteCards(expired.map((c) => c.id));
     }
-  }, [board.timeFeatures, board.windowSize, board.cards, deleteCard]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [board.timeFeatures, board.windowSize, board.cards, deleteCards]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Drag-and-drop sensors
   const pointerSensor = useSensor(PointerSensor, {
@@ -336,7 +337,7 @@ export function Board() {
     return board.energyBudget > 0 ? trailing.used / board.energyBudget : 0;
   }, [board]);
 
-  // Completion flash — column header animation (toast handled in onSave)
+  // Completion flash — column header animation
   const [poweredFlash, setPoweredFlash] = useState(false);
 
   const [selectedCard, setSelectedCard] = useState<OhmCard | null>(null);

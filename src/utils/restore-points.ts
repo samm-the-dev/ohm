@@ -124,6 +124,7 @@ export function mergeBoards(local: OhmBoard, imported: OhmBoard): OhmBoard {
     capacitiesUpdatedAt: useImportedCapacities ? importCapTs : localCapTs,
     timeFeatures: local.timeFeatures ?? imported.timeFeatures,
     windowSize: local.windowSize ?? imported.windowSize,
+    autoBudget: local.autoBudget ?? imported.autoBudget,
     lastSaved: now,
   };
 }
