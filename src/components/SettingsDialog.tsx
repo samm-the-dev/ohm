@@ -65,14 +65,14 @@ interface SettingsDialogProps {
 
 const CAPACITY_ROWS = [
   {
-    label: 'Total',
-    field: 'energyBudget' as const,
-    color: 'text-ohm-spark',
-  },
-  {
     label: 'Live',
     field: 'liveCapacity' as const,
     color: 'text-ohm-live',
+  },
+  {
+    label: 'Total',
+    field: 'energyBudget' as const,
+    color: 'text-ohm-spark',
   },
 ];
 
@@ -320,51 +320,9 @@ export function SettingsDialog({
           </form>
         </div>
 
-        {/* Capacity */}
-        <div>
-          <span className="font-display text-ohm-muted mb-2 block text-[10px] tracking-widest uppercase">
-            Energy Capacity
-          </span>
-          {CAPACITY_ROWS.map(({ label, field, color }) => {
-            const value = field === 'energyBudget' ? energyBudget : liveCapacity;
-            const setter = field === 'energyBudget' ? onSetEnergyBudget : onSetLiveCapacity;
-            return (
-              <div key={field} className="mt-2 flex items-center gap-3">
-                <span
-                  className={`font-display w-20 text-[10px] tracking-widest uppercase ${color}`}
-                >
-                  {label}
-                </span>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setter(Math.max(1, value - 1))}
-                  disabled={value <= 1}
-                  className="border-ohm-border text-ohm-muted hover:text-ohm-text h-8 w-8"
-                  aria-label={`Decrease ${label}`}
-                >
-                  <Minus size={14} />
-                </Button>
-                <span className="font-display text-ohm-text min-w-[2ch] text-center text-lg font-bold">
-                  {value}
-                </span>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setter(value + 1)}
-                  className="border-ohm-border text-ohm-muted hover:text-ohm-text h-8 w-8"
-                  aria-label={`Increase ${label}`}
-                >
-                  <Plus size={14} />
-                </Button>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Time Features */}
+        {/* Schedule (time features) */}
         {onSetTimeFeatures && (
-          <div className="border-ohm-border mt-5 border-t pt-5">
+          <div className="mb-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Clock size={14} className="text-ohm-muted" />
@@ -433,6 +391,56 @@ export function SettingsDialog({
             onDelete={onDeleteActivity}
           />
         )}
+
+        {/* Capacity */}
+        <div className="border-ohm-border mt-5 border-t pt-5">
+          <span className="font-display text-ohm-muted mb-2 block text-[10px] tracking-widest uppercase">
+            Energy Capacity
+          </span>
+          {CAPACITY_ROWS.map(({ label, field, color }) => {
+            const value = field === 'energyBudget' ? energyBudget : liveCapacity;
+            const setter = field === 'energyBudget' ? onSetEnergyBudget : onSetLiveCapacity;
+            return (
+              <div key={field} className="mt-2 flex items-center gap-3">
+                <span
+                  className={`font-display w-20 text-[10px] tracking-widest uppercase ${color}`}
+                >
+                  {label}
+                </span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setter(Math.max(1, value - 1))}
+                  disabled={value <= 1}
+                  className="border-ohm-border text-ohm-muted hover:text-ohm-text h-8 w-8"
+                  aria-label={`Decrease ${label}`}
+                >
+                  <Minus size={14} />
+                </Button>
+                <span className="font-display text-ohm-text min-w-[2ch] text-center text-lg font-bold">
+                  {value}
+                </span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setter(value + 1)}
+                  className="border-ohm-border text-ohm-muted hover:text-ohm-text h-8 w-8"
+                  aria-label={`Increase ${label}`}
+                >
+                  <Plus size={14} />
+                </Button>
+              </div>
+            );
+          })}
+          {/* Auto-calculate Total = Window × Live */}
+          <button
+            type="button"
+            onClick={() => onSetEnergyBudget((windowSize ?? 7) * liveCapacity)}
+            className="font-body text-ohm-muted hover:text-ohm-text mt-3 text-[10px] underline decoration-dotted underline-offset-2 transition-colors"
+          >
+            Auto: {windowSize ?? 7} days x {liveCapacity} = {(windowSize ?? 7) * liveCapacity}
+          </button>
+        </div>
 
         {/* Google Drive */}
         {driveAvailable && (
