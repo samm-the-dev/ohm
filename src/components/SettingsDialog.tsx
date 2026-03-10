@@ -31,7 +31,6 @@ import { getAuthLevel } from '../utils/google-drive';
 import { useInstallPrompt } from '../hooks/useInstallPrompt';
 import type { Activity } from '../types/activity';
 import type { StoredSchedule } from '../types/schedule';
-import type { EnergyTag } from '../types/board';
 import { ActivityManager } from './ActivityManager';
 
 interface SettingsDialogProps {
@@ -52,7 +51,7 @@ interface SettingsDialogProps {
   activities?: Activity[];
   onAddActivity?: (
     name: string,
-    opts?: { description?: string; schedule?: StoredSchedule; energy?: EnergyTag },
+    opts?: { description?: string; schedule?: StoredSchedule; energy?: number },
   ) => Promise<Activity>;
   onUpdateActivity?: (id: string, changes: Partial<Omit<Activity, 'id'>>) => Promise<void>;
   onDeleteActivity?: (id: string) => Promise<void>;
@@ -66,7 +65,7 @@ interface SettingsDialogProps {
 
 const CAPACITY_ROWS = [
   {
-    label: 'Energy Budget',
+    label: 'Total',
     field: 'energyBudget' as const,
     color: 'text-ohm-spark',
   },

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { STATUS, ENERGY } from '../types/board';
+import { STATUS, ENERGY_DEFAULT } from '../types/board';
 import type { OhmBoard } from '../types/board';
 import { sanitizeBoard } from './storage';
 
@@ -8,7 +8,7 @@ function makeBoard(overrides: Partial<OhmBoard> = {}): OhmBoard {
     version: 1,
     cards: [],
     categories: [],
-    energyBudget: 18,
+    energyBudget: 42,
     liveCapacity: 6,
     lastSaved: '2026-01-01T00:00:00.000Z',
     ...overrides,
@@ -22,14 +22,14 @@ describe('sanitizeBoard', () => {
       capacitiesUpdatedAt: '2026-01-01T00:00:00.000Z',
     });
     const result = sanitizeBoard(board);
-    expect(result.energyBudget).toBe(18);
+    expect(result.energyBudget).toBe(42);
     expect(result.liveCapacity).toBe(6);
   });
 
   it('resets invalid capacities to defaults', () => {
     const board = makeBoard({ energyBudget: -1, liveCapacity: 0 });
     const result = sanitizeBoard(board);
-    expect(result.energyBudget).toBe(18);
+    expect(result.energyBudget).toBe(42);
     expect(result.liveCapacity).toBe(6);
   });
 
@@ -67,7 +67,7 @@ describe('sanitizeBoard', () => {
     expect(result.capacitiesUpdatedAt).toBe('2026-06-01T00:00:00.000Z');
   });
 
-  it('clamps out-of-range energy to MED', () => {
+  it('clamps out-of-range energy to default', () => {
     const board = makeBoard({
       cards: [
         {
@@ -85,7 +85,7 @@ describe('sanitizeBoard', () => {
       ],
     });
     const result = sanitizeBoard(board);
-    expect(result.cards[0].energy).toBe(ENERGY.MED);
+    expect(result.cards[0].energy).toBe(ENERGY_DEFAULT);
   });
 
   it('clamps out-of-range status to CHARGING', () => {
@@ -97,7 +97,7 @@ describe('sanitizeBoard', () => {
           description: '',
           status: -1 as never,
           tasks: [],
-          energy: ENERGY.LOW,
+          energy: 1,
           category: '',
           createdAt: '',
           updatedAt: '',
@@ -118,7 +118,7 @@ describe('sanitizeBoard', () => {
           description: '',
           status: STATUS.CHARGING,
           tasks: undefined as never,
-          energy: ENERGY.MED,
+          energy: ENERGY_DEFAULT,
           category: '',
           createdAt: '',
           updatedAt: '',

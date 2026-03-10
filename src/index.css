@@ -2,7 +2,7 @@
 @import 'tw-animate-css';
 
 /* Dynamic classes used via JS string interpolation -- ensure they're generated */
-@source inline('{bg,text}-ohm-{charging,live,grounded,powered} text-ohm-energy-{low,med,high}');
+@source inline('{bg,text}-ohm-{charging,live,grounded,powered}');
 
 @theme {
   --color-ohm-bg: #0a0a0f;
@@ -15,9 +15,6 @@
   --color-ohm-live: #ef4444;
   --color-ohm-grounded: #6366f1;
   --color-ohm-powered: #22c55e;
-  --color-ohm-energy-low: #22c55e;
-  --color-ohm-energy-med: #fbbf24;
-  --color-ohm-energy-high: #ef4444;
 }
 
 /* shadcn/ui semantic colors -- bridge CSS variables to Tailwind v4 theme */

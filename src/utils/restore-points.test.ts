@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { STATUS, ENERGY } from '../types/board';
+import { STATUS, ENERGY_DEFAULT } from '../types/board';
 import type { OhmBoard, OhmCard } from '../types/board';
 import { mergeBoards } from './restore-points';
 
@@ -10,7 +10,7 @@ function makeCard(overrides: Partial<OhmCard> = {}): OhmCard {
     description: '',
     status: STATUS.CHARGING,
     tasks: [],
-    energy: ENERGY.MED,
+    energy: ENERGY_DEFAULT,
     category: '',
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',

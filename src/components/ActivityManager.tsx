@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { Plus, Trash2, Calendar, X } from 'lucide-react';
 import type { Activity } from '../types/activity';
 import type { StoredSchedule } from '../types/schedule';
-import type { EnergyTag } from '../types/board';
-import { ENERGY_CONFIG, ENERGY_CLASSES } from '../types/board';
+import { ENERGY_MIN, ENERGY_MAX, energyColor } from '../types/board';
+import { EnergyIcon } from './ui/energy-icons';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 
@@ -63,7 +63,7 @@ interface ActivityFormProps {
   initial?: Activity;
   onSubmit: (
     name: string,
-    opts: { description?: string; schedule?: StoredSchedule; energy?: EnergyTag },
+    opts: { description?: string; schedule?: StoredSchedule; energy?: number },
   ) => void;
   onCancel: () => void;
 }
@@ -71,7 +71,7 @@ interface ActivityFormProps {
 function ActivityForm({ initial, onSubmit, onCancel }: ActivityFormProps) {
   const [name, setName] = useState(initial?.name ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
-  const [energy, setEnergy] = useState<EnergyTag | undefined>(initial?.energy);
+  const [energy, setEnergy] = useState<number | undefined>(initial?.energy);
   const [schedule, setSchedule] = useState<Partial<StoredSchedule>>(
     initial?.schedule ?? { repeatFrequency: 'P1W' },
   );
@@ -114,22 +114,22 @@ function ActivityForm({ initial, onSubmit, onCancel }: ActivityFormProps) {
           Energy
         </span>
         <div className="flex gap-1">
-          {ENERGY_CONFIG.map((config, index) => {
-            const Icon = config.icon;
-            const active = energy === index;
+          {Array.from({ length: ENERGY_MAX - ENERGY_MIN + 1 }, (_, i) => {
+            const value = ENERGY_MIN + i;
+            const active = energy === value;
+            const color = energyColor(value);
             return (
               <button
-                key={index}
+                key={value}
                 type="button"
-                onClick={() => setEnergy(active ? undefined : (index as EnergyTag))}
+                onClick={() => setEnergy(active ? undefined : value)}
                 className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] transition-colors ${
-                  active ? 'bg-ohm-text/10 text-ohm-text' : 'text-ohm-muted hover:text-ohm-text'
+                  active ? 'bg-current/10' : 'text-ohm-muted hover:text-ohm-text'
                 }`}
+                style={active ? { color } : undefined}
               >
-                <span className={ENERGY_CLASSES[index]!.text}>
-                  <Icon size={10} />
-                </span>
-                {config.label}
+                <EnergyIcon size={10} value={value} />
+                {value}
               </button>
             );
           })}
@@ -169,7 +169,7 @@ interface ActivityManagerProps {
   activities: Activity[];
   onAdd: (
     name: string,
-    opts?: { description?: string; schedule?: StoredSchedule; energy?: EnergyTag },
+    opts?: { description?: string; schedule?: StoredSchedule; energy?: number },
   ) => Promise<Activity>;
   onUpdate: (id: string, changes: Partial<Omit<Activity, 'id'>>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
@@ -181,7 +181,7 @@ export function ActivityManager({ activities, onAdd, onUpdate, onDelete }: Activ
 
   const handleAdd = async (
     name: string,
-    opts: { description?: string; schedule?: StoredSchedule; energy?: EnergyTag },
+    opts: { description?: string; schedule?: StoredSchedule; energy?: number },
   ) => {
     await onAdd(name, opts);
     setShowForm(false);
@@ -189,7 +189,7 @@ export function ActivityManager({ activities, onAdd, onUpdate, onDelete }: Activ
 
   const handleUpdate = async (
     name: string,
-    opts: { description?: string; schedule?: StoredSchedule; energy?: EnergyTag },
+    opts: { description?: string; schedule?: StoredSchedule; energy?: number },
   ) => {
     if (!editingId) return;
     await onUpdate(editingId, { name, ...opts });
@@ -251,8 +251,8 @@ export function ActivityManager({ activities, onAdd, onUpdate, onDelete }: Activ
                     ? activity.schedule.byDay.map((d) => (d as string).slice(0, 3)).join(', ')
                     : 'Daily'}
                   {activity.energy !== undefined && (
-                    <span className={`ml-1.5 ${ENERGY_CLASSES[activity.energy]!.text}`}>
-                      {ENERGY_CONFIG[activity.energy]!.label}
+                    <span className="ml-1.5" style={{ color: energyColor(activity.energy) }}>
+                      {activity.energy}
                     </span>
                   )}
                 </span>

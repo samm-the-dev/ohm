@@ -1,5 +1,5 @@
 import type { OhmCard, OhmBoard, ColumnStatus } from '../types/board';
-import { STATUS, ENERGY, ENERGY_SEGMENTS } from '../types/board';
+import { STATUS, ENERGY_DEFAULT } from '../types/board';
 
 /** Generate a short unique ID */
 export function generateId(): string {
@@ -20,7 +20,7 @@ export function createCard(
     description: overrides?.description ?? '',
     status: STATUS.CHARGING,
     tasks: [],
-    energy: overrides?.energy ?? ENERGY.MED,
+    energy: overrides?.energy ?? ENERGY_DEFAULT,
     category: overrides?.category ?? '',
     createdAt: now,
     updatedAt: now,
@@ -44,24 +44,21 @@ export function getColumnCards(board: OhmBoard, status: ColumnStatus): OhmCard[]
   return board.cards.filter((c) => c.status === status).sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
-/** Get column capacity usage in energy segments. Returns null for Powered (no limit). */
+/** Get Live column capacity (WIP limit). Returns null for all other columns. */
 export function getColumnCapacity(
   board: OhmBoard,
   status: ColumnStatus,
 ): { used: number; total: number } | null {
-  if (status === STATUS.POWERED) return null;
-
-  if (status === STATUS.LIVE) {
-    const used = board.cards
-      .filter((c) => c.status === STATUS.LIVE)
-      .reduce((sum, c) => sum + ENERGY_SEGMENTS[c.energy]!, 0);
-    return { used, total: board.liveCapacity };
-  }
-
-  // Charging and Grounded share the energy budget
+  if (status !== STATUS.LIVE) return null;
   const used = board.cards
-    .filter((c) => c.status === STATUS.CHARGING || c.status === STATUS.GROUNDED)
-    .reduce((sum, c) => sum + ENERGY_SEGMENTS[c.energy]!, 0);
+    .filter((c) => c.status === STATUS.LIVE)
+    .reduce((sum, c) => sum + c.energy, 0);
+  return { used, total: board.liveCapacity };
+}
+
+/** Get total energy usage across all columns vs. the rolling-window budget. */
+export function getTotalCapacity(board: OhmBoard): { used: number; total: number } {
+  const used = board.cards.reduce((sum, c) => sum + c.energy, 0);
   return { used, total: board.energyBudget };
 }
 

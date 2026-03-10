@@ -22,10 +22,22 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core';
 import { arrayMove } from '@dnd-kit/sortable';
-import type { OhmCard, EnergyTag, ColumnStatus } from '../types/board';
-import { STATUS, ENERGY, COLUMNS, ENERGY_CONFIG, ENERGY_CLASSES } from '../types/board';
+import type { OhmCard, ColumnStatus } from '../types/board';
+import {
+  STATUS,
+  COLUMNS,
+  ENERGY_MIN,
+  ENERGY_MAX,
+  ENERGY_DEFAULT,
+  energyColor,
+} from '../types/board';
 import { ACTIVITY_STATUS } from '../types/activity';
-import { createCard, getColumnCards, getColumnCapacity } from '../utils/board-utils';
+import {
+  createCard,
+  getColumnCards,
+  getColumnCapacity,
+  getTotalCapacity,
+} from '../utils/board-utils';
 import { useBoard } from '../hooks/useBoard';
 import { useActivities } from '../hooks/useActivities';
 import { useDriveSync } from '../hooks/useDriveSync';
@@ -193,7 +205,7 @@ export function Board() {
         if (!activity) return null;
         return {
           title: activity.name,
-          energy: activity.energy ?? ENERGY.MED,
+          energy: activity.energy ?? ENERGY_DEFAULT,
           activityInstanceId: inst.id,
           scheduledDate: inst.scheduledDate,
         };
@@ -286,7 +298,8 @@ export function Board() {
   const [selectedCard, setSelectedCard] = useState<OhmCard | null>(null);
   const [newCard, setNewCard] = useState<OhmCard | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [energyFilter, setEnergyFilter] = useState<EnergyTag | null>(null);
+  const [energyMin, setEnergyMin] = useState<number | null>(null);
+  const [energyMax, setEnergyMax] = useState<number | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
   const [searchFilter, setSearchFilter] = useState('');
   const [filtersExpanded, setFiltersExpanded] = useState(false);
@@ -294,7 +307,8 @@ export function Board() {
 
   const filteredCards = (status: ColumnStatus) => {
     let cards = getColumnCards(board, status);
-    if (energyFilter !== null) cards = cards.filter((c) => c.energy === energyFilter);
+    if (energyMin !== null) cards = cards.filter((c) => c.energy >= energyMin);
+    if (energyMax !== null) cards = cards.filter((c) => c.energy <= energyMax);
     if (categoryFilter.length > 0) cards = cards.filter((c) => categoryFilter.includes(c.category));
     if (searchFilter) {
       const q = searchFilter.toLowerCase();
@@ -305,9 +319,14 @@ export function Board() {
     return cards;
   };
 
-  const hasActiveFilter = energyFilter !== null || categoryFilter.length > 0 || searchFilter !== '';
+  const hasActiveFilter =
+    energyMin !== null || energyMax !== null || categoryFilter.length > 0 || searchFilter !== '';
   const hasAdvancedFilter = categoryFilter.length > 0 || searchFilter !== '';
-  const advancedFilterCount = categoryFilter.length + (searchFilter ? 1 : 0);
+  const advancedFilterCount =
+    categoryFilter.length +
+    (searchFilter ? 1 : 0) +
+    (energyMin !== null ? 1 : 0) +
+    (energyMax !== null ? 1 : 0);
 
   const toggleCategory = (cat: string) => {
     setCategoryFilter((prev) =>
@@ -316,7 +335,8 @@ export function Board() {
   };
 
   const resetFilters = () => {
-    setEnergyFilter(null);
+    setEnergyMin(null);
+    setEnergyMax(null);
     setCategoryFilter([]);
     setSearchFilter('');
   };
@@ -452,28 +472,32 @@ export function Board() {
 
       {/* Filter bar */}
       <div className="border-ohm-border border-b px-4 py-2">
-        {/* Row 1: Energy chips (always visible) + expand toggle (mobile) */}
+        {/* Row 1: Energy min/max filter + expand toggle (mobile) */}
         <div className="flex items-center gap-2">
-          {ENERGY_CONFIG.map((config, index) => {
-            const Icon = config.icon;
-            const active = energyFilter === index;
-            return (
-              <button
-                key={index}
-                type="button"
-                onClick={() => setEnergyFilter(active ? null : (index as EnergyTag))}
-                aria-pressed={active}
-                className={`font-body flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] transition-colors ${
-                  active ? 'bg-ohm-text/10 text-ohm-text' : 'text-ohm-muted hover:text-ohm-text'
-                }`}
-              >
-                <span className={ENERGY_CLASSES[index]!.text}>
-                  <Icon size={12} />
-                </span>
-                {config.label}
-              </button>
-            );
-          })}
+          <span className="font-display text-ohm-muted shrink-0 text-[10px] tracking-widest uppercase">
+            Energy
+          </span>
+          <input
+            type="number"
+            min={ENERGY_MIN}
+            max={ENERGY_MAX}
+            value={energyMin ?? ''}
+            onChange={(e) => setEnergyMin(e.target.value ? Number(e.target.value) : null)}
+            placeholder="Min"
+            aria-label="Minimum energy"
+            className="border-ohm-border font-body text-ohm-text placeholder:text-ohm-muted/40 focus:ring-ohm-text/10 w-14 rounded-full border bg-transparent px-2 py-1 text-center text-[11px] focus:ring-1 focus:outline-hidden"
+          />
+          <span className="text-ohm-muted text-[10px]">-</span>
+          <input
+            type="number"
+            min={ENERGY_MIN}
+            max={ENERGY_MAX}
+            value={energyMax ?? ''}
+            onChange={(e) => setEnergyMax(e.target.value ? Number(e.target.value) : null)}
+            placeholder="Max"
+            aria-label="Maximum energy"
+            className="border-ohm-border font-body text-ohm-text placeholder:text-ohm-muted/40 focus:ring-ohm-text/10 w-14 rounded-full border bg-transparent px-2 py-1 text-center text-[11px] focus:ring-1 focus:outline-hidden"
+          />
 
           {/* Desktop: inline category + search (hidden on mobile) */}
           <div className="bg-ohm-border mx-1 hidden h-3 w-px shrink-0 md:block" />
@@ -568,6 +592,33 @@ export function Board() {
           </div>
         )}
       </div>
+
+      {/* Total budget bar */}
+      {(() => {
+        const total = getTotalCapacity(board);
+        const ratio = Math.min(total.used / total.total, 1);
+        const hue = 120 * (1 - ratio);
+        const color = `hsl(${hue}, 80%, 50%)`;
+        return (
+          <div className="border-ohm-border flex items-center gap-3 border-b px-4 py-1.5">
+            <span className="font-display text-ohm-muted shrink-0 text-[10px] tracking-widest uppercase">
+              Total
+            </span>
+            <div className="bg-ohm-border relative h-1.5 flex-1 overflow-hidden rounded-full">
+              <div
+                className="absolute inset-y-0 left-0 rounded-full transition-all duration-300"
+                style={{ width: `${ratio * 100}%`, backgroundColor: color }}
+              />
+            </div>
+            <span
+              className={`font-display shrink-0 text-[10px] font-bold ${total.used > total.total ? 'animate-pulse' : ''}`}
+              style={{ color }}
+            >
+              {total.used}/{total.total}
+            </span>
+          </div>
+        );
+      })()}
 
       {/* Board */}
       <DndContext

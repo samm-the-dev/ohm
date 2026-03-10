@@ -3,12 +3,14 @@ import type { OhmCard, ColumnStatus } from '../types/board';
 import {
   STATUS,
   COLUMNS,
-  ENERGY_CONFIG,
-  ENERGY_CLASSES,
+  ENERGY_MIN,
+  ENERGY_MAX,
+  energyColor,
   STATUS_CLASSES,
   SPARK_CLASSES,
   VALID_TRANSITIONS,
 } from '../types/board';
+import { EnergyIcon } from './ui/energy-icons';
 import { Settings, List, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from './ui/dialog';
 import { Input } from './ui/input';
@@ -242,40 +244,33 @@ export function CardDetail({
             Energy
           </span>
           {isPowered && !isNew ? (
-            (() => {
-              const ec = ENERGY_CLASSES[editing.energy]!;
-              const config = ENERGY_CONFIG[editing.energy]!;
-              const Icon = config.icon;
-              return (
-                <span className={`flex items-center gap-1.5 ${ec.text}`}>
-                  <Icon size={14} />
-                  <span className="font-body text-sm">{config.label}</span>
-                </span>
-              );
-            })()
+            <span
+              className="flex items-center gap-1.5"
+              style={{ color: energyColor(editing.energy) }}
+            >
+              <EnergyIcon size={14} value={editing.energy} />
+              <span className="font-body text-sm">{editing.energy}</span>
+            </span>
           ) : (
-            <div className="flex flex-wrap gap-2">
-              {ENERGY_CONFIG.map((config, index) => {
-                const Icon = config.icon;
-                const selected = editing.energy === index;
-                const ec = ENERGY_CLASSES[index]!;
+            <div className="flex gap-1">
+              {Array.from({ length: ENERGY_MAX - ENERGY_MIN + 1 }, (_, i) => {
+                const value = ENERGY_MIN + i;
+                const selected = editing.energy === value;
+                const color = energyColor(value);
                 return (
-                  <Button
-                    key={index}
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      setEditing((prev) => ({ ...prev, energy: index as OhmCard['energy'] }))
-                    }
-                    className={`font-body gap-1.5 text-xs ${
-                      selected ? `${ec.border} ${ec.bg}` : `${ec.dimBorder} bg-ohm-bg`
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setEditing((prev) => ({ ...prev, energy: value }))}
+                    className={`font-body flex items-center justify-center rounded-md border px-2.5 py-1.5 text-xs transition-colors ${
+                      selected
+                        ? 'border-current bg-current/10'
+                        : 'border-ohm-border bg-ohm-bg text-ohm-muted hover:text-ohm-text'
                     }`}
+                    style={selected ? { color } : undefined}
                   >
-                    <span className={ec.text}>
-                      <Icon size={14} />
-                    </span>
-                    <span className={selected ? ec.text : 'text-ohm-muted'}>{config.label}</span>
-                  </Button>
+                    {value}
+                  </button>
                 );
               })}
             </div>

@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { STATUS, ENERGY, createDefaultBoard } from '../types/board';
+import { STATUS, ENERGY_DEFAULT, createDefaultBoard } from '../types/board';
 import type { OhmCard, OhmBoard } from '../types/board';
 import {
   createCard,
   moveCard,
   getColumnCards,
   getColumnCapacity,
+  getTotalCapacity,
   addCardToBoard,
   updateCardInBoard,
   removeCardFromBoard,
@@ -18,7 +19,7 @@ function makeCard(overrides: Partial<OhmCard> = {}): OhmCard {
     description: '',
     status: STATUS.CHARGING,
     tasks: [],
-    energy: ENERGY.MED,
+    energy: ENERGY_DEFAULT,
     category: '',
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
@@ -32,19 +33,19 @@ function makeBoard(overrides: Partial<OhmBoard> = {}): OhmBoard {
 }
 
 describe('createCard', () => {
-  it('creates a card in Charging with Medium energy by default', () => {
+  it('creates a card in Charging with default energy', () => {
     const card = createCard('New idea');
     expect(card.title).toBe('New idea');
     expect(card.status).toBe(STATUS.CHARGING);
-    expect(card.energy).toBe(ENERGY.MED);
+    expect(card.energy).toBe(ENERGY_DEFAULT);
     expect(card.description).toBe('');
     expect(card.tasks).toEqual([]);
     expect(card.id).toBeTruthy();
   });
 
   it('applies overrides', () => {
-    const card = createCard('Big task', { energy: ENERGY.HIGH, category: 'Work' });
-    expect(card.energy).toBe(ENERGY.HIGH);
+    const card = createCard('Big task', { energy: 6, category: 'Work' });
+    expect(card.energy).toBe(6);
     expect(card.category).toBe('Work');
   });
 });
@@ -85,45 +86,41 @@ describe('getColumnCards', () => {
 });
 
 describe('getColumnCapacity', () => {
-  it('sums energy segments for a column', () => {
+  it('sums energy for Live column', () => {
     const board = makeBoard({
-      liveCapacity: 6,
+      liveCapacity: 10,
       cards: [
-        makeCard({ id: 'a', status: STATUS.LIVE, energy: ENERGY.LOW }), // 1
-        makeCard({ id: 'b', status: STATUS.LIVE, energy: ENERGY.HIGH }), // 3
+        makeCard({ id: 'a', status: STATUS.LIVE, energy: 1 }),
+        makeCard({ id: 'b', status: STATUS.LIVE, energy: 5 }),
       ],
     });
-    expect(getColumnCapacity(board, STATUS.LIVE)).toEqual({ used: 4, total: 6 });
+    expect(getColumnCapacity(board, STATUS.LIVE)).toEqual({ used: 6, total: 10 });
   });
 
-  it('returns null for Powered (no capacity limit)', () => {
+  it('returns null for non-Live columns', () => {
     const board = makeBoard();
+    expect(getColumnCapacity(board, STATUS.CHARGING)).toBeNull();
+    expect(getColumnCapacity(board, STATUS.GROUNDED)).toBeNull();
     expect(getColumnCapacity(board, STATUS.POWERED)).toBeNull();
   });
+});
 
-  it('returns zero used when column is empty', () => {
-    const board = makeBoard({ energyBudget: 18 });
-    expect(getColumnCapacity(board, STATUS.CHARGING)).toEqual({ used: 0, total: 18 });
-  });
-
-  it('counts Medium as 2 segments', () => {
+describe('getTotalCapacity', () => {
+  it('sums energy across all columns', () => {
     const board = makeBoard({
-      energyBudget: 18,
-      cards: [makeCard({ id: 'a', status: STATUS.GROUNDED, energy: ENERGY.MED })],
-    });
-    expect(getColumnCapacity(board, STATUS.GROUNDED)).toEqual({ used: 2, total: 18 });
-  });
-
-  it('shares energy budget between Charging and Grounded', () => {
-    const board = makeBoard({
-      energyBudget: 10,
+      energyBudget: 42,
       cards: [
-        makeCard({ id: 'a', status: STATUS.CHARGING, energy: ENERGY.LOW }), // 1
-        makeCard({ id: 'b', status: STATUS.GROUNDED, energy: ENERGY.HIGH }), // 3
+        makeCard({ id: 'a', status: STATUS.CHARGING, energy: 2 }),
+        makeCard({ id: 'b', status: STATUS.LIVE, energy: 4 }),
+        makeCard({ id: 'c', status: STATUS.POWERED, energy: 6 }),
       ],
     });
-    expect(getColumnCapacity(board, STATUS.CHARGING)).toEqual({ used: 4, total: 10 });
-    expect(getColumnCapacity(board, STATUS.GROUNDED)).toEqual({ used: 4, total: 10 });
+    expect(getTotalCapacity(board)).toEqual({ used: 12, total: 42 });
+  });
+
+  it('returns zero used when board is empty', () => {
+    const board = makeBoard({ energyBudget: 42 });
+    expect(getTotalCapacity(board)).toEqual({ used: 0, total: 42 });
   });
 });
 

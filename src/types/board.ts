@@ -1,13 +1,18 @@
-import type { ComponentType } from 'react';
-import { EnergySmall, EnergyMedium, EnergyLarge } from '../components/ui/energy-icons';
-
 /** Named status indices — positions in the COLUMNS array */
 export const STATUS = { CHARGING: 0, GROUNDED: 1, LIVE: 2, POWERED: 3 } as const;
 export type ColumnStatus = (typeof STATUS)[keyof typeof STATUS];
 
-/** Named energy indices — positions in the ENERGY_CONFIG array */
-export const ENERGY = { LOW: 0, MED: 1, HIGH: 2 } as const;
-export type EnergyTag = (typeof ENERGY)[keyof typeof ENERGY];
+/** Continuous energy scale 1-6 (value IS the weight) */
+export const ENERGY_MIN = 1;
+export const ENERGY_MAX = 6;
+export const ENERGY_DEFAULT = 3;
+
+/** Interpolate hue from green (120) at energy 1 to red (0) at energy 6 */
+export function energyColor(value: number): string {
+  const ratio = Math.min(Math.max((value - ENERGY_MIN) / (ENERGY_MAX - ENERGY_MIN), 0), 1);
+  const hue = 120 * (1 - ratio);
+  return `hsl(${hue}, 80%, 50%)`;
+}
 
 /** A single card on the board */
 export interface OhmCard {
@@ -18,8 +23,8 @@ export interface OhmCard {
   status: ColumnStatus;
   /** User-managed tasks — persists across column moves */
   tasks: string[];
-  /** Energy tag for filtering */
-  energy: EnergyTag;
+  /** Energy cost 1-6 (value is the weight) */
+  energy: number;
   /** Optional project/category tag */
   category: string;
   /** ISO timestamp */
@@ -33,9 +38,6 @@ export interface OhmCard {
   /** Links this card to a generated activity instance */
   activityInstanceId?: string;
 }
-
-/** Energy segments per level -- Small=1, Medium=2, Large=3 */
-export const ENERGY_SEGMENTS: readonly number[] = [1, 2, 3];
 
 /** Column definition */
 export interface OhmColumn {
@@ -52,9 +54,9 @@ export interface OhmBoard {
   cards: OhmCard[];
   /** User-defined categories */
   categories: string[];
-  /** Total energy segments for the rolling window (Charging + Grounded combined) */
+  /** Total energy budget across all columns for the rolling window */
   energyBudget: number;
-  /** Energy segments limit for Live column (active/today work) */
+  /** Energy limit for Live column (today's active work) */
   liveCapacity: number;
   /** ISO timestamp — last time categories were added/removed */
   categoriesUpdatedAt?: string;
@@ -93,40 +95,6 @@ export const COLUMNS: readonly OhmColumn[] = [
     description: 'Done -- circuit complete',
     color: 'ohm-powered',
     hex: '#22c55e',
-  },
-];
-
-/** Energy tag display config -- indexed by EnergyTag. Labels/icons are theme; code uses generic names. */
-export const ENERGY_CONFIG: readonly { label: string; icon: ComponentType<{ size?: number }> }[] = [
-  { label: 'Small', icon: EnergySmall },
-  { label: 'Medium', icon: EnergyMedium },
-  { label: 'Large', icon: EnergyLarge },
-];
-
-/** Energy Tailwind classes -- indexed by EnergyTag. Static strings so JIT detects them. */
-export const ENERGY_CLASSES: readonly {
-  text: string;
-  border: string;
-  dimBorder: string;
-  bg: string;
-}[] = [
-  {
-    text: 'text-ohm-energy-low',
-    border: 'border-ohm-energy-low/40',
-    dimBorder: 'border-ohm-energy-low/20',
-    bg: 'bg-ohm-energy-low/10',
-  },
-  {
-    text: 'text-ohm-energy-med',
-    border: 'border-ohm-energy-med/40',
-    dimBorder: 'border-ohm-energy-med/20',
-    bg: 'bg-ohm-energy-med/10',
-  },
-  {
-    text: 'text-ohm-energy-high',
-    border: 'border-ohm-energy-high/40',
-    dimBorder: 'border-ohm-energy-high/20',
-    bg: 'bg-ohm-energy-high/10',
   },
 ];
 
@@ -174,7 +142,7 @@ export function createDefaultBoard(): OhmBoard {
     version: 1,
     cards: [],
     categories: ['Personal', 'Creative', 'Home'],
-    energyBudget: 18,
+    energyBudget: 42,
     liveCapacity: 6,
     lastSaved: new Date().toISOString(),
   };

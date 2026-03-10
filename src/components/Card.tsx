@@ -3,7 +3,8 @@ import { ArrowRight, GripVertical, Repeat } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { OhmCard } from '../types/board';
-import { STATUS, ENERGY_CONFIG, ENERGY_CLASSES } from '../types/board';
+import { STATUS, energyColor } from '../types/board';
+import { EnergyIcon } from './ui/energy-icons';
 import { Card as CardContainer } from './ui/card';
 import { Badge } from './ui/badge';
 
@@ -16,9 +17,6 @@ interface CardProps {
 const STALE_THRESHOLD_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
 
 export function Card({ card, onTap, onReorder }: CardProps) {
-  const energyInfo = ENERGY_CONFIG[card.energy]!;
-  const EnergyIcon = energyInfo.icon;
-
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: card.id,
   });
@@ -83,13 +81,12 @@ export function Card({ card, onTap, onReorder }: CardProps) {
         {/* Meta row */}
         <div className="mt-2 flex items-center gap-2">
           <span
-            className={`flex items-center gap-1 ${ENERGY_CLASSES[card.energy]!.text}`}
-            title={energyInfo.label}
+            className="flex items-center gap-1"
+            style={{ color: energyColor(card.energy) }}
+            title={`Energy ${card.energy}`}
           >
-            <EnergyIcon size={10} />
-            <span className="font-body text-[10px] tracking-wider uppercase">
-              {energyInfo.label}
-            </span>
+            <EnergyIcon size={10} value={card.energy} />
+            <span className="font-body text-[10px] tracking-wider uppercase">{card.energy}</span>
           </span>
 
           {/* Scheduled date */}

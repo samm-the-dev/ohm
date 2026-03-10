@@ -1,5 +1,4 @@
 import type { ActionStatusType } from 'schema-dts';
-import type { EnergyTag } from './board';
 import type { StoredSchedule } from './schedule';
 
 /** Activity instance lifecycle -- aligned with schema.org actionStatus */
@@ -22,7 +21,7 @@ export interface Activity {
   description?: string;
   schedule?: StoredSchedule;
   /** ohm-specific: energy cost of this activity */
-  energy?: EnergyTag;
+  energy?: number;
   /** App-defined metadata */
   meta?: Record<string, unknown>;
 }

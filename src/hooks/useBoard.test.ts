@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { STATUS, ENERGY } from '../types/board';
+import { STATUS } from '../types/board';
 import { useBoard } from './useBoard';
 
 beforeEach(() => {
@@ -28,9 +28,9 @@ describe('useBoard', () => {
     it('applies energy override', () => {
       const { result } = renderHook(() => useBoard());
       act(() => {
-        result.current.quickAdd('Big task', { energy: ENERGY.HIGH });
+        result.current.quickAdd('Big task', { energy: 6 });
       });
-      expect(result.current.board.cards[0].energy).toBe(ENERGY.HIGH);
+      expect(result.current.board.cards[0].energy).toBe(6);
     });
 
     it('returns the created card', () => {

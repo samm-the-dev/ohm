@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { db } from '../db';
 import type { Activity, ActivityInstance, ActivityStatus } from '../types/activity';
 import type { StoredSchedule } from '../types/schedule';
-import type { EnergyTag } from '../types/board';
 import { ACTIVITY_STATUS } from '../types/activity';
 import { generateInstances, toISODate } from '../utils/schedule-utils';
 import { generateId } from '../utils/board-utils';
@@ -27,7 +26,7 @@ export function useActivities(windowSize = DEFAULT_WINDOW_SIZE) {
   const addActivity = useCallback(
     async (
       name: string,
-      opts?: { description?: string; schedule?: StoredSchedule; energy?: EnergyTag },
+      opts?: { description?: string; schedule?: StoredSchedule; energy?: number },
     ): Promise<Activity> => {
       const activity: Activity = {
         id: generateId(),
