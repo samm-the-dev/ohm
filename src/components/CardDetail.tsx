@@ -3,13 +3,15 @@ import type { OhmCard, ColumnStatus } from '../types/board';
 import {
   STATUS,
   COLUMNS,
-  ENERGY_CONFIG,
-  ENERGY_CLASSES,
+  ENERGY_MIN,
+  ENERGY_MAX,
+  energyColor,
   STATUS_CLASSES,
   SPARK_CLASSES,
   VALID_TRANSITIONS,
 } from '../types/board';
-import { Settings, List, Trash2 } from 'lucide-react';
+import { EnergyIcon } from './ui/energy-icons';
+import { Settings, List, Trash2, Calendar } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from './ui/dialog';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
@@ -34,6 +36,7 @@ interface CardDetailProps {
   onClose: () => void;
   onOpenSettings: () => void;
   isNew?: boolean;
+  timeFeatures?: boolean;
 }
 
 export function CardDetail({
@@ -44,6 +47,7 @@ export function CardDetail({
   onClose,
   onOpenSettings,
   isNew,
+  timeFeatures,
 }: CardDetailProps) {
   const [editing, setEditing] = useState(card);
   const [newNote, setNewNote] = useState('');
@@ -242,45 +246,85 @@ export function CardDetail({
             Energy
           </span>
           {isPowered && !isNew ? (
-            (() => {
-              const ec = ENERGY_CLASSES[editing.energy]!;
-              const config = ENERGY_CONFIG[editing.energy]!;
-              const Icon = config.icon;
-              return (
-                <span className={`flex items-center gap-1.5 ${ec.text}`}>
-                  <Icon size={14} />
-                  <span className="font-body text-sm">{config.label}</span>
-                </span>
-              );
-            })()
+            <span
+              className="flex items-center gap-1.5"
+              style={{ color: energyColor(editing.energy) }}
+            >
+              <EnergyIcon size={14} value={editing.energy} />
+              <span className="font-body text-sm">{editing.energy}</span>
+            </span>
           ) : (
-            <div className="flex flex-wrap gap-2">
-              {ENERGY_CONFIG.map((config, index) => {
-                const Icon = config.icon;
-                const selected = editing.energy === index;
-                const ec = ENERGY_CLASSES[index]!;
+            <div className="flex gap-1">
+              {Array.from({ length: ENERGY_MAX - ENERGY_MIN + 1 }, (_, i) => {
+                const value = ENERGY_MIN + i;
+                const selected = editing.energy === value;
+                const color = energyColor(value);
                 return (
-                  <Button
-                    key={index}
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      setEditing((prev) => ({ ...prev, energy: index as OhmCard['energy'] }))
-                    }
-                    className={`font-body gap-1.5 text-xs ${
-                      selected ? `${ec.border} ${ec.bg}` : `${ec.dimBorder} bg-ohm-bg`
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setEditing((prev) => ({ ...prev, energy: value }))}
+                    className={`font-body flex items-center justify-center rounded-md border px-2.5 py-1.5 text-xs transition-colors ${
+                      selected
+                        ? 'border-current bg-current/10'
+                        : 'border-ohm-border bg-ohm-bg text-ohm-muted hover:text-ohm-text'
                     }`}
+                    style={selected ? { color } : undefined}
                   >
-                    <span className={ec.text}>
-                      <Icon size={14} />
-                    </span>
-                    <span className={selected ? ec.text : 'text-ohm-muted'}>{config.label}</span>
-                  </Button>
+                    {value}
+                  </button>
                 );
               })}
             </div>
           )}
         </div>
+
+        {/* Scheduled date (when time features enabled) */}
+        {timeFeatures && !isPowered && (
+          <div className="mb-3">
+            <label
+              htmlFor="card-scheduled-date"
+              className="font-display text-ohm-muted mb-2 flex items-center gap-1 text-[10px] tracking-widest uppercase"
+            >
+              <Calendar size={10} />
+              Scheduled
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                id="card-scheduled-date"
+                type="date"
+                value={editing.scheduledDate ?? ''}
+                onChange={(e) =>
+                  setEditing((prev) => ({
+                    ...prev,
+                    scheduledDate: e.target.value || undefined,
+                  }))
+                }
+                className={`${accent.border} bg-ohm-bg font-body text-ohm-text focus:ring-ohm-text/10 rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-hidden`}
+              />
+              {editing.scheduledDate && (
+                <button
+                  type="button"
+                  onClick={() => setEditing((prev) => ({ ...prev, scheduledDate: undefined }))}
+                  className="text-ohm-muted hover:text-ohm-text text-[10px] underline decoration-dotted"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Scheduled date (read-only for Powered) */}
+        {timeFeatures && isPowered && editing.scheduledDate && (
+          <div className="mb-3">
+            <span className="font-display text-ohm-muted mb-1 flex items-center gap-1 text-[10px] tracking-widest uppercase">
+              <Calendar size={10} />
+              Scheduled
+            </span>
+            <p className="font-body text-ohm-muted text-sm">{editing.scheduledDate}</p>
+          </div>
+        )}
 
         {/* Category */}
         {!isPowered && (

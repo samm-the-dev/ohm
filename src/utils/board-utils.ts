@@ -1,5 +1,5 @@
 import type { OhmCard, OhmBoard, ColumnStatus } from '../types/board';
-import { STATUS, ENERGY, ENERGY_SEGMENTS } from '../types/board';
+import { STATUS, ENERGY_DEFAULT } from '../types/board';
 
 /** Generate a short unique ID */
 export function generateId(): string {
@@ -9,7 +9,9 @@ export function generateId(): string {
 /** Create a new card with minimal input (quick capture) */
 export function createCard(
   title: string,
-  overrides?: Partial<Pick<OhmCard, 'description' | 'energy' | 'category'>>,
+  overrides?: Partial<
+    Pick<OhmCard, 'description' | 'energy' | 'category' | 'activityInstanceId' | 'scheduledDate'>
+  >,
 ): OhmCard {
   const now = new Date().toISOString();
   return {
@@ -18,11 +20,13 @@ export function createCard(
     description: overrides?.description ?? '',
     status: STATUS.CHARGING,
     tasks: [],
-    energy: overrides?.energy ?? ENERGY.MED,
+    energy: overrides?.energy ?? ENERGY_DEFAULT,
     category: overrides?.category ?? '',
     createdAt: now,
     updatedAt: now,
     sortOrder: Date.now(),
+    activityInstanceId: overrides?.activityInstanceId,
+    scheduledDate: overrides?.scheduledDate,
   };
 }
 
@@ -40,25 +44,76 @@ export function getColumnCards(board: OhmBoard, status: ColumnStatus): OhmCard[]
   return board.cards.filter((c) => c.status === status).sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
-/** Capacity field names indexed by ColumnStatus (Powered has no capacity) */
-const CAPACITY_FIELDS = [
-  'chargingCapacity', // STATUS.CHARGING = 0
-  'groundedCapacity', // STATUS.GROUNDED = 1
-  'liveCapacity', // STATUS.LIVE = 2
-  null, // STATUS.POWERED = 3 (no capacity)
-] as const satisfies readonly (keyof OhmBoard | null)[];
-
-/** Get column capacity usage in energy segments. Returns null for columns without capacity. */
+/** Get Live column capacity (WIP limit). Returns null for all other columns. */
 export function getColumnCapacity(
   board: OhmBoard,
   status: ColumnStatus,
 ): { used: number; total: number } | null {
-  const field = CAPACITY_FIELDS[status];
-  if (!field) return null;
+  if (status !== STATUS.LIVE) return null;
   const used = board.cards
-    .filter((c) => c.status === status)
-    .reduce((sum, c) => sum + ENERGY_SEGMENTS[c.energy]!, 0);
-  return { used, total: board[field] };
+    .filter((c) => c.status === STATUS.LIVE)
+    .reduce((sum, c) => sum + c.energy, 0);
+  return { used, total: board.liveCapacity };
+}
+
+/** Get total energy usage across non-Powered columns vs. the rolling-window budget. */
+export function getTotalCapacity(board: OhmBoard): { used: number; total: number } {
+  const used = board.cards
+    .filter((c) => c.status !== STATUS.POWERED)
+    .reduce((sum, c) => sum + c.energy, 0);
+  return { used, total: board.energyBudget };
+}
+
+/** Effective date for a card: scheduledDate if set, otherwise updatedAt as YYYY-MM-DD. */
+export function cardEffectiveDate(card: OhmCard): string {
+  return card.scheduledDate ?? card.updatedAt.slice(0, 10);
+}
+
+/** Get total energy of Powered cards within a trailing date window. */
+export function getTrailingPowered(
+  board: OhmBoard,
+  windowStart: string,
+  windowEnd: string,
+): { used: number; cards: OhmCard[] } {
+  const cards = board.cards.filter((c) => {
+    if (c.status !== STATUS.POWERED) return false;
+    const d = cardEffectiveDate(c);
+    return d >= windowStart && d <= windowEnd;
+  });
+  const used = cards.reduce((sum, c) => sum + c.energy, 0);
+  return { used, cards };
+}
+
+/** Find Powered cards whose effective date is before the trailing window start. */
+export function getExpiredPowered(board: OhmBoard, windowStart: string): OhmCard[] {
+  return board.cards.filter(
+    (c) => c.status === STATUS.POWERED && cardEffectiveDate(c) < windowStart,
+  );
+}
+
+/** Get per-day energy usage for a date window. Returns entries sorted by date. */
+export function getDailyEnergy(
+  board: OhmBoard,
+  windowStart: string,
+  windowEnd: string,
+): Array<{ date: string; used: number }> {
+  // Build a map of date -> total energy
+  const byDate = new Map<string, number>();
+  for (const card of board.cards) {
+    if (!card.scheduledDate) continue;
+    if (card.scheduledDate < windowStart || card.scheduledDate > windowEnd) continue;
+    byDate.set(card.scheduledDate, (byDate.get(card.scheduledDate) ?? 0) + card.energy);
+  }
+  // Fill in all days in the window (even zeros)
+  const result: Array<{ date: string; used: number }> = [];
+  const current = new Date(windowStart + 'T00:00:00');
+  const end = new Date(windowEnd + 'T00:00:00');
+  while (current <= end) {
+    const iso = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}-${String(current.getDate()).padStart(2, '0')}`;
+    result.push({ date: iso, used: byDate.get(iso) ?? 0 });
+    current.setDate(current.getDate() + 1);
+  }
+  return result;
 }
 
 /** Update a card in the board immutably */

@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type { OhmBoard, OhmCard, ColumnStatus } from '../types/board';
-import { STATUS } from '../types/board';
+import { WINDOW_MIN, WINDOW_MAX } from '../types/board';
 import { loadFromLocal, saveToLocal } from '../utils/storage';
 import {
   createCard,
@@ -32,7 +32,15 @@ export function useBoard() {
 
   /** Quick-add a card to Charging (minimal friction, optional details) */
   const quickAdd = useCallback(
-    (title: string, overrides?: Partial<Pick<OhmCard, 'description' | 'energy' | 'category'>>) => {
+    (
+      title: string,
+      overrides?: Partial<
+        Pick<
+          OhmCard,
+          'description' | 'energy' | 'category' | 'activityInstanceId' | 'scheduledDate'
+        >
+      >,
+    ) => {
       const card = createCard(title, overrides);
       setBoard((prev) => addCardToBoard(prev, card));
       return card;
@@ -58,6 +66,17 @@ export function useBoard() {
   /** Delete a card */
   const deleteCard = useCallback((cardId: string) => {
     setBoard((prev) => removeCardFromBoard(prev, cardId));
+  }, []);
+
+  /** Delete multiple cards in a single state update */
+  const deleteCards = useCallback((cardIds: string[]) => {
+    if (cardIds.length === 0) return;
+    const idSet = new Set(cardIds);
+    setBoard((prev) => ({
+      ...prev,
+      cards: prev.cards.filter((c) => !idSet.has(c.id)),
+      lastSaved: new Date().toISOString(),
+    }));
   }, []);
 
   /** Restore a previously deleted card (idempotent — no-op if already present) */
@@ -101,19 +120,30 @@ export function useBoard() {
     });
   }, []);
 
-  /** Update column capacity (energy segments) */
-  const setCapacity = useCallback((status: ColumnStatus, capacity: number) => {
-    const field =
-      status === STATUS.CHARGING
-        ? 'chargingCapacity'
-        : status === STATUS.LIVE
-          ? 'liveCapacity'
-          : status === STATUS.GROUNDED
-            ? 'groundedCapacity'
-            : null;
-    if (!field) return;
+  /** Update energy budget for the rolling window */
+  const setEnergyBudget = useCallback((budget: number) => {
     const now = new Date().toISOString();
-    setBoard((prev) => ({ ...prev, [field]: capacity, capacitiesUpdatedAt: now, lastSaved: now }));
+    setBoard((prev) => ({
+      ...prev,
+      energyBudget: Math.max(1, budget),
+      capacitiesUpdatedAt: now,
+      lastSaved: now,
+    }));
+  }, []);
+
+  /** Update Live column capacity */
+  const setLiveCapacity = useCallback((capacity: number) => {
+    const now = new Date().toISOString();
+    setBoard((prev) => {
+      const newLive = Math.max(1, capacity);
+      return {
+        ...prev,
+        liveCapacity: newLive,
+        ...(prev.autoBudget ? { energyBudget: (prev.windowSize ?? 7) * newLive } : {}),
+        capacitiesUpdatedAt: now,
+        lastSaved: now,
+      };
+    });
   }, []);
 
   /** Add a category to the board */
@@ -167,6 +197,72 @@ export function useBoard() {
     });
   }, []);
 
+  /** Toggle time features on/off */
+  const setTimeFeatures = useCallback((enabled: boolean) => {
+    const now = new Date().toISOString();
+    setBoard((prev) => ({ ...prev, timeFeatures: enabled, lastSaved: now }));
+  }, []);
+
+  /** Update rolling window size */
+  const setWindowSize = useCallback((size: number) => {
+    const now = new Date().toISOString();
+    setBoard((prev) => {
+      const newSize = Math.min(WINDOW_MAX, Math.max(WINDOW_MIN, size));
+      return {
+        ...prev,
+        windowSize: newSize,
+        ...(prev.autoBudget ? { energyBudget: newSize * prev.liveCapacity } : {}),
+        lastSaved: now,
+      };
+    });
+  }, []);
+
+  /** Toggle auto-budget (Total = Window x Live) */
+  const setAutoBudget = useCallback((enabled: boolean) => {
+    const now = new Date().toISOString();
+    setBoard((prev) => ({
+      ...prev,
+      autoBudget: enabled,
+      ...(enabled ? { energyBudget: (prev.windowSize ?? 7) * prev.liveCapacity } : {}),
+      capacitiesUpdatedAt: now,
+      lastSaved: now,
+    }));
+  }, []);
+
+  /** Atomically add cards for activity instances not yet linked to a card.
+   *  Uses functional update so it's safe under React strict mode double-runs. */
+  const materializeInstances = useCallback(
+    (
+      specs: Array<{
+        title: string;
+        energy: OhmCard['energy'];
+        activityInstanceId: string;
+        scheduledDate: string;
+      }>,
+    ) => {
+      if (specs.length === 0) return;
+      setBoard((prev) => {
+        const linkedIds = new Set(prev.cards.map((c) => c.activityInstanceId).filter(Boolean));
+        const newCards = specs
+          .filter((s) => !linkedIds.has(s.activityInstanceId))
+          .map((s) =>
+            createCard(s.title, {
+              energy: s.energy,
+              activityInstanceId: s.activityInstanceId,
+              scheduledDate: s.scheduledDate,
+            }),
+          );
+        if (newCards.length === 0) return prev;
+        return {
+          ...prev,
+          cards: [...prev.cards, ...newCards],
+          lastSaved: new Date().toISOString(),
+        };
+      });
+    },
+    [],
+  );
+
   /** Replace the entire board (used by Drive sync when remote is newer) */
   const replaceBoard = useCallback((newBoard: OhmBoard) => {
     setBoard(newBoard);
@@ -179,13 +275,19 @@ export function useBoard() {
     move,
     updateCard,
     deleteCard,
+    deleteCards,
     restoreCard,
     reorder,
     reorderBatch,
-    setCapacity,
+    setEnergyBudget,
+    setLiveCapacity,
     addCategory,
     removeCategory,
     renameCategory,
+    setTimeFeatures,
+    setWindowSize,
+    setAutoBudget,
+    materializeInstances,
     replaceBoard,
   };
 }

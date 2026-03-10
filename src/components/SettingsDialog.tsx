@@ -11,9 +11,10 @@ import {
   Trash2,
   RotateCcw,
   MonitorDown,
+  Clock,
 } from 'lucide-react';
-import type { OhmBoard, ColumnStatus } from '../types/board';
-import { STATUS } from '../types/board';
+import type { OhmBoard } from '../types/board';
+import { WINDOW_MIN, WINDOW_MAX } from '../types/board';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from './ui/dialog';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
@@ -29,6 +30,9 @@ import {
 import { toastImportComplete } from '../utils/toast';
 import { getAuthLevel } from '../utils/google-drive';
 import { useInstallPrompt } from '../hooks/useInstallPrompt';
+import type { Activity } from '../types/activity';
+import type { StoredSchedule } from '../types/schedule';
+import { ActivityManager } from './ActivityManager';
 
 interface SettingsDialogProps {
   isOpen: boolean;
@@ -37,8 +41,23 @@ interface SettingsDialogProps {
   onAddCategory: (category: string) => void;
   onRemoveCategory: (category: string) => void;
   onRenameCategory: (oldName: string, newName: string) => void;
-  capacities: { charging: number; live: number; grounded: number };
-  onSetCapacity: (status: ColumnStatus, capacity: number) => void;
+  energyBudget: number;
+  liveCapacity: number;
+  onSetEnergyBudget: (budget: number) => void;
+  onSetLiveCapacity: (capacity: number) => void;
+  timeFeatures?: boolean;
+  windowSize?: number;
+  onSetTimeFeatures?: (enabled: boolean) => void;
+  onSetWindowSize?: (size: number) => void;
+  autoBudget?: boolean;
+  onSetAutoBudget?: (enabled: boolean) => void;
+  activities?: Activity[];
+  onAddActivity?: (
+    name: string,
+    opts?: { description?: string; schedule?: StoredSchedule; energy?: number },
+  ) => Promise<Activity>;
+  onUpdateActivity?: (id: string, changes: Partial<Omit<Activity, 'id'>>) => Promise<void>;
+  onDeleteActivity?: (id: string) => Promise<void>;
   driveAvailable?: boolean;
   driveConnected?: boolean;
   onConnectDrive?: () => void;
@@ -49,18 +68,15 @@ interface SettingsDialogProps {
 
 const CAPACITY_ROWS = [
   {
-    label: 'Charging',
-    status: STATUS.CHARGING,
-    key: 'charging' as const,
-    color: 'text-ohm-charging',
+    label: 'Live',
+    field: 'liveCapacity' as const,
+    color: 'text-ohm-live',
   },
   {
-    label: 'Grounded',
-    status: STATUS.GROUNDED,
-    key: 'grounded' as const,
-    color: 'text-ohm-grounded',
+    label: 'Total',
+    field: 'energyBudget' as const,
+    color: 'text-ohm-spark',
   },
-  { label: 'Live', status: STATUS.LIVE, key: 'live' as const, color: 'text-ohm-live' },
 ];
 
 const AUTH_LEVEL_SEGMENTS = ['Local', 'Sync', 'Persist'] as const;
@@ -106,8 +122,20 @@ export function SettingsDialog({
   onAddCategory,
   onRemoveCategory,
   onRenameCategory,
-  capacities,
-  onSetCapacity,
+  energyBudget,
+  liveCapacity,
+  onSetEnergyBudget,
+  onSetLiveCapacity,
+  timeFeatures,
+  windowSize,
+  onSetTimeFeatures,
+  onSetWindowSize,
+  autoBudget,
+  onSetAutoBudget,
+  activities,
+  onAddActivity,
+  onUpdateActivity,
+  onDeleteActivity,
   driveAvailable,
   driveConnected,
   onConnectDrive,
@@ -297,15 +325,122 @@ export function SettingsDialog({
           </form>
         </div>
 
+        {/* Schedule (time features) */}
+        {onSetTimeFeatures && (
+          <div className="mb-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Clock size={14} className="text-ohm-muted" />
+                <span className="font-display text-ohm-muted text-[10px] tracking-widest uppercase">
+                  Schedule
+                </span>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={!!timeFeatures}
+                aria-label="Schedule"
+                onClick={() => onSetTimeFeatures(!timeFeatures)}
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                  timeFeatures ? 'bg-ohm-spark' : 'bg-ohm-border'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
+                    timeFeatures ? 'translate-x-4' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+            <p className="font-body text-ohm-muted/60 mt-1.5 text-[11px]">
+              Enable recurring activities with a rolling schedule window.
+            </p>
+            {timeFeatures && onSetWindowSize && (
+              <div className="mt-3 flex items-center gap-3">
+                <span className="font-display text-ohm-muted w-20 text-[10px] tracking-widest uppercase">
+                  Window
+                </span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => onSetWindowSize(Math.max(WINDOW_MIN, (windowSize ?? 7) - 1))}
+                  disabled={(windowSize ?? 7) <= WINDOW_MIN}
+                  className="border-ohm-border text-ohm-muted hover:text-ohm-text h-8 w-8"
+                  aria-label="Decrease window size"
+                >
+                  <Minus size={14} />
+                </Button>
+                <span className="font-display text-ohm-text min-w-[2ch] text-center text-lg font-bold">
+                  {windowSize ?? 7}
+                </span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => onSetWindowSize(Math.min(WINDOW_MAX, (windowSize ?? 7) + 1))}
+                  disabled={(windowSize ?? 7) >= WINDOW_MAX}
+                  className="border-ohm-border text-ohm-muted hover:text-ohm-text h-8 w-8"
+                  aria-label="Increase window size"
+                >
+                  <Plus size={14} />
+                </Button>
+                <span className="font-body text-ohm-muted/60 text-[10px]">days</span>
+              </div>
+            )}
+            {timeFeatures && onSetAutoBudget && (
+              <div className="mt-3 flex items-center gap-3">
+                <span className="font-display text-ohm-muted w-20 text-[10px] tracking-widest uppercase">
+                  Auto total
+                </span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={!!autoBudget}
+                  aria-label="Auto total budget"
+                  onClick={() => onSetAutoBudget(!autoBudget)}
+                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors ${
+                    autoBudget ? 'bg-ohm-spark' : 'bg-ohm-border'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
+                      autoBudget ? 'translate-x-4' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+                {autoBudget && (
+                  <span className="font-body text-ohm-muted/60 text-[10px]">
+                    {windowSize ?? 7} x {liveCapacity} = {(windowSize ?? 7) * liveCapacity}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Activities */}
+        {timeFeatures && activities && onAddActivity && onUpdateActivity && onDeleteActivity && (
+          <ActivityManager
+            activities={activities}
+            onAdd={onAddActivity}
+            onUpdate={onUpdateActivity}
+            onDelete={onDeleteActivity}
+          />
+        )}
+
         {/* Capacity */}
-        <div>
+        <div className="border-ohm-border mt-5 border-t pt-5">
           <span className="font-display text-ohm-muted mb-2 block text-[10px] tracking-widest uppercase">
             Energy Capacity
           </span>
-          {CAPACITY_ROWS.map(({ label, status, key, color }) => {
-            const value = capacities[key];
+          {CAPACITY_ROWS.map(({ label, field, color }) => {
+            const value = field === 'energyBudget' ? energyBudget : liveCapacity;
+            const setter = field === 'energyBudget' ? onSetEnergyBudget : onSetLiveCapacity;
+            const locked = field === 'energyBudget' && !!autoBudget;
             return (
-              <div key={status} className="mt-2 flex items-center gap-3">
+              <div
+                key={field}
+                className={`mt-2 flex items-center gap-3 ${locked ? 'opacity-50' : ''}`}
+              >
                 <span
                   className={`font-display w-20 text-[10px] tracking-widest uppercase ${color}`}
                 >
@@ -314,10 +449,10 @@ export function SettingsDialog({
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => onSetCapacity(status, Math.max(1, value - 1))}
-                  disabled={value <= 1}
+                  onClick={() => setter(Math.max(1, value - 1))}
+                  disabled={value <= 1 || locked}
                   className="border-ohm-border text-ohm-muted hover:text-ohm-text h-8 w-8"
-                  aria-label={`Decrease ${label} capacity`}
+                  aria-label={`Decrease ${label}`}
                 >
                   <Minus size={14} />
                 </Button>
@@ -327,15 +462,21 @@ export function SettingsDialog({
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => onSetCapacity(status, value + 1)}
+                  onClick={() => setter(value + 1)}
+                  disabled={locked}
                   className="border-ohm-border text-ohm-muted hover:text-ohm-text h-8 w-8"
-                  aria-label={`Increase ${label} capacity`}
+                  aria-label={`Increase ${label}`}
                 >
                   <Plus size={14} />
                 </Button>
               </div>
             );
           })}
+          {autoBudget && (
+            <p className="font-body text-ohm-muted/60 mt-2 text-[10px]">
+              Total is auto-calculated ({windowSize ?? 7} x {liveCapacity}).
+            </p>
+          )}
         </div>
 
         {/* Google Drive */}

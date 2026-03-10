@@ -94,10 +94,14 @@ export function mergeBoards(local: OhmBoard, imported: OhmBoard): OhmBoard {
     }
   }
 
-  // Cards only in local (not matched) -- keep them
+  // Cards only in local: keep if created after the remote snapshot (new offline card),
+  // discard if created before (was deleted on the remote side).
+  const remoteSnapshot = imported.lastSaved;
   for (const card of local.cards) {
     if (!matchedIds.has(card.id)) {
-      mergedCards.push(card);
+      if (card.createdAt >= remoteSnapshot) {
+        mergedCards.push(card);
+      }
     }
   }
 
@@ -115,10 +119,12 @@ export function mergeBoards(local: OhmBoard, imported: OhmBoard): OhmBoard {
     cards: mergedCards,
     categories: mergedCategories,
     categoriesUpdatedAt: categoriesChanged ? now : (local.categoriesUpdatedAt ?? local.lastSaved),
-    chargingCapacity: useImportedCapacities ? imported.chargingCapacity : local.chargingCapacity,
+    energyBudget: useImportedCapacities ? imported.energyBudget : local.energyBudget,
     liveCapacity: useImportedCapacities ? imported.liveCapacity : local.liveCapacity,
-    groundedCapacity: useImportedCapacities ? imported.groundedCapacity : local.groundedCapacity,
     capacitiesUpdatedAt: useImportedCapacities ? importCapTs : localCapTs,
+    timeFeatures: local.timeFeatures ?? imported.timeFeatures,
+    windowSize: local.windowSize ?? imported.windowSize,
+    autoBudget: local.autoBudget ?? imported.autoBudget,
     lastSaved: now,
   };
 }
