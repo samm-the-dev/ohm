@@ -198,6 +198,7 @@ export function Board() {
     updateActivity,
     deleteActivity,
     refreshWindow,
+    dismissInstance,
     syncInstanceToColumn,
   } = useActivities({
     activities: board.activities ?? [],
@@ -1028,7 +1029,7 @@ export function Board() {
                           className="border-ohm-live/30 text-ohm-live hover:bg-ohm-live/10 h-6 px-2 text-[10px]"
                           onClick={() => {
                             if (card.activityInstanceId) {
-                              void syncInstanceToColumn(card.activityInstanceId, STATUS.GROUNDED);
+                              void dismissInstance(card.activityInstanceId);
                             }
                             deleteCard(card.id);
                             setPendingExpired((prev) => prev.filter((c) => c.id !== card.id));
@@ -1079,7 +1080,20 @@ export function Board() {
         activities={activities}
         onAddActivity={addActivity}
         onUpdateActivity={updateActivity}
-        onDeleteActivity={deleteActivity}
+        onDeleteActivity={async (id) => {
+          // Remove board cards linked to this activity's instances
+          const linkedCardIds = board.cards
+            .filter(
+              (c) =>
+                c.activityInstanceId &&
+                instances.some(
+                  (inst) => inst.id === c.activityInstanceId && inst.activityId === id,
+                ),
+            )
+            .map((c) => c.id);
+          if (linkedCardIds.length > 0) deleteCards(linkedCardIds);
+          await deleteActivity(id);
+        }}
         driveAvailable={driveAvailable}
         driveConnected={driveConnected}
         onConnectDrive={connect}

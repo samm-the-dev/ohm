@@ -40,19 +40,34 @@ export function moveCard(card: OhmCard, newStatus: ColumnStatus): OhmCard {
   };
 }
 
-/** Get cards for a specific column, sorted by sortOrder */
+/** Get cards for a specific column, sorted by scheduledDate (ascending, unscheduled last)
+ *  then sortOrder as tiebreaker within the same date group. */
 export function getColumnCards(board: OhmBoard, status: ColumnStatus): OhmCard[] {
-  return board.cards.filter((c) => c.status === status).sort((a, b) => a.sortOrder - b.sortOrder);
+  return board.cards
+    .filter((c) => c.status === status)
+    .sort((a, b) => {
+      const dateA = a.scheduledDate ?? '\uffff';
+      const dateB = b.scheduledDate ?? '\uffff';
+      if (dateA !== dateB) return dateA < dateB ? -1 : 1;
+      return a.sortOrder - b.sortOrder;
+    });
 }
 
-/** Get Live column capacity (WIP limit). Returns null for all other columns. */
+/** Get Live column capacity (WIP limit). Returns null for all other columns.
+ *  Includes today's Powered cards — energy spent today counts against capacity. */
 export function getColumnCapacity(
   board: OhmBoard,
   status: ColumnStatus,
+  today?: string,
 ): { used: number; total: number } | null {
   if (status !== STATUS.LIVE) return null;
+  const todayStr = today ?? new Date().toISOString().slice(0, 10);
   const used = board.cards
-    .filter((c) => c.status === STATUS.LIVE)
+    .filter(
+      (c) =>
+        c.status === STATUS.LIVE ||
+        (c.status === STATUS.POWERED && cardEffectiveDate(c) === todayStr),
+    )
     .reduce((sum, c) => sum + c.energy, 0);
   return { used, total: board.liveCapacity };
 }

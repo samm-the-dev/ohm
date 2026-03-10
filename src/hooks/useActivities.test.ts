@@ -22,6 +22,7 @@ function useTestActivities(windowSize?: number) {
 beforeEach(async () => {
   await db.instances.clear();
   await db.activities.clear();
+  await db.dismissedInstances.clear();
 });
 
 describe('useActivities', () => {
@@ -246,6 +247,75 @@ describe('useActivities', () => {
       });
       const updated = result.current.instances.find((i) => i.id === instanceId)!;
       expect(updated.status).toBe(ACTIVITY_STATUS.FAILED);
+    });
+
+    it('dismissInstance removes the instance and prevents regeneration', async () => {
+      const { result } = await setupWithInstance();
+      const instance = result.current.instances[0]!;
+      const instanceCount = result.current.instances.length;
+
+      await act(async () => {
+        await result.current.dismissInstance(instance.id);
+      });
+
+      // Instance is removed
+      expect(result.current.instances).toHaveLength(instanceCount - 1);
+      expect(result.current.instances.find((i) => i.id === instance.id)).toBeUndefined();
+
+      // Dismissal record exists in DB
+      const dismissals = await db.dismissedInstances.toArray();
+      expect(dismissals).toHaveLength(1);
+      expect(dismissals[0]!.activityId).toBe(instance.activityId);
+      expect(dismissals[0]!.scheduledDate).toBe(instance.scheduledDate);
+
+      // refreshWindow does NOT recreate the dismissed instance
+      await act(async () => {
+        await result.current.refreshWindow();
+      });
+      expect(
+        result.current.instances.find((i) => i.scheduledDate === instance.scheduledDate),
+      ).toBeUndefined();
+      expect(result.current.instances).toHaveLength(instanceCount - 1);
+    });
+
+    it('auto-cleans dismissals for past dates during refreshWindow', async () => {
+      const { result } = await setupWithInstance();
+
+      // Manually insert a stale dismissal (past date)
+      await db.dismissedInstances.put({
+        id: `${result.current.activities[0]!.id}:2020-01-01`,
+        activityId: result.current.activities[0]!.id,
+        scheduledDate: '2020-01-01',
+        dismissedAt: new Date().toISOString(),
+      });
+      expect(await db.dismissedInstances.count()).toBe(1);
+
+      await act(async () => {
+        await result.current.refreshWindow();
+      });
+
+      // Stale dismissal should be pruned
+      expect(await db.dismissedInstances.count()).toBe(0);
+    });
+
+    it('deleteActivity also removes dismissal records', async () => {
+      const { result } = await setupWithInstance();
+      const activity = result.current.activities[0]!;
+      const instance = result.current.instances[0]!;
+
+      // Dismiss an instance first
+      await act(async () => {
+        await result.current.dismissInstance(instance.id);
+      });
+      expect(await db.dismissedInstances.count()).toBe(1);
+
+      // Delete the activity
+      await act(async () => {
+        await result.current.deleteActivity(activity.id);
+      });
+
+      // Dismissal records are cleaned up
+      expect(await db.dismissedInstances.count()).toBe(0);
     });
 
     it('syncInstanceToColumn maps column status to instance status', async () => {
