@@ -655,17 +655,32 @@ export function Board() {
             +
           </button>
           <div className="relative flex h-5 flex-1 items-center">
-            {/* Track background */}
-            <div className="bg-ohm-border absolute inset-x-0 h-1 rounded-full" />
-            {/* Active range fill */}
+            {/* Full gradient track */}
             <div
-              className="absolute h-1 rounded-full"
+              className="absolute inset-x-0 h-1 rounded-full"
               style={{
-                left: `${(((energyMin ?? ENERGY_MIN) - ENERGY_MIN) / (ENERGY_MAX - ENERGY_MIN)) * 100}%`,
-                right: `${(1 - ((energyMax ?? ENERGY_MAX) - ENERGY_MIN) / (ENERGY_MAX - ENERGY_MIN)) * 100}%`,
-                background: `linear-gradient(to right, ${energyColor(energyMin ?? ENERGY_MIN)}, ${energyColor(energyMax ?? ENERGY_MAX)})`,
+                background: `linear-gradient(to right, ${Array.from({ length: ENERGY_MAX - ENERGY_MIN + 1 }, (_, i) => energyColor(ENERGY_MIN + i)).join(', ')})`,
               }}
             />
+            {/* Dim outside active range */}
+            {(energyMin ?? ENERGY_MIN) > ENERGY_MIN && (
+              <div
+                className="absolute h-1 rounded-l-full bg-black/60"
+                style={{
+                  left: 0,
+                  width: `${(((energyMin ?? ENERGY_MIN) - ENERGY_MIN) / (ENERGY_MAX - ENERGY_MIN)) * 100}%`,
+                }}
+              />
+            )}
+            {(energyMax ?? ENERGY_MAX) < ENERGY_MAX && (
+              <div
+                className="absolute h-1 rounded-r-full bg-black/60"
+                style={{
+                  right: 0,
+                  width: `${((ENERGY_MAX - (energyMax ?? ENERGY_MAX)) / (ENERGY_MAX - ENERGY_MIN)) * 100}%`,
+                }}
+              />
+            )}
             {/* Min thumb */}
             <input
               type="range"

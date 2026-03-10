@@ -18,11 +18,13 @@ export const LIVE_DEFAULT = 10;
 export const BUDGET_DEFAULT = WINDOW_DEFAULT * LIVE_DEFAULT;
 
 /** Interpolate hue from indigo (239) at energy 1 through green (~120) to red (0) at energy 6.
- *  Grounded-indigo → calm teal → green sweet-spot → warm orange → red. */
+ *  Saturation and lightness ease so the cool end is softer and the warm end pops. */
 export function energyColor(value: number): string {
   const ratio = Math.min(Math.max((value - ENERGY_MIN) / (ENERGY_MAX - ENERGY_MIN), 0), 1);
   const hue = 239 * (1 - ratio);
-  return `hsl(${hue}, 80%, 50%)`;
+  const saturation = 55 + 25 * ratio; // 55% at cool end → 80% at hot end
+  const lightness = 60 - 10 * ratio; // 60% at cool end → 50% at hot end
+  return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
 }
 
 /** A single card on the board */
