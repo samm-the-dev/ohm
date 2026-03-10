@@ -252,8 +252,8 @@ export function SettingsPage({
       'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
     );
     if (focusable.length === 0) return;
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
+    const first = focusable[0]!;
+    const last = focusable[focusable.length - 1]!;
     first.focus();
 
     const trap = (e: KeyboardEvent) => {
