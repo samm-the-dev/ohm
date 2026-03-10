@@ -40,7 +40,6 @@ import {
   getDailyEnergy,
   getExpiredPowered,
   getTrailingPowered,
-  cardEffectiveDate,
 } from '../utils/board-utils';
 import { toISODate } from '../utils/schedule-utils';
 import { useBoard } from '../hooks/useBoard';
@@ -58,7 +57,6 @@ import {
   toastQuickAdd,
   toastLinkCopied,
   toastLinkFailed,
-  toastMilestone,
 } from '../utils/toast';
 
 function CategoryFilter({
@@ -880,23 +878,6 @@ export function Board() {
                 if (updated.status === STATUS.POWERED) {
                   setPoweredFlash(true);
                   setTimeout(() => setPoweredFlash(false), 1000);
-                  if (board.timeFeatures && board.energyBudget > 0) {
-                    // Compute post-move ratio from scratch to handle edge cases
-                    const today = new Date();
-                    const ts = new Date(today);
-                    ts.setDate(ts.getDate() - ((board.windowSize ?? 7) - 1));
-                    const postCards = board.cards.map((c) => (c.id === updated.id ? updated : c));
-                    const postUsed = postCards
-                      .filter(
-                        (c) =>
-                          c.status === STATUS.POWERED &&
-                          cardEffectiveDate(c) >= toISODate(ts) &&
-                          cardEffectiveDate(c) <= toISODate(today),
-                      )
-                      .reduce((sum, c) => sum + c.energy, 0);
-                    const newRatio = postUsed / board.energyBudget;
-                    toastMilestone(trailingPoweredRatio, newRatio);
-                  }
                 }
               }
             }

@@ -29,7 +29,7 @@ This plan distills the ecosystem vision, schema.org alignment, and implementatio
 | Capacity model            | Single `energyBudget` for the rolling window replaces per-column capacities. `liveCapacity` stays separate. `autoBudget` toggle auto-calculates Total = Window × Live.                    |
 | Auto-demotion             | Charging cards with `scheduledDate` before today auto-demote to Grounded when time features enabled.                                                                                      |
 | Auto-archive              | Powered cards outside the trailing window silently removed.                                                                                                                               |
-| Positive reinforcement    | Milestone toasts at 25/50/75/100% trailing powered ratio. Powered column ambient glow scales with completion progress.                                                                    |
+| Positive reinforcement    | Powered column ambient glow scales with trailing completion progress.                                                                                                                     |
 | Testing scope             | Core coverage: `useBoard` hook, `board-utils` pure functions, `sanitizeBoard` migration, `mergeBoards`. Circle back for broader coverage later.                                           |
 | Abstract kanban           | Always available. Time features toggle controls all temporal behavior. Some UI change is acceptable since the app has no active users yet.                                                |
 
@@ -48,7 +48,7 @@ Completed in PR #20. Combined into a single PR.
 - Auto-demotion (stale Charging → Grounded), auto-archive (expired Powered removed)
 - `energyBudget` replaces per-column capacities, `autoBudget` toggle
 - `useActivities` hook, `ActivityManager` UI, instance materialization
-- Daily + total energy meters, milestone toasts, Powered column glow
+- Daily + total energy meters, Powered column glow
 - Dual-range energy filter slider, desktop steppers, 2-row filter layout
 
 ### Phase 3: Integrations Page + Shared Infra
