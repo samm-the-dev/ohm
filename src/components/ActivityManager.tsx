@@ -64,9 +64,9 @@ function parseToken(token: string): number[] {
     const startRaw = rangeMatch[1]!.toLowerCase();
     const endRaw = rangeMatch[2]!.toLowerCase();
 
-    const start = startRaw in DAY_KEYWORDS ? 1 : parseInt(startRaw, 10);
+    const start = startRaw === 'first' ? 1 : parseInt(startRaw, 10);
     const endIsLast = endRaw === 'last';
-    const end = endIsLast ? 31 : endRaw in DAY_KEYWORDS ? 1 : parseInt(endRaw, 10);
+    const end = endIsLast ? 31 : endRaw === 'first' ? 1 : parseInt(endRaw, 10);
 
     if (isNaN(start) || isNaN(end) || start < 1 || end > 31 || start > end) return [];
 

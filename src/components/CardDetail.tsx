@@ -281,13 +281,10 @@ export function CardDetail({
         {/* Scheduled date (when time features enabled) */}
         {timeFeatures && (
           <div className="mb-3">
-            <label
-              htmlFor="card-scheduled-date"
-              className="font-display text-ohm-muted mb-2 flex items-center gap-1 text-[10px] tracking-widest uppercase"
-            >
+            <span className="font-display text-ohm-muted mb-2 flex items-center gap-1 text-[10px] tracking-widest uppercase">
               <Calendar size={10} />
               Scheduled
-            </label>
+            </span>
             {editing.activityInstanceId ? (
               <p className="font-body text-ohm-muted text-sm">{editing.scheduledDate}</p>
             ) : (

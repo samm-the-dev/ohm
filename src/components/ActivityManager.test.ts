@@ -73,6 +73,7 @@ describe('parseDayInput', () => {
     expect(parseDayInput('15-10')).toBeUndefined();
     expect(parseDayInput('0-5')).toBeUndefined();
     expect(parseDayInput('30-35')).toBeUndefined();
+    expect(parseDayInput('last-5')).toBeUndefined();
   });
 
   it('rejects out-of-range numbers', () => {
