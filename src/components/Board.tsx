@@ -9,6 +9,7 @@ import {
   X,
   Tag,
   Share2,
+  MonitorDown,
 } from 'lucide-react';
 import {
   DndContext,
@@ -47,6 +48,7 @@ import { useBoard } from '../hooks/useBoard';
 import { useActivities } from '../hooks/useActivities';
 import { useDriveSync } from '../hooks/useDriveSync';
 import { useWelcomeBack } from '../hooks/useWelcomeBack';
+import { useInstallPrompt } from '../hooks/useInstallPrompt';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from './ui/dialog';
 import { Column } from './Column';
@@ -422,6 +424,7 @@ export function Board() {
   }, [board, queueSync]);
 
   const { summary: welcomeBack, dismiss: dismissWelcome } = useWelcomeBack(board);
+  const { isInstallable, installApp } = useInstallPrompt();
 
   // Completion flash — column header animation
   const [poweredFlash, setPoweredFlash] = useState(false);
@@ -507,8 +510,16 @@ export function Board() {
       {/* Header */}
       <header className="border-ohm-border bg-ohm-bg/90 sticky top-0 z-30 border-b backdrop-blur-md">
         <div className="flex items-center justify-between px-4 py-3">
-          {/* Left -- sync status */}
-          <div className="flex w-20 items-center gap-1">
+          {/* Left -- quick spark (desktop) + sync status */}
+          <div className="flex w-24 items-center gap-1">
+            <button
+              type="button"
+              onClick={handleQuickSpark}
+              className="text-ohm-spark hover:bg-ohm-spark/10 hidden rounded-md p-1.5 transition-colors md:block"
+              aria-label="Quick spark"
+            >
+              <Plus size={16} />
+            </button>
             {driveAvailable && (
               <SyncIndicator connected={driveConnected} status={syncStatus} onSync={manualSync} />
             )}
@@ -522,16 +533,18 @@ export function Board() {
             </span>
           </h1>
 
-          {/* Right -- quick spark (desktop) + share + settings */}
-          <div className="flex w-20 items-center justify-end gap-1">
-            <button
-              type="button"
-              onClick={handleQuickSpark}
-              className="text-ohm-spark hover:bg-ohm-spark/10 hidden rounded-md p-1.5 transition-colors md:block"
-              aria-label="Quick spark"
-            >
-              <Plus size={16} />
-            </button>
+          {/* Right -- install + share + settings */}
+          <div className="flex w-24 items-center justify-end gap-1">
+            {isInstallable && (
+              <button
+                type="button"
+                onClick={installApp}
+                className="text-ohm-muted hover:bg-ohm-surface hover:text-ohm-text rounded-md p-1.5 transition-colors"
+                aria-label="Install app"
+              >
+                <MonitorDown size={16} />
+              </button>
+            )}
             <button
               type="button"
               onClick={handleShare}

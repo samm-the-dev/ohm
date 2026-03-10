@@ -2,10 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { SettingsPage, type SettingsPageProps } from './SettingsPage';
 
-vi.mock('../hooks/useInstallPrompt', () => ({
-  useInstallPrompt: () => ({ isInstallable: false, installApp: vi.fn() }),
-}));
-
 const noop = () => {};
 
 function defaultProps(overrides?: Partial<SettingsPageProps>): SettingsPageProps {

@@ -10,8 +10,7 @@ import {
   Save,
   Trash2,
   RotateCcw,
-  MonitorDown,
-  Clock,
+  CalendarDays,
   LayoutGrid,
   Database,
 } from 'lucide-react';
@@ -30,7 +29,6 @@ import {
 } from '../utils/restore-points';
 import { toastImportComplete } from '../utils/toast';
 import { getAuthLevel } from '../utils/google-drive';
-import { useInstallPrompt } from '../hooks/useInstallPrompt';
 import type { Activity } from '../types/activity';
 import type { StoredSchedule } from '../types/schedule';
 import { ActivityManager } from './ActivityManager';
@@ -39,7 +37,7 @@ type SettingsTab = 'board' | 'schedule' | 'data';
 
 const TABS: { id: SettingsTab; label: string; icon: typeof LayoutGrid }[] = [
   { id: 'board', label: 'Board', icon: LayoutGrid },
-  { id: 'schedule', label: 'Schedule', icon: Clock },
+  { id: 'schedule', label: 'Schedule', icon: CalendarDays },
   { id: 'data', label: 'Data', icon: Database },
 ];
 
@@ -144,7 +142,6 @@ export function SettingsPage({
   board,
   onReplaceBoard,
 }: SettingsPageProps) {
-  const { isInstallable, installApp } = useInstallPrompt();
   const [activeTab, setActiveTab] = useState<SettingsTab>('board');
   const [newCategoryName, setNewCategoryName] = useState('');
   const [restorePoints, setRestorePoints] = useState<RestorePoint[]>([]);
@@ -404,8 +401,6 @@ export function SettingsPage({
               handleDeleteRestorePoint={handleDeleteRestorePoint}
               confirmRestoreId={confirmRestoreId}
               formatDate={formatDate}
-              isInstallable={isInstallable}
-              installApp={installApp}
             />
           )}
         </div>
@@ -602,7 +597,7 @@ function ScheduleTab({
         <section className="mb-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Clock size={14} className="text-ohm-muted" />
+              <CalendarDays size={14} className="text-ohm-muted" />
               <span className="font-display text-ohm-muted text-[10px] tracking-widest uppercase">
                 Schedule
               </span>
@@ -738,8 +733,6 @@ function DataTab({
   handleDeleteRestorePoint,
   confirmRestoreId,
   formatDate,
-  isInstallable,
-  installApp,
 }: {
   driveAvailable?: boolean;
   driveConnected?: boolean;
@@ -758,8 +751,6 @@ function DataTab({
   handleDeleteRestorePoint: (id: string) => void;
   confirmRestoreId: string | null;
   formatDate: (iso: string) => string;
-  isInstallable: boolean;
-  installApp: () => void;
 }) {
   return (
     <>
@@ -924,20 +915,6 @@ function DataTab({
           </div>
         )}
       </section>
-
-      {/* Install PWA */}
-      {isInstallable && (
-        <section>
-          <Button
-            onClick={installApp}
-            variant="outline"
-            className="border-ohm-border text-ohm-muted hover:text-ohm-text w-full gap-2 text-xs"
-          >
-            <MonitorDown size={14} />
-            Install App
-          </Button>
-        </section>
-      )}
     </>
   );
 }
