@@ -9,15 +9,17 @@ import {
   ENERGY_DEFAULT,
   WINDOW_MIN,
   WINDOW_MAX,
+  BUDGET_DEFAULT,
+  LIVE_DEFAULT,
 } from '../types/board';
 
 /** Coerce invalid field values to safe defaults -- index-range validation */
 export function sanitizeBoard(board: OhmBoard): OhmBoard {
   if (typeof board.energyBudget !== 'number' || !(board.energyBudget >= 1)) {
-    board.energyBudget = 42;
+    board.energyBudget = BUDGET_DEFAULT;
   }
   if (typeof board.liveCapacity !== 'number' || !(board.liveCapacity >= 1)) {
-    board.liveCapacity = 6;
+    board.liveCapacity = LIVE_DEFAULT;
   }
 
   if (board.windowSize != null) {
@@ -39,6 +41,16 @@ export function sanitizeBoard(board: OhmBoard): OhmBoard {
   }
   if (!board.capacitiesUpdatedAt) {
     board.capacitiesUpdatedAt = board.lastSaved;
+  }
+
+  // Ensure activities is a valid array
+  if (board.activities != null && !Array.isArray(board.activities)) {
+    board.activities = [];
+  }
+  if (board.activities) {
+    board.activities = board.activities
+      .filter((a) => a && typeof a.id === 'string' && typeof a.name === 'string')
+      .map((a) => (typeof a.sourceId === 'string' ? a : { ...a, sourceId: 'ohm' }));
   }
 
   for (const card of board.cards) {

@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type { OhmBoard, OhmCard, ColumnStatus } from '../types/board';
-import { WINDOW_MIN, WINDOW_MAX } from '../types/board';
+import { WINDOW_MIN, WINDOW_MAX, WINDOW_DEFAULT } from '../types/board';
+import type { Activity } from '../types/activity';
 import { loadFromLocal, saveToLocal } from '../utils/storage';
 import {
   createCard,
@@ -139,7 +140,7 @@ export function useBoard() {
       return {
         ...prev,
         liveCapacity: newLive,
-        ...(prev.autoBudget ? { energyBudget: (prev.windowSize ?? 7) * newLive } : {}),
+        ...(prev.autoBudget ? { energyBudget: (prev.windowSize ?? WINDOW_DEFAULT) * newLive } : {}),
         capacitiesUpdatedAt: now,
         lastSaved: now,
       };
@@ -197,10 +198,15 @@ export function useBoard() {
     });
   }, []);
 
-  /** Toggle time features on/off */
+  /** Toggle time features on/off. Disabling also turns off autoBudget. */
   const setTimeFeatures = useCallback((enabled: boolean) => {
     const now = new Date().toISOString();
-    setBoard((prev) => ({ ...prev, timeFeatures: enabled, lastSaved: now }));
+    setBoard((prev) => ({
+      ...prev,
+      timeFeatures: enabled,
+      ...(!enabled && prev.autoBudget ? { autoBudget: false } : {}),
+      lastSaved: now,
+    }));
   }, []);
 
   /** Update rolling window size */
@@ -223,7 +229,7 @@ export function useBoard() {
     setBoard((prev) => ({
       ...prev,
       autoBudget: enabled,
-      ...(enabled ? { energyBudget: (prev.windowSize ?? 7) * prev.liveCapacity } : {}),
+      ...(enabled ? { energyBudget: (prev.windowSize ?? WINDOW_DEFAULT) * prev.liveCapacity } : {}),
       capacitiesUpdatedAt: now,
       lastSaved: now,
     }));
@@ -263,6 +269,17 @@ export function useBoard() {
     [],
   );
 
+  /** Update activities array (functional updater to avoid stale closures) */
+  const setActivities = useCallback((updater: (prev: Activity[]) => Activity[]) => {
+    const now = new Date().toISOString();
+    setBoard((prev) => ({
+      ...prev,
+      activities: updater(prev.activities ?? []),
+      activitiesUpdatedAt: now,
+      lastSaved: now,
+    }));
+  }, []);
+
   /** Replace the entire board (used by Drive sync when remote is newer) */
   const replaceBoard = useCallback((newBoard: OhmBoard) => {
     setBoard(newBoard);
@@ -287,6 +304,7 @@ export function useBoard() {
     setTimeFeatures,
     setWindowSize,
     setAutoBudget,
+    setActivities,
     materializeInstances,
     replaceBoard,
   };

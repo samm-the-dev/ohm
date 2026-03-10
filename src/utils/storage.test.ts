@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { STATUS, ENERGY_DEFAULT } from '../types/board';
+import { STATUS, ENERGY_DEFAULT, BUDGET_DEFAULT, LIVE_DEFAULT } from '../types/board';
 import type { OhmBoard } from '../types/board';
 import { sanitizeBoard } from './storage';
 
@@ -29,8 +29,8 @@ describe('sanitizeBoard', () => {
   it('resets invalid capacities to defaults', () => {
     const board = makeBoard({ energyBudget: -1, liveCapacity: 0 });
     const result = sanitizeBoard(board);
-    expect(result.energyBudget).toBe(42);
-    expect(result.liveCapacity).toBe(6);
+    expect(result.energyBudget).toBe(BUDGET_DEFAULT);
+    expect(result.liveCapacity).toBe(LIVE_DEFAULT);
   });
 
   it('backfills missing timestamp fields from lastSaved', () => {

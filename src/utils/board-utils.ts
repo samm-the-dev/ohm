@@ -30,11 +30,12 @@ export function createCard(
   };
 }
 
-/** Move a card to a new column */
+/** Move a card to a new column. Grounded clears scheduledDate (paused = no date). */
 export function moveCard(card: OhmCard, newStatus: ColumnStatus): OhmCard {
   return {
     ...card,
     status: newStatus,
+    ...(newStatus === STATUS.GROUNDED ? { scheduledDate: undefined } : {}),
     updatedAt: new Date().toISOString(),
   };
 }
@@ -56,10 +57,31 @@ export function getColumnCapacity(
   return { used, total: board.liveCapacity };
 }
 
-/** Get total energy usage across non-Powered columns vs. the rolling-window budget. */
-export function getTotalCapacity(board: OhmBoard): { used: number; total: number } {
+/** Get total energy usage for the rolling window vs. the budget.
+ *  Grounded cards are paused/deferred and never count.
+ *  Live cards always count (active now).
+ *  Powered cards count if their effective date falls within the window.
+ *  Charging cards count if they have no date or their date is within the window.
+ *  When no window is provided (time features off), counts all non-Grounded cards. */
+export function getTotalCapacity(
+  board: OhmBoard,
+  windowStart?: string,
+  windowEnd?: string,
+): { used: number; total: number } {
   const used = board.cards
-    .filter((c) => c.status !== STATUS.POWERED)
+    .filter((c) => {
+      if (c.status === STATUS.GROUNDED) return false;
+      if (!windowStart || !windowEnd) return true;
+      if (c.status === STATUS.LIVE) return true;
+      // Powered: count if effective date is in window
+      if (c.status === STATUS.POWERED) {
+        const d = cardEffectiveDate(c);
+        return d >= windowStart && d <= windowEnd;
+      }
+      // Charging: count if no date or date is in window
+      if (!c.scheduledDate) return true;
+      return c.scheduledDate >= windowStart && c.scheduledDate <= windowEnd;
+    })
     .reduce((sum, c) => sum + c.energy, 0);
   return { used, total: board.energyBudget };
 }
@@ -91,16 +113,16 @@ export function getExpiredPowered(board: OhmBoard, windowStart: string): OhmCard
   );
 }
 
-/** Get per-day energy usage for a date window. Returns entries sorted by date. */
+/** Get per-day energy usage for a date window (excludes Grounded). Returns entries sorted by date. */
 export function getDailyEnergy(
   board: OhmBoard,
   windowStart: string,
   windowEnd: string,
 ): Array<{ date: string; used: number }> {
-  // Build a map of date -> total energy
+  // Build a map of date -> total energy (exclude Grounded — paused/deferred)
   const byDate = new Map<string, number>();
   for (const card of board.cards) {
-    if (!card.scheduledDate) continue;
+    if (!card.scheduledDate || card.status === STATUS.GROUNDED) continue;
     if (card.scheduledDate < windowStart || card.scheduledDate > windowEnd) continue;
     byDate.set(card.scheduledDate, (byDate.get(card.scheduledDate) ?? 0) + card.energy);
   }

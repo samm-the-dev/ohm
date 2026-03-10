@@ -13,6 +13,7 @@ import {
 import {
   DndContext,
   DragOverlay,
+  KeyboardSensor,
   closestCenter,
   PointerSensor,
   TouchSensor,
@@ -21,7 +22,7 @@ import {
   type DragStartEvent,
   type DragEndEvent,
 } from '@dnd-kit/core';
-import { arrayMove } from '@dnd-kit/sortable';
+import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import type { OhmCard, ColumnStatus } from '../types/board';
 import {
   STATUS,
@@ -29,6 +30,7 @@ import {
   ENERGY_MIN,
   ENERGY_MAX,
   ENERGY_DEFAULT,
+  WINDOW_DEFAULT,
   energyColor,
 } from '../types/board';
 import { ACTIVITY_STATUS } from '../types/activity';
@@ -47,6 +49,7 @@ import { useActivities } from '../hooks/useActivities';
 import { useDriveSync } from '../hooks/useDriveSync';
 import { useWelcomeBack } from '../hooks/useWelcomeBack';
 import { Button } from './ui/button';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from './ui/dialog';
 import { Column } from './Column';
 import { CardDetail } from './CardDetail';
 import { SettingsDialog } from './SettingsDialog';
@@ -171,9 +174,22 @@ export function Board() {
     setTimeFeatures,
     setWindowSize,
     setAutoBudget,
+    setActivities,
     materializeInstances,
     replaceBoard,
   } = useBoard();
+
+  // One-time migration: copy activities from Dexie to board state
+  useEffect(() => {
+    if (board.activities && board.activities.length > 0) return;
+    void (async () => {
+      const { db } = await import('../db');
+      const dexieActivities = await db.activities.toArray();
+      if (dexieActivities.length > 0) {
+        setActivities(() => dexieActivities);
+      }
+    })();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const {
     activities,
@@ -183,39 +199,50 @@ export function Board() {
     deleteActivity,
     refreshWindow,
     syncInstanceToColumn,
-  } = useActivities(board.windowSize);
+  } = useActivities({
+    activities: board.activities ?? [],
+    setActivities,
+    windowSize: board.windowSize,
+  });
 
-  // Refresh activity instances when time features are enabled;
-  // demote cards linked to expired instances to Grounded
+  // Cards pending user action (expired scheduled cards)
+  const [pendingExpired, setPendingExpired] = useState<OhmCard[]>([]);
+
+  // Refresh activity instances when time features are enabled
   useEffect(() => {
     if (!board.timeFeatures) return;
-    void refreshWindow().then((expiredIds) => {
-      if (!expiredIds || expiredIds.length === 0) return;
-      const expiredSet = new Set(expiredIds);
-      for (const card of board.cards) {
-        if (
-          card.activityInstanceId &&
-          expiredSet.has(card.activityInstanceId) &&
-          card.status !== STATUS.GROUNDED &&
-          card.status !== STATUS.POWERED
-        ) {
-          move(card.id, STATUS.GROUNDED);
-          // Instance already demoted to Failed by refreshWindow — no extra sync needed
-        }
-      }
-    });
-  }, [board.timeFeatures, refreshWindow]); // eslint-disable-line react-hooks/exhaustive-deps
+    void refreshWindow();
+  }, [board.timeFeatures, refreshWindow]);
 
-  // Auto-demote: move Charging cards whose scheduledDate is before today to Grounded
+  // Collect expired cards: Charging non-activity cards auto-ground silently;
+  // everything else (Live with past date, activity instance cards) prompts user.
   useEffect(() => {
     if (!board.timeFeatures) return;
     const today = toISODate(new Date());
+    const toPrompt: OhmCard[] = [];
+
     for (const card of board.cards) {
-      if (card.status === STATUS.CHARGING && card.scheduledDate && card.scheduledDate < today) {
+      if (!card.scheduledDate || card.scheduledDate >= today) continue;
+      if (card.status === STATUS.GROUNDED || card.status === STATUS.POWERED) continue;
+
+      if (card.status === STATUS.CHARGING && !card.activityInstanceId) {
+        // Non-activity Charging card with past date — auto-ground silently
         move(card.id, STATUS.GROUNDED);
+      } else {
+        // Live cards, or activity-linked Charging cards — prompt user
+        toPrompt.push(card);
       }
     }
-  }, [board.timeFeatures, board.cards, move]);
+
+    setPendingExpired((prev) => {
+      if (toPrompt.length === 0) return prev.length === 0 ? prev : [];
+      // Only update if the set of card IDs actually changed
+      const prevIds = new Set(prev.map((c) => c.id));
+      const newIds = new Set(toPrompt.map((c) => c.id));
+      if (prevIds.size === newIds.size && [...prevIds].every((id) => newIds.has(id))) return prev;
+      return toPrompt;
+    });
+  }, [board.timeFeatures, board.cards, move]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Materialize Potential activity instances as Charging cards (atomic — strict-mode safe)
   useEffect(() => {
@@ -252,7 +279,7 @@ export function Board() {
   useEffect(() => {
     if (!board.timeFeatures) return;
     const trailingStart = new Date();
-    trailingStart.setDate(trailingStart.getDate() - ((board.windowSize ?? 7) - 1));
+    trailingStart.setDate(trailingStart.getDate() - ((board.windowSize ?? WINDOW_DEFAULT) - 1));
     const expired = getExpiredPowered(board, toISODate(trailingStart));
     if (expired.length > 0) {
       deleteCards(expired.map((c) => c.id));
@@ -266,7 +293,42 @@ export function Board() {
   const touchSensor = useSensor(TouchSensor, {
     activationConstraint: { delay: 150, tolerance: 5 },
   });
-  const sensors = useSensors(pointerSensor, touchSensor);
+  const keyboardSensor = useSensor(KeyboardSensor, {
+    coordinateGetter: sortableKeyboardCoordinates,
+  });
+  const sensors = useSensors(pointerSensor, touchSensor, keyboardSensor);
+
+  // Screen reader announcements for drag-and-drop
+  const dndAnnouncements = useMemo(
+    () => ({
+      onDragStart({ active }: DragStartEvent) {
+        const card = board.cards.find((c) => c.id === active.id);
+        return card ? `Picked up card: ${card.title}` : '';
+      },
+      onDragOver() {
+        return '';
+      },
+      onDragEnd({ active, over }: DragEndEvent) {
+        const card = board.cards.find((c) => c.id === active.id);
+        if (!card) return '';
+        if (!over || active.id === over.id) return `Dropped card: ${card.title}`;
+        const overCard = board.cards.find((c) => c.id === over.id);
+        if (overCard) {
+          const columnCards = getColumnCards(board, overCard.status);
+          const newIndex = columnCards.findIndex((c) => c.id === over.id);
+          return newIndex >= 0
+            ? `Dropped ${card.title} at position ${newIndex + 1}`
+            : `Dropped card: ${card.title}`;
+        }
+        return `Dropped card: ${card.title}`;
+      },
+      onDragCancel({ active }: { active: { id: string | number } }) {
+        const card = board.cards.find((c) => c.id === active.id);
+        return card ? `Cancelled dragging: ${card.title}` : '';
+      },
+    }),
+    [board],
+  );
 
   const [draggingCard, setDraggingCard] = useState<OhmCard | null>(null);
 
@@ -332,7 +394,7 @@ export function Board() {
     if (!board.timeFeatures) return 0;
     const today = new Date();
     const trailingStart = new Date(today);
-    trailingStart.setDate(trailingStart.getDate() - ((board.windowSize ?? 7) - 1));
+    trailingStart.setDate(trailingStart.getDate() - ((board.windowSize ?? WINDOW_DEFAULT) - 1));
     const trailing = getTrailingPowered(board, toISODate(trailingStart), toISODate(today));
     return board.energyBudget > 0 ? trailing.used / board.energyBudget : 0;
   }, [board]);
@@ -414,6 +476,10 @@ export function Board() {
 
   return (
     <div className="bg-ohm-bg flex min-h-screen flex-col">
+      <a href="#board" className="skip-to-content">
+        Skip to board
+      </a>
+
       {/* Header */}
       <header className="border-ohm-border bg-ohm-bg/90 sticky top-0 z-30 border-b backdrop-blur-md">
         <div className="flex items-center justify-between px-4 py-3">
@@ -433,12 +499,12 @@ export function Board() {
           </div>
 
           {/* Center -- title */}
-          <div className="flex items-center gap-2">
-            <Zap size={18} className="text-ohm-spark" />
+          <h1 className="flex items-center gap-2">
+            <Zap size={18} className="text-ohm-spark" aria-hidden="true" />
             <span className="font-display text-ohm-text text-sm font-bold tracking-widest uppercase">
               Ohm
             </span>
-          </div>
+          </h1>
 
           {/* Right -- quick spark (desktop) + share */}
           <div className="flex w-20 items-center justify-end gap-1">
@@ -516,7 +582,7 @@ export function Board() {
       )}
 
       {/* Filter bar */}
-      <div className="border-ohm-border border-b px-4 py-2">
+      <nav aria-label="Filters" className="border-ohm-border border-b px-4 py-2">
         {/* Row 1: Energy min/max filter + expand toggle (mobile) */}
         <div className="flex items-center gap-2">
           <span className="font-display text-ohm-muted shrink-0 text-[10px] tracking-widest uppercase">
@@ -662,6 +728,7 @@ export function Board() {
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
               placeholder="Search..."
+              aria-label="Search cards"
               className="border-ohm-border font-body text-ohm-text placeholder:text-ohm-muted/40 focus:ring-ohm-text/10 w-full rounded-full border bg-transparent py-1 pr-2 pl-7 text-[11px] focus:ring-1 focus:outline-hidden"
             />
             {searchFilter && (
@@ -669,6 +736,7 @@ export function Board() {
                 type="button"
                 onClick={() => setSearchFilter('')}
                 className="text-ohm-muted hover:text-ohm-text absolute right-1.5"
+                aria-label="Clear search"
               >
                 <X size={10} />
               </button>
@@ -701,6 +769,7 @@ export function Board() {
                   value={searchFilter}
                   onChange={(e) => setSearchFilter(e.target.value)}
                   placeholder="Search cards..."
+                  aria-label="Search cards"
                   className="border-ohm-border font-body text-ohm-text placeholder:text-ohm-muted/40 focus:ring-ohm-text/10 w-full rounded-full border bg-transparent py-1.5 pr-2 pl-7 text-xs focus:ring-1 focus:outline-hidden"
                 />
                 {searchFilter && (
@@ -708,6 +777,7 @@ export function Board() {
                     type="button"
                     onClick={() => setSearchFilter('')}
                     className="text-ohm-muted hover:text-ohm-text absolute right-2"
+                    aria-label="Clear search"
                   >
                     <X size={12} />
                   </button>
@@ -724,27 +794,29 @@ export function Board() {
             </div>
           </div>
         )}
-      </div>
+      </nav>
 
       {/* Energy meters — shared grid so bars align */}
       {(() => {
-        const total = getTotalCapacity(board);
-        const totalRatio = Math.min(total.used / total.total, 1);
-        const totalHue = 120 * (1 - totalRatio);
-        const totalColor = `hsl(${totalHue}, 80%, 50%)`;
-
         const today = new Date();
         const todayStr = toISODate(today);
 
-        // Daily meters
+        // Window bounds for budget calculation
+        let windowEndStr: string | undefined;
         let daily: Array<{ date: string; used: number }> = [];
         let dayLimit = board.liveCapacity;
         if (board.timeFeatures) {
           const windowEnd = new Date(today);
-          windowEnd.setDate(windowEnd.getDate() + (board.windowSize ?? 7) - 1);
-          daily = getDailyEnergy(board, todayStr, toISODate(windowEnd));
+          windowEnd.setDate(windowEnd.getDate() + (board.windowSize ?? WINDOW_DEFAULT) - 1);
+          windowEndStr = toISODate(windowEnd);
+          daily = getDailyEnergy(board, todayStr, windowEndStr);
           dayLimit = board.liveCapacity;
         }
+
+        const total = getTotalCapacity(board, todayStr, windowEndStr);
+        const totalRatio = Math.min(total.used / total.total, 1);
+        const totalHue = 120 * (1 - totalRatio);
+        const totalColor = `hsl(${totalHue}, 80%, 50%)`;
 
         return (
           <div
@@ -820,8 +892,13 @@ export function Board() {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
+        accessibility={{ announcements: dndAnnouncements }}
       >
-        <main className="flex-1 overflow-y-auto md:overflow-x-auto md:overflow-y-hidden">
+        <main
+          id="board"
+          tabIndex={-1}
+          className="flex-1 overflow-y-auto focus:outline-none md:overflow-x-auto md:overflow-y-hidden"
+        >
           <div className="flex flex-col gap-3 p-4 md:min-h-[calc(100vh-56px)] md:flex-row md:gap-4">
             {COLUMNS.map((col, index) => {
               const status = index as ColumnStatus;
@@ -903,6 +980,82 @@ export function Board() {
             setSettingsOpen(true);
           }}
         />
+      )}
+
+      {/* Expired cards prompt */}
+      {pendingExpired.length > 0 && (
+        <Dialog open onOpenChange={() => setPendingExpired([])}>
+          <DialogContent className="bg-ohm-surface border-ohm-border max-w-sm">
+            <DialogTitle className="font-display text-ohm-text text-sm tracking-wider uppercase">
+              Expired tasks
+            </DialogTitle>
+            <DialogDescription className="font-body text-ohm-muted text-xs">
+              These tasks have dates in the past. What happened?
+            </DialogDescription>
+            <div className="flex flex-col gap-2 pt-2">
+              {pendingExpired.map((card) => {
+                const isActivity = !!card.activityInstanceId;
+                return (
+                  <div
+                    key={card.id}
+                    className="border-ohm-border flex items-center justify-between gap-2 rounded-md border px-3 py-2"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="font-body text-ohm-text truncate text-xs">{card.title}</p>
+                      <p className="font-body text-ohm-muted/60 text-[10px]">
+                        {card.scheduledDate}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 gap-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-ohm-powered/30 text-ohm-powered hover:bg-ohm-powered/10 h-6 px-2 text-[10px]"
+                        onClick={() => {
+                          move(card.id, STATUS.POWERED);
+                          if (card.activityInstanceId) {
+                            void syncInstanceToColumn(card.activityInstanceId, STATUS.POWERED);
+                          }
+                          setPendingExpired((prev) => prev.filter((c) => c.id !== card.id));
+                        }}
+                      >
+                        Done
+                      </Button>
+                      {isActivity ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-ohm-live/30 text-ohm-live hover:bg-ohm-live/10 h-6 px-2 text-[10px]"
+                          onClick={() => {
+                            if (card.activityInstanceId) {
+                              void syncInstanceToColumn(card.activityInstanceId, STATUS.GROUNDED);
+                            }
+                            deleteCard(card.id);
+                            setPendingExpired((prev) => prev.filter((c) => c.id !== card.id));
+                          }}
+                        >
+                          Skip
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-ohm-grounded/30 text-ohm-grounded hover:bg-ohm-grounded/10 h-6 px-2 text-[10px]"
+                          onClick={() => {
+                            move(card.id, STATUS.GROUNDED);
+                            setPendingExpired((prev) => prev.filter((c) => c.id !== card.id));
+                          }}
+                        >
+                          Pause
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
 
       {/* Settings dialog */}

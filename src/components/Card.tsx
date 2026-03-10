@@ -85,7 +85,7 @@ export function Card({ card, onTap, onReorder }: CardProps) {
             style={{ color: energyColor(card.energy) }}
             title={`Energy ${card.energy}`}
           >
-            <EnergyIcon size={10} value={card.energy} />
+            <EnergyIcon size={10} value={card.energy} aria-hidden="true" />
             <span className="font-body text-[10px] tracking-wider uppercase">{card.energy}</span>
           </span>
 

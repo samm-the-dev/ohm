@@ -280,7 +280,7 @@ export function CardDetail({
         </div>
 
         {/* Scheduled date (when time features enabled) */}
-        {timeFeatures && !isPowered && (
+        {timeFeatures && (
           <div className="mb-3">
             <label
               htmlFor="card-scheduled-date"
@@ -312,17 +312,6 @@ export function CardDetail({
                 </button>
               )}
             </div>
-          </div>
-        )}
-
-        {/* Scheduled date (read-only for Powered) */}
-        {timeFeatures && isPowered && editing.scheduledDate && (
-          <div className="mb-3">
-            <span className="font-display text-ohm-muted mb-1 flex items-center gap-1 text-[10px] tracking-widest uppercase">
-              <Calendar size={10} />
-              Scheduled
-            </span>
-            <p className="font-body text-ohm-muted text-sm">{editing.scheduledDate}</p>
           </div>
         )}
 

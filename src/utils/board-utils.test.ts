@@ -110,21 +110,84 @@ describe('getColumnCapacity', () => {
 });
 
 describe('getTotalCapacity', () => {
-  it('excludes Powered cards from used total', () => {
+  it('excludes Grounded cards from used total', () => {
     const board = makeBoard({
       energyBudget: 42,
       cards: [
         makeCard({ id: 'a', status: STATUS.CHARGING, energy: 2 }),
         makeCard({ id: 'b', status: STATUS.LIVE, energy: 4 }),
         makeCard({ id: 'c', status: STATUS.POWERED, energy: 6 }),
+        makeCard({ id: 'd', status: STATUS.GROUNDED, energy: 3 }),
       ],
     });
-    expect(getTotalCapacity(board)).toEqual({ used: 6, total: 42 });
+    // Charging(2) + Live(4) + Powered(6) = 12, Grounded excluded
+    expect(getTotalCapacity(board)).toEqual({ used: 12, total: 42 });
   });
 
   it('returns zero used when board is empty', () => {
     const board = makeBoard({ energyBudget: 42 });
     expect(getTotalCapacity(board)).toEqual({ used: 0, total: 42 });
+  });
+
+  describe('with window (time features)', () => {
+    const WIN_START = '2026-03-08';
+    const WIN_END = '2026-03-11';
+
+    it('includes Powered cards inside the window', () => {
+      const board = makeBoard({
+        energyBudget: 20,
+        cards: [makeCard({ status: STATUS.POWERED, energy: 4, scheduledDate: '2026-03-09' })],
+      });
+      expect(getTotalCapacity(board, WIN_START, WIN_END)).toEqual({ used: 4, total: 20 });
+    });
+
+    it('excludes Powered cards outside the window', () => {
+      const board = makeBoard({
+        energyBudget: 20,
+        cards: [makeCard({ status: STATUS.POWERED, energy: 4, scheduledDate: '2026-03-01' })],
+      });
+      expect(getTotalCapacity(board, WIN_START, WIN_END)).toEqual({ used: 0, total: 20 });
+    });
+
+    it('always includes Live cards regardless of date', () => {
+      const board = makeBoard({
+        energyBudget: 20,
+        cards: [makeCard({ status: STATUS.LIVE, energy: 3 })],
+      });
+      expect(getTotalCapacity(board, WIN_START, WIN_END)).toEqual({ used: 3, total: 20 });
+    });
+
+    it('always excludes Grounded cards', () => {
+      const board = makeBoard({
+        energyBudget: 20,
+        cards: [makeCard({ status: STATUS.GROUNDED, energy: 5, scheduledDate: '2026-03-09' })],
+      });
+      expect(getTotalCapacity(board, WIN_START, WIN_END)).toEqual({ used: 0, total: 20 });
+    });
+
+    it('includes Charging cards without a date', () => {
+      const board = makeBoard({
+        energyBudget: 20,
+        cards: [makeCard({ status: STATUS.CHARGING, energy: 2 })],
+      });
+      expect(getTotalCapacity(board, WIN_START, WIN_END)).toEqual({ used: 2, total: 20 });
+    });
+
+    it('excludes Charging cards with a date outside the window', () => {
+      const board = makeBoard({
+        energyBudget: 20,
+        cards: [makeCard({ status: STATUS.CHARGING, energy: 2, scheduledDate: '2026-03-20' })],
+      });
+      expect(getTotalCapacity(board, WIN_START, WIN_END)).toEqual({ used: 0, total: 20 });
+    });
+
+    it('includes Charging cards with a date inside the window', () => {
+      const board = makeBoard({
+        energyBudget: 20,
+        cards: [makeCard({ status: STATUS.CHARGING, energy: 2, scheduledDate: '2026-03-09' })],
+      });
+      expect(getTotalCapacity(board, WIN_START, WIN_END)).toEqual({ used: 2, total: 20 });
+    });
   });
 });
 
@@ -250,6 +313,19 @@ describe('getDailyEnergy', () => {
     });
     const result = getDailyEnergy(board, '2026-03-09', '2026-03-09');
     expect(result).toEqual([{ date: '2026-03-09', used: 0 }]);
+  });
+
+  it('excludes Grounded cards from daily totals', () => {
+    const board = makeBoard({
+      cards: [
+        makeCard({ id: 'a', status: STATUS.LIVE, energy: 2, scheduledDate: '2026-03-09' }),
+        makeCard({ id: 'b', status: STATUS.GROUNDED, energy: 5, scheduledDate: '2026-03-09' }),
+        makeCard({ id: 'c', status: STATUS.POWERED, energy: 3, scheduledDate: '2026-03-09' }),
+      ],
+    });
+    const result = getDailyEnergy(board, '2026-03-09', '2026-03-09');
+    // Live(2) + Powered(3) = 5, Grounded excluded
+    expect(result).toEqual([{ date: '2026-03-09', used: 5 }]);
   });
 });
 

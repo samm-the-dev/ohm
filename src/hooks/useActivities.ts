@@ -5,29 +5,39 @@ import type { StoredSchedule } from '../types/schedule';
 import { ACTIVITY_STATUS } from '../types/activity';
 import { generateInstances, toISODate } from '../utils/schedule-utils';
 import { generateId } from '../utils/board-utils';
+import { WINDOW_DEFAULT } from '../types/board';
 
-const DEFAULT_WINDOW_SIZE = 7;
+interface UseActivitiesOptions {
+  /** Activity templates (from board state, synced via Drive) */
+  activities: Activity[];
+  /** Functional updater for activities (writes to board state) */
+  setActivities: (updater: (prev: Activity[]) => Activity[]) => void;
+  /** Rolling window size in days */
+  windowSize?: number;
+}
 
-export function useActivities(windowSize = DEFAULT_WINDOW_SIZE) {
-  const [activities, setActivities] = useState<Activity[]>([]);
+export function useActivities({
+  activities,
+  setActivities,
+  windowSize = WINDOW_DEFAULT,
+}: UseActivitiesOptions) {
   const [instances, setInstances] = useState<ActivityInstance[]>([]);
 
-  const loadAll = useCallback(async () => {
-    const [acts, insts] = await Promise.all([db.activities.toArray(), db.instances.toArray()]);
-    setActivities(acts);
+  const loadInstances = useCallback(async () => {
+    const insts = await db.instances.toArray();
     setInstances(insts);
   }, []);
 
   useEffect(() => {
-    void loadAll();
-  }, [loadAll]);
+    void loadInstances();
+  }, [loadInstances]);
 
   /** Create a new activity with an optional schedule */
   const addActivity = useCallback(
-    async (
+    (
       name: string,
       opts?: { description?: string; schedule?: StoredSchedule; energy?: number },
-    ): Promise<Activity> => {
+    ): Activity => {
       const activity: Activity = {
         id: generateId(),
         sourceId: 'ohm',
@@ -36,32 +46,28 @@ export function useActivities(windowSize = DEFAULT_WINDOW_SIZE) {
         schedule: opts?.schedule,
         energy: opts?.energy,
       };
-      await db.activities.add(activity);
-      await loadAll();
+      setActivities((prev) => [...prev, activity]);
       return activity;
     },
-    [loadAll],
+    [setActivities],
   );
 
   /** Update an existing activity */
   const updateActivity = useCallback(
-    async (id: string, changes: Partial<Omit<Activity, 'id'>>) => {
-      await db.activities.update(id, changes);
-      await loadAll();
+    (id: string, changes: Partial<Omit<Activity, 'id'>>) => {
+      setActivities((prev) => prev.map((a) => (a.id === id ? { ...a, ...changes } : a)));
     },
-    [loadAll],
+    [setActivities],
   );
 
   /** Delete an activity and all its instances */
   const deleteActivity = useCallback(
     async (id: string) => {
-      await db.transaction('rw', db.activities, db.instances, async () => {
-        await db.activities.delete(id);
-        await db.instances.where('activityId').equals(id).delete();
-      });
-      await loadAll();
+      setActivities((prev) => prev.filter((a) => a.id !== id));
+      await db.instances.where('activityId').equals(id).delete();
+      await loadInstances();
     },
-    [loadAll],
+    [setActivities, loadInstances],
   );
 
   // Prevent concurrent refreshWindow calls (React strict mode runs effects twice)
@@ -80,7 +86,6 @@ export function useActivities(windowSize = DEFAULT_WINDOW_SIZE) {
       const windowEnd = new Date(today);
       windowEnd.setDate(windowEnd.getDate() + windowSize - 1);
 
-      const allActivities = await db.activities.toArray();
       const existingInstances = await db.instances.toArray();
 
       // Deduplicate: remove duplicate instances per [activityId, scheduledDate]
@@ -99,7 +104,7 @@ export function useActivities(windowSize = DEFAULT_WINDOW_SIZE) {
       const dupeIdSet = new Set(dupeIds);
       const dedupedInstances = existingInstances.filter((i) => !dupeIdSet.has(i.id));
       const newInstances: ActivityInstance[] = [];
-      for (const activity of allActivities) {
+      for (const activity of activities) {
         newInstances.push(...generateInstances(activity, today, windowEnd, dedupedInstances));
       }
 
@@ -124,13 +129,13 @@ export function useActivities(windowSize = DEFAULT_WINDOW_SIZE) {
         }
       });
 
-      if (changed) await loadAll();
+      if (changed) await loadInstances();
 
       return expired.map((inst) => inst.id);
     } finally {
       refreshingRef.current = false;
     }
-  }, [windowSize, loadAll]);
+  }, [windowSize, activities, loadInstances]);
 
   /** Claim an instance (move to Active/Live) */
   const claimInstance = useCallback(
@@ -139,9 +144,9 @@ export function useActivities(windowSize = DEFAULT_WINDOW_SIZE) {
         status: ACTIVITY_STATUS.ACTIVE,
         claimedAt: new Date().toISOString(),
       });
-      await loadAll();
+      await loadInstances();
     },
-    [loadAll],
+    [loadInstances],
   );
 
   /** Complete an instance (move to Completed/Powered) */
@@ -151,9 +156,9 @@ export function useActivities(windowSize = DEFAULT_WINDOW_SIZE) {
         status: ACTIVITY_STATUS.COMPLETED,
         completedAt: new Date().toISOString(),
       });
-      await loadAll();
+      await loadInstances();
     },
-    [loadAll],
+    [loadInstances],
   );
 
   /** Skip an instance (move to Failed/Grounded) */
@@ -162,15 +167,15 @@ export function useActivities(windowSize = DEFAULT_WINDOW_SIZE) {
       await db.instances.update(instanceId, {
         status: ACTIVITY_STATUS.FAILED,
       });
-      await loadAll();
+      await loadInstances();
     },
-    [loadAll],
+    [loadInstances],
   );
 
-  /** Column-status → instance-status mapping (Charging=0, Grounded=1, Live=2, Powered=3) */
+  /** Column-status → instance-status mapping (Grounded=0, Charging=1, Live=2, Powered=3) */
   const COLUMN_TO_INSTANCE: Record<number, ActivityStatus> = {
-    0: ACTIVITY_STATUS.POTENTIAL,
-    1: ACTIVITY_STATUS.FAILED,
+    0: ACTIVITY_STATUS.FAILED,
+    1: ACTIVITY_STATUS.POTENTIAL,
     2: ACTIVITY_STATUS.ACTIVE,
     3: ACTIVITY_STATUS.COMPLETED,
   };
@@ -186,9 +191,9 @@ export function useActivities(windowSize = DEFAULT_WINDOW_SIZE) {
       if (columnStatus === 3) updates.completedAt = new Date().toISOString();
 
       await db.instances.update(instanceId, updates);
-      await loadAll();
+      await loadInstances();
     },
-    [loadAll],
+    [loadInstances],
   );
 
   return {

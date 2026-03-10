@@ -17,12 +17,28 @@ const DAY_OPTIONS = [
   { label: 'Sun', value: 'Sunday' },
 ] as const;
 
+const FREQ_OPTIONS = [
+  { label: 'Daily', value: 'P1D' },
+  { label: 'Weekly', value: 'P1W' },
+  { label: 'Monthly', value: 'P1M' },
+] as const;
+
 interface ScheduleEditorProps {
   schedule: Partial<StoredSchedule>;
   onChange: (schedule: Partial<StoredSchedule>) => void;
 }
 
 function ScheduleEditor({ schedule, onChange }: ScheduleEditorProps) {
+  const freq = schedule.repeatFrequency ?? 'P1D';
+
+  const setFreq = (value: string) => {
+    const next: Partial<StoredSchedule> = { ...schedule, repeatFrequency: value };
+    // Clear irrelevant fields when switching frequency
+    if (value !== 'P1W') delete next.byDay;
+    if (value !== 'P1M') delete next.byMonthDay;
+    onChange(next);
+  };
+
   const toggleDay = (day: string) => {
     const current = schedule.byDay ?? [];
     const next = current.includes(day as never)
@@ -31,29 +47,77 @@ function ScheduleEditor({ schedule, onChange }: ScheduleEditorProps) {
     onChange({ ...schedule, byDay: next.length > 0 ? next : undefined });
   };
 
+  const toggleMonthDay = (day: number) => {
+    const current = schedule.byMonthDay ?? [];
+    const next = current.includes(day) ? current.filter((d) => d !== day) : [...current, day];
+    onChange({ ...schedule, byMonthDay: next.length > 0 ? next : undefined });
+  };
+
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap gap-1">
-        {DAY_OPTIONS.map(({ label, value }) => {
-          const active = schedule.byDay?.includes(value as never);
-          return (
-            <button
-              key={value}
-              type="button"
-              onClick={() => toggleDay(value)}
-              className={`font-body rounded-full px-2 py-0.5 text-[10px] transition-colors ${
-                active
-                  ? 'bg-ohm-spark/20 text-ohm-spark'
-                  : 'bg-ohm-border/50 text-ohm-muted hover:text-ohm-text'
-              }`}
-            >
-              {label}
-            </button>
-          );
-        })}
+      {/* Frequency selector */}
+      <div className="flex gap-1">
+        {FREQ_OPTIONS.map(({ label, value }) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => setFreq(value)}
+            className={`font-body rounded-full px-2 py-0.5 text-[10px] transition-colors ${
+              freq === value
+                ? 'bg-ohm-spark/20 text-ohm-spark'
+                : 'bg-ohm-border/50 text-ohm-muted hover:text-ohm-text'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
-      {!schedule.byDay && (
-        <p className="font-body text-ohm-muted/40 text-[10px]">No days selected — runs daily</p>
+
+      {/* Weekly: day-of-week picker */}
+      {freq === 'P1W' && (
+        <div className="flex flex-wrap gap-1">
+          {DAY_OPTIONS.map(({ label, value }) => {
+            const active = schedule.byDay?.includes(value as never);
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => toggleDay(value)}
+                className={`font-body rounded-full px-2 py-0.5 text-[10px] transition-colors ${
+                  active
+                    ? 'bg-ohm-spark/20 text-ohm-spark'
+                    : 'bg-ohm-border/50 text-ohm-muted hover:text-ohm-text'
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Monthly: day-of-month picker */}
+      {freq === 'P1M' && (
+        <div className="flex flex-wrap gap-1">
+          {Array.from({ length: 31 }, (_, i) => {
+            const day = i + 1;
+            const active = schedule.byMonthDay?.includes(day);
+            return (
+              <button
+                key={day}
+                type="button"
+                onClick={() => toggleMonthDay(day)}
+                className={`font-body rounded-full px-1.5 py-0.5 text-[10px] tabular-nums transition-colors ${
+                  active
+                    ? 'bg-ohm-spark/20 text-ohm-spark'
+                    : 'bg-ohm-border/50 text-ohm-muted hover:text-ohm-text'
+                }`}
+              >
+                {day}
+              </button>
+            );
+          })}
+        </div>
       )}
     </div>
   );
@@ -73,7 +137,7 @@ function ActivityForm({ initial, onSubmit, onCancel }: ActivityFormProps) {
   const [description, setDescription] = useState(initial?.description ?? '');
   const [energy, setEnergy] = useState<number | undefined>(initial?.energy);
   const [schedule, setSchedule] = useState<Partial<StoredSchedule>>(
-    initial?.schedule ?? { repeatFrequency: 'P1W' },
+    initial?.schedule ?? { repeatFrequency: 'P1D' },
   );
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -84,7 +148,7 @@ function ActivityForm({ initial, onSubmit, onCancel }: ActivityFormProps) {
       description: description.trim() || undefined,
       schedule: {
         ...schedule,
-        repeatFrequency: schedule.byDay ? 'P1W' : 'P1D',
+        repeatFrequency: schedule.repeatFrequency ?? 'P1D',
       } as StoredSchedule,
       energy,
     });
@@ -169,29 +233,29 @@ interface ActivityManagerProps {
   onAdd: (
     name: string,
     opts?: { description?: string; schedule?: StoredSchedule; energy?: number },
-  ) => Promise<Activity>;
-  onUpdate: (id: string, changes: Partial<Omit<Activity, 'id'>>) => Promise<void>;
-  onDelete: (id: string) => Promise<void>;
+  ) => Activity;
+  onUpdate: (id: string, changes: Partial<Omit<Activity, 'id'>>) => void;
+  onDelete: (id: string) => void | Promise<void>;
 }
 
 export function ActivityManager({ activities, onAdd, onUpdate, onDelete }: ActivityManagerProps) {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const handleAdd = async (
+  const handleAdd = (
     name: string,
     opts: { description?: string; schedule?: StoredSchedule; energy?: number },
   ) => {
-    await onAdd(name, opts);
+    onAdd(name, opts);
     setShowForm(false);
   };
 
-  const handleUpdate = async (
+  const handleUpdate = (
     name: string,
     opts: { description?: string; schedule?: StoredSchedule; energy?: number },
   ) => {
     if (!editingId) return;
-    await onUpdate(editingId, { name, ...opts });
+    onUpdate(editingId, { name, ...opts });
     setEditingId(null);
   };
 
@@ -246,9 +310,11 @@ export function ActivityManager({ activities, onAdd, onUpdate, onDelete }: Activ
                   {activity.name}
                 </span>
                 <span className="font-body text-ohm-muted/60 text-[10px]">
-                  {activity.schedule?.byDay
-                    ? activity.schedule.byDay.map((d) => (d as string).slice(0, 3)).join(', ')
-                    : 'Daily'}
+                  {activity.schedule?.repeatFrequency === 'P1M'
+                    ? `Monthly: ${activity.schedule.byMonthDay?.join(', ') ?? '?'}`
+                    : activity.schedule?.byDay
+                      ? activity.schedule.byDay.map((d) => (d as string).slice(0, 3)).join(', ')
+                      : 'Daily'}
                   {activity.energy !== undefined && (
                     <span className="ml-1.5" style={{ color: energyColor(activity.energy) }}>
                       {activity.energy}

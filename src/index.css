@@ -86,7 +86,7 @@
   --destructive-foreground: hsl(240 14% 89%);
   --border: hsl(240 17% 14%); /* ohm-border #1e1e2a */
   --input: hsl(240 17% 14%);
-  --ring: hsl(240 14% 89% / 0.25); /* ohm-text at 25% -- neutral focus ring */
+  --ring: hsl(240 14% 89% / 0.5); /* ohm-text at 50% -- visible focus ring */
   --radius: 0.5rem;
 }
 
@@ -218,6 +218,27 @@ body {
   font-weight: 700;
   border-radius: calc(var(--radius) - 2px);
   padding: 2px 10px;
+}
+
+/* Skip-to-content link */
+.skip-to-content {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  padding: 0.5rem 1rem;
+  background: #fbbf24;
+  color: #0a0a0f;
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: 0 0 0.5rem 0;
+}
+
+.skip-to-content:focus {
+  left: 0;
 }
 
 /* Dual-range slider thumbs */

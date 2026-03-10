@@ -14,7 +14,7 @@ import {
   Clock,
 } from 'lucide-react';
 import type { OhmBoard } from '../types/board';
-import { WINDOW_MIN, WINDOW_MAX } from '../types/board';
+import { WINDOW_MIN, WINDOW_MAX, WINDOW_DEFAULT } from '../types/board';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from './ui/dialog';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
@@ -55,9 +55,9 @@ interface SettingsDialogProps {
   onAddActivity?: (
     name: string,
     opts?: { description?: string; schedule?: StoredSchedule; energy?: number },
-  ) => Promise<Activity>;
-  onUpdateActivity?: (id: string, changes: Partial<Omit<Activity, 'id'>>) => Promise<void>;
-  onDeleteActivity?: (id: string) => Promise<void>;
+  ) => Activity;
+  onUpdateActivity?: (id: string, changes: Partial<Omit<Activity, 'id'>>) => void;
+  onDeleteActivity?: (id: string) => void | Promise<void>;
   driveAvailable?: boolean;
   driveConnected?: boolean;
   onConnectDrive?: () => void;
@@ -363,21 +363,25 @@ export function SettingsDialog({
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => onSetWindowSize(Math.max(WINDOW_MIN, (windowSize ?? 7) - 1))}
-                  disabled={(windowSize ?? 7) <= WINDOW_MIN}
+                  onClick={() =>
+                    onSetWindowSize(Math.max(WINDOW_MIN, (windowSize ?? WINDOW_DEFAULT) - 1))
+                  }
+                  disabled={(windowSize ?? WINDOW_DEFAULT) <= WINDOW_MIN}
                   className="border-ohm-border text-ohm-muted hover:text-ohm-text h-8 w-8"
                   aria-label="Decrease window size"
                 >
                   <Minus size={14} />
                 </Button>
                 <span className="font-display text-ohm-text min-w-[2ch] text-center text-lg font-bold">
-                  {windowSize ?? 7}
+                  {windowSize ?? WINDOW_DEFAULT}
                 </span>
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => onSetWindowSize(Math.min(WINDOW_MAX, (windowSize ?? 7) + 1))}
-                  disabled={(windowSize ?? 7) >= WINDOW_MAX}
+                  onClick={() =>
+                    onSetWindowSize(Math.min(WINDOW_MAX, (windowSize ?? WINDOW_DEFAULT) + 1))
+                  }
+                  disabled={(windowSize ?? WINDOW_DEFAULT) >= WINDOW_MAX}
                   className="border-ohm-border text-ohm-muted hover:text-ohm-text h-8 w-8"
                   aria-label="Increase window size"
                 >
@@ -409,7 +413,8 @@ export function SettingsDialog({
                 </button>
                 {autoBudget && (
                   <span className="font-body text-ohm-muted/60 text-[10px]">
-                    {windowSize ?? 7} x {liveCapacity} = {(windowSize ?? 7) * liveCapacity}
+                    {windowSize ?? WINDOW_DEFAULT} x {liveCapacity} ={' '}
+                    {(windowSize ?? WINDOW_DEFAULT) * liveCapacity}
                   </span>
                 )}
               </div>
@@ -474,7 +479,7 @@ export function SettingsDialog({
           })}
           {autoBudget && (
             <p className="font-body text-ohm-muted/60 mt-2 text-[10px]">
-              Total is auto-calculated ({windowSize ?? 7} x {liveCapacity}).
+              Total is auto-calculated ({windowSize ?? WINDOW_DEFAULT} x {liveCapacity}).
             </p>
           )}
         </div>

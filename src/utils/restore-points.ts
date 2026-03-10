@@ -114,6 +114,34 @@ export function mergeBoards(local: OhmBoard, imported: OhmBoard): OhmBoard {
   const importCapTs = imported.capacitiesUpdatedAt ?? imported.lastSaved;
   const useImportedCapacities = importCapTs > localCapTs;
 
+  // -- Activities: match by id, keep newer --
+  const localActivities = local.activities ?? [];
+  const importedActivities = imported.activities ?? [];
+  const localActById = new Map(localActivities.map((a) => [a.id, a]));
+  const mergedActivities: typeof localActivities = [];
+  const matchedActIds = new Set<string>();
+
+  for (const importedAct of importedActivities) {
+    const localAct = localActById.get(importedAct.id);
+    if (localAct) {
+      matchedActIds.add(importedAct.id);
+      // No updatedAt on Activity — use the board-level timestamp to decide
+      const localActTs = local.activitiesUpdatedAt ?? local.lastSaved;
+      const importActTs = imported.activitiesUpdatedAt ?? imported.lastSaved;
+      mergedActivities.push(importActTs > localActTs ? importedAct : localAct);
+    } else {
+      mergedActivities.push(importedAct);
+    }
+  }
+  for (const act of localActivities) {
+    if (!matchedActIds.has(act.id)) {
+      mergedActivities.push(act);
+    }
+  }
+  const activitiesChanged =
+    mergedActivities.length !== localActivities.length ||
+    mergedActivities.length !== importedActivities.length;
+
   return {
     version: 1,
     cards: mergedCards,
@@ -125,6 +153,10 @@ export function mergeBoards(local: OhmBoard, imported: OhmBoard): OhmBoard {
     timeFeatures: local.timeFeatures ?? imported.timeFeatures,
     windowSize: local.windowSize ?? imported.windowSize,
     autoBudget: local.autoBudget ?? imported.autoBudget,
+    activities: mergedActivities.length > 0 ? mergedActivities : undefined,
+    activitiesUpdatedAt: activitiesChanged
+      ? now
+      : (local.activitiesUpdatedAt ?? imported.activitiesUpdatedAt),
     lastSaved: now,
   };
 }

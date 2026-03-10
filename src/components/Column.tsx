@@ -69,13 +69,13 @@ export function Column({
           aria-controls={`column-cards-${column.label}`}
           className="focus-visible:ring-ring flex w-full items-center gap-2 rounded-sm focus-visible:ring-1 focus-visible:outline-hidden md:hidden"
         >
-          <span className="text-ohm-muted">
+          <span className="text-ohm-muted" aria-hidden="true">
             {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           </span>
-          <div className={`h-2 w-2 rounded-full bg-${column.color}`} />
-          <span className="font-display text-ohm-text text-xs font-bold tracking-widest uppercase">
+          <div className={`h-2 w-2 rounded-full bg-${column.color}`} aria-hidden="true" />
+          <h2 className="font-display text-ohm-text text-xs font-bold tracking-widest uppercase">
             {column.label}
-          </span>
+          </h2>
           <span className="font-body text-ohm-muted ml-1 text-[10px]">{cards.length}</span>
           {capacity && (
             <span
@@ -88,10 +88,10 @@ export function Column({
         </button>
         {/* Desktop static header */}
         <div className="hidden items-center gap-2 md:flex md:w-full">
-          <div className={`h-2 w-2 rounded-full bg-${column.color}`} />
-          <span className="font-display text-ohm-text text-xs font-bold tracking-widest uppercase">
+          <div className={`h-2 w-2 rounded-full bg-${column.color}`} aria-hidden="true" />
+          <h2 className="font-display text-ohm-text text-xs font-bold tracking-widest uppercase">
             {column.label}
-          </span>
+          </h2>
           <span className="font-body text-ohm-muted ml-1 text-[10px]">{cards.length}</span>
           {capacity && (
             <span

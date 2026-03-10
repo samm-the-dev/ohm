@@ -1,5 +1,6 @@
-/** Named status indices — positions in the COLUMNS array */
-export const STATUS = { CHARGING: 0, GROUNDED: 1, LIVE: 2, POWERED: 3 } as const;
+/** Named status indices — positions in the COLUMNS array.
+ *  Order: Grounded (deferred shelf) | Charging | Live | Powered */
+export const STATUS = { GROUNDED: 0, CHARGING: 1, LIVE: 2, POWERED: 3 } as const;
 export type ColumnStatus = (typeof STATUS)[keyof typeof STATUS];
 
 /** Continuous energy scale 1-6 (value IS the weight) */
@@ -7,9 +8,14 @@ export const ENERGY_MIN = 1;
 export const ENERGY_MAX = 6;
 export const ENERGY_DEFAULT = 3;
 
-/** Rolling window size limits */
+/** Rolling window size limits and default */
 export const WINDOW_MIN = 1;
 export const WINDOW_MAX = 7;
+export const WINDOW_DEFAULT = 4;
+
+/** Default live capacity and energy budget */
+export const LIVE_DEFAULT = 10;
+export const BUDGET_DEFAULT = WINDOW_DEFAULT * LIVE_DEFAULT;
 
 /** Interpolate hue from green (120) at energy 1 to red (0) at energy 6 */
 export function energyColor(value: number): string {
@@ -70,25 +76,30 @@ export interface OhmBoard {
   lastSaved: string;
   /** Enable rolling window + schedule features */
   timeFeatures?: boolean;
-  /** Rolling window size in days (default 7) */
+  /** Rolling window size in days (default 4) */
   windowSize?: number;
   /** Auto-calculate energyBudget = windowSize * liveCapacity */
   autoBudget?: boolean;
+  /** Recurring activity templates (synced via Drive) */
+  activities?: import('./activity').Activity[];
+  /** ISO timestamp — last time activities were changed */
+  activitiesUpdatedAt?: string;
 }
 
-/** Column config — static definition, indexed by ColumnStatus */
+/** Column config — static definition, indexed by ColumnStatus.
+ *  Order: Grounded (deferred shelf) | Charging → Live → Powered (active flow) */
 export const COLUMNS: readonly OhmColumn[] = [
+  {
+    label: 'Grounded',
+    description: 'Paused or deferred -- saved for later',
+    color: 'ohm-grounded',
+    hex: '#6366f1',
+  },
   {
     label: 'Charging',
     description: 'Captured ideas -- shape with a clear next step',
     color: 'ohm-charging',
     hex: '#f97316',
-  },
-  {
-    label: 'Grounded',
-    description: 'Defined and ready -- waiting for bandwidth',
-    color: 'ohm-grounded',
-    hex: '#6366f1',
   },
   {
     label: 'Live',
@@ -110,12 +121,12 @@ export const STATUS_CLASSES: readonly {
   ring: string;
 }[] = [
   {
-    border: 'border-ohm-charging/30',
-    ring: 'focus-visible:ring-ohm-charging/20',
-  },
-  {
     border: 'border-ohm-grounded/30',
     ring: 'focus-visible:ring-ohm-grounded/20',
+  },
+  {
+    border: 'border-ohm-charging/30',
+    ring: 'focus-visible:ring-ohm-charging/20',
   },
   {
     border: 'border-ohm-live/30',
@@ -134,10 +145,10 @@ export const SPARK_CLASSES = {
   ring: 'focus-visible:ring-ohm-spark/20',
 } as const;
 
-/** Valid transitions from each status */
+/** Valid transitions from each status (indexed by ColumnStatus) */
 export const VALID_TRANSITIONS: readonly (readonly ColumnStatus[])[] = [
-  [STATUS.GROUNDED, STATUS.LIVE, STATUS.POWERED], // charging -> any
   [STATUS.LIVE, STATUS.POWERED], // grounded -> live, powered
+  [STATUS.GROUNDED, STATUS.LIVE, STATUS.POWERED], // charging -> any
   [STATUS.GROUNDED, STATUS.POWERED], // live -> grounded, powered
   [STATUS.CHARGING], // powered -> charging
 ];
@@ -148,8 +159,8 @@ export function createDefaultBoard(): OhmBoard {
     version: 1,
     cards: [],
     categories: ['Personal', 'Creative', 'Home'],
-    energyBudget: 42,
-    liveCapacity: 6,
+    energyBudget: BUDGET_DEFAULT,
+    liveCapacity: LIVE_DEFAULT,
     lastSaved: new Date().toISOString(),
   };
 }

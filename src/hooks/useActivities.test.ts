@@ -1,9 +1,23 @@
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
+import { useState } from 'react';
 import { db } from '../db';
+import type { Activity } from '../types/activity';
 import { ACTIVITY_STATUS } from '../types/activity';
+import { WINDOW_DEFAULT } from '../types/board';
 import { useActivities } from './useActivities';
+
+/** Wrapper hook that provides board-state-backed activities + setActivities */
+function useTestActivities(windowSize?: number) {
+  const [activities, setActivitiesRaw] = useState<Activity[]>([]);
+  const setActivities = (updater: (prev: Activity[]) => Activity[]) => setActivitiesRaw(updater);
+  return useActivities({
+    activities,
+    setActivities,
+    windowSize: windowSize ?? WINDOW_DEFAULT,
+  });
+}
 
 beforeEach(async () => {
   await db.instances.clear();
@@ -12,16 +26,16 @@ beforeEach(async () => {
 
 describe('useActivities', () => {
   it('starts with empty arrays', () => {
-    const { result } = renderHook(() => useActivities());
+    const { result } = renderHook(() => useTestActivities());
     expect(result.current.activities).toEqual([]);
     expect(result.current.instances).toEqual([]);
   });
 
   describe('addActivity', () => {
     it('creates an activity and updates state', async () => {
-      const { result } = renderHook(() => useActivities());
+      const { result } = renderHook(() => useTestActivities());
       await act(async () => {
-        await result.current.addActivity('Morning run');
+        result.current.addActivity('Morning run');
       });
       expect(result.current.activities).toHaveLength(1);
       expect(result.current.activities[0]!.name).toBe('Morning run');
@@ -29,9 +43,9 @@ describe('useActivities', () => {
     });
 
     it('accepts optional description, schedule, and energy', async () => {
-      const { result } = renderHook(() => useActivities());
+      const { result } = renderHook(() => useTestActivities());
       await act(async () => {
-        await result.current.addActivity('Yoga', {
+        result.current.addActivity('Yoga', {
           description: 'Morning yoga',
           schedule: { repeatFrequency: 'P1D' },
           energy: 1,
@@ -44,10 +58,10 @@ describe('useActivities', () => {
     });
 
     it('returns the created activity', async () => {
-      const { result } = renderHook(() => useActivities());
-      let created: Awaited<ReturnType<typeof result.current.addActivity>> | undefined;
+      const { result } = renderHook(() => useTestActivities());
+      let created: ReturnType<typeof result.current.addActivity> | undefined;
       await act(async () => {
-        created = await result.current.addActivity('Test');
+        created = result.current.addActivity('Test');
       });
       expect(created).toBeDefined();
       expect(created!.name).toBe('Test');
@@ -57,14 +71,14 @@ describe('useActivities', () => {
 
   describe('updateActivity', () => {
     it('updates an existing activity', async () => {
-      const { result } = renderHook(() => useActivities());
+      const { result } = renderHook(() => useTestActivities());
       let id: string;
       await act(async () => {
-        const a = await result.current.addActivity('Old name');
+        const a = result.current.addActivity('Old name');
         id = a.id;
       });
       await act(async () => {
-        await result.current.updateActivity(id!, { name: 'New name' });
+        result.current.updateActivity(id!, { name: 'New name' });
       });
       expect(result.current.activities[0]!.name).toBe('New name');
     });
@@ -72,10 +86,10 @@ describe('useActivities', () => {
 
   describe('deleteActivity', () => {
     it('removes the activity and its instances', async () => {
-      const { result } = renderHook(() => useActivities());
+      const { result } = renderHook(() => useTestActivities());
       let id: string;
       await act(async () => {
-        const a = await result.current.addActivity('To delete', {
+        const a = result.current.addActivity('To delete', {
           schedule: { repeatFrequency: 'P1D' },
         });
         id = a.id;
@@ -96,24 +110,24 @@ describe('useActivities', () => {
 
   describe('refreshWindow', () => {
     it('generates instances for scheduled activities', async () => {
-      const { result } = renderHook(() => useActivities());
+      const { result } = renderHook(() => useTestActivities());
       await act(async () => {
-        await result.current.addActivity('Daily', {
+        result.current.addActivity('Daily', {
           schedule: { repeatFrequency: 'P1D' },
         });
       });
       await act(async () => {
         await result.current.refreshWindow();
       });
-      // Default window = 7 days, daily = 7 instances
-      expect(result.current.instances).toHaveLength(7);
+      // Default window = WINDOW_DEFAULT days, daily = WINDOW_DEFAULT instances
+      expect(result.current.instances).toHaveLength(WINDOW_DEFAULT);
       expect(result.current.instances[0]!.status).toBe(ACTIVITY_STATUS.POTENTIAL);
     });
 
     it('does not duplicate instances on repeated calls', async () => {
-      const { result } = renderHook(() => useActivities());
+      const { result } = renderHook(() => useTestActivities());
       await act(async () => {
-        await result.current.addActivity('Daily', {
+        result.current.addActivity('Daily', {
           schedule: { repeatFrequency: 'P1D' },
         });
       });
@@ -123,13 +137,13 @@ describe('useActivities', () => {
       await act(async () => {
         await result.current.refreshWindow();
       });
-      expect(result.current.instances).toHaveLength(7);
+      expect(result.current.instances).toHaveLength(WINDOW_DEFAULT);
     });
 
     it('demotes expired Potential instances to Failed', async () => {
-      const { result } = renderHook(() => useActivities());
+      const { result } = renderHook(() => useTestActivities());
       await act(async () => {
-        await result.current.addActivity('Daily', {
+        result.current.addActivity('Daily', {
           schedule: { repeatFrequency: 'P1D' },
         });
       });
@@ -149,9 +163,9 @@ describe('useActivities', () => {
     });
 
     it('returns expired instance IDs from refreshWindow', async () => {
-      const { result } = renderHook(() => useActivities());
+      const { result } = renderHook(() => useTestActivities());
       await act(async () => {
-        await result.current.addActivity('Daily', {
+        result.current.addActivity('Daily', {
           schedule: { repeatFrequency: 'P1D' },
         });
       });
@@ -164,9 +178,9 @@ describe('useActivities', () => {
     });
 
     it('skips activities without schedules', async () => {
-      const { result } = renderHook(() => useActivities());
+      const { result } = renderHook(() => useTestActivities());
       await act(async () => {
-        await result.current.addActivity('No schedule');
+        result.current.addActivity('No schedule');
       });
       await act(async () => {
         await result.current.refreshWindow();
@@ -175,9 +189,9 @@ describe('useActivities', () => {
     });
 
     it('respects custom window size', async () => {
-      const { result } = renderHook(() => useActivities(3));
+      const { result } = renderHook(() => useTestActivities(3));
       await act(async () => {
-        await result.current.addActivity('Daily', {
+        result.current.addActivity('Daily', {
           schedule: { repeatFrequency: 'P1D' },
         });
       });
@@ -190,9 +204,9 @@ describe('useActivities', () => {
 
   describe('instance lifecycle', () => {
     async function setupWithInstance() {
-      const hook = renderHook(() => useActivities());
+      const hook = renderHook(() => useTestActivities());
       await act(async () => {
-        await hook.result.current.addActivity('Daily', {
+        hook.result.current.addActivity('Daily', {
           schedule: { repeatFrequency: 'P1D' },
         });
       });
@@ -238,9 +252,9 @@ describe('useActivities', () => {
       const { result } = await setupWithInstance();
       const instanceId = result.current.instances[0]!.id;
 
-      // Charging (0) → Potential
+      // Charging (1) → Potential
       await act(async () => {
-        await result.current.syncInstanceToColumn(instanceId, 0);
+        await result.current.syncInstanceToColumn(instanceId, 1);
       });
       expect(result.current.instances.find((i) => i.id === instanceId)!.status).toBe(
         ACTIVITY_STATUS.POTENTIAL,
@@ -262,9 +276,9 @@ describe('useActivities', () => {
       expect(updated.status).toBe(ACTIVITY_STATUS.COMPLETED);
       expect(updated.completedAt).toBeTruthy();
 
-      // Grounded (1) → Failed
+      // Grounded (0) → Failed
       await act(async () => {
-        await result.current.syncInstanceToColumn(instanceId, 1);
+        await result.current.syncInstanceToColumn(instanceId, 0);
       });
       expect(result.current.instances.find((i) => i.id === instanceId)!.status).toBe(
         ACTIVITY_STATUS.FAILED,
