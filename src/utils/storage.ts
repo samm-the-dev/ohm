@@ -5,7 +5,7 @@ import {
   COLUMNS,
   STATUS,
   ENERGY_MIN,
-  ENERGY_MAX,
+  ENERGY_MAX_DEFAULT,
   ENERGY_DEFAULT,
   WINDOW_MIN,
   WINDOW_MAX,
@@ -35,6 +35,13 @@ export function sanitizeBoard(board: OhmBoard): OhmBoard {
   if (board.autoBudget != null && typeof board.autoBudget !== 'boolean') {
     board.autoBudget = !!board.autoBudget;
   }
+  if (board.energyMax != null) {
+    if (typeof board.energyMax !== 'number' || !Number.isFinite(board.energyMax)) {
+      delete board.energyMax;
+    } else {
+      board.energyMax = Math.min(20, Math.max(ENERGY_MIN + 1, Math.round(board.energyMax)));
+    }
+  }
 
   if (!board.categoriesUpdatedAt) {
     board.categoriesUpdatedAt = board.lastSaved;
@@ -53,9 +60,12 @@ export function sanitizeBoard(board: OhmBoard): OhmBoard {
       .map((a) => (typeof a.sourceId === 'string' ? a : { ...a, sourceId: 'ohm' }));
   }
 
+  const maxEnergy = board.energyMax ?? ENERGY_MAX_DEFAULT;
   for (const card of board.cards) {
-    if (typeof card.energy !== 'number' || card.energy < ENERGY_MIN || card.energy > ENERGY_MAX) {
+    if (typeof card.energy !== 'number' || card.energy < ENERGY_MIN) {
       card.energy = ENERGY_DEFAULT;
+    } else if (card.energy > maxEnergy) {
+      card.energy = maxEnergy;
     }
     if (typeof card.status !== 'number' || card.status < 0 || card.status >= COLUMNS.length) {
       card.status = STATUS.CHARGING;

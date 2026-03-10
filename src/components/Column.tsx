@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import type { OhmCard, OhmColumn as OhmColumnType } from '../types/board';
-import { ENERGY_MIN, ENERGY_MAX, energyColor } from '../types/board';
+import { budgetColor } from '../types/board';
 import { Card } from './Card';
 
 interface ColumnProps {
@@ -13,6 +13,7 @@ interface ColumnProps {
   capacity?: { used: number; total: number };
   defaultExpanded?: boolean;
   flash?: boolean;
+  energyMax?: number;
 }
 
 export function Column({
@@ -23,6 +24,7 @@ export function Column({
   capacity,
   defaultExpanded = false,
   flash,
+  energyMax,
 }: ColumnProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
@@ -64,12 +66,7 @@ export function Column({
           {capacity && (
             <span
               className={`font-display ml-auto shrink-0 text-[10px] font-bold ${capacity.used > capacity.total ? 'animate-pulse' : ''}`}
-              style={{
-                color: energyColor(
-                  ENERGY_MIN +
-                    Math.min(capacity.used / capacity.total, 1) * (ENERGY_MAX - ENERGY_MIN),
-                ),
-              }}
+              style={{ color: budgetColor(capacity.used / capacity.total) }}
             >
               {capacity.used}/{capacity.total}
             </span>
@@ -85,12 +82,7 @@ export function Column({
           {capacity && (
             <span
               className={`font-display ml-auto shrink-0 text-[10px] font-bold ${capacity.used > capacity.total ? 'animate-pulse' : ''}`}
-              style={{
-                color: energyColor(
-                  ENERGY_MIN +
-                    Math.min(capacity.used / capacity.total, 1) * (ENERGY_MAX - ENERGY_MIN),
-                ),
-              }}
+              style={{ color: budgetColor(capacity.used / capacity.total) }}
             >
               {capacity.used}/{capacity.total}
             </span>
@@ -110,6 +102,7 @@ export function Column({
               card={card}
               onTap={onCardTap}
               onReorder={(dir) => handleReorder(idx, card.id, dir)}
+              energyMax={energyMax}
             />
           ))}
           {cards.length === 0 && (

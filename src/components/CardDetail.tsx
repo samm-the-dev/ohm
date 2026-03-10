@@ -35,6 +35,7 @@ interface CardDetailProps {
   onOpenSettings: () => void;
   isNew?: boolean;
   timeFeatures?: boolean;
+  energyMax?: number;
 }
 
 export function CardDetail({
@@ -46,6 +47,7 @@ export function CardDetail({
   onOpenSettings,
   isNew,
   timeFeatures,
+  energyMax,
 }: CardDetailProps) {
   const [editing, setEditing] = useState(card);
   const [newNote, setNewNote] = useState('');
@@ -246,7 +248,7 @@ export function CardDetail({
           {isPowered && !isNew ? (
             <span
               className="font-display text-sm font-bold"
-              style={{ color: energyColor(editing.energy) }}
+              style={{ color: energyColor(editing.energy, undefined, energyMax) }}
             >
               {editing.energy}
             </span>
@@ -254,6 +256,7 @@ export function CardDetail({
             <EnergySlider
               value={editing.energy}
               onChange={(v) => setEditing((prev) => ({ ...prev, energy: v }))}
+              max={energyMax}
             />
           )}
         </div>

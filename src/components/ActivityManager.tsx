@@ -270,9 +270,10 @@ interface ActivityFormProps {
     opts: { description?: string; schedule?: StoredSchedule; energy?: number; category?: string },
   ) => void;
   onCancel: () => void;
+  energyMax?: number;
 }
 
-function ActivityForm({ initial, categories, onSubmit, onCancel }: ActivityFormProps) {
+function ActivityForm({ initial, categories, onSubmit, onCancel, energyMax }: ActivityFormProps) {
   const [name, setName] = useState(initial?.name ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
   const [energy, setEnergy] = useState<number | undefined>(initial?.energy);
@@ -321,6 +322,7 @@ function ActivityForm({ initial, categories, onSubmit, onCancel }: ActivityFormP
         <EnergySlider
           value={energy ?? ENERGY_DEFAULT}
           onChange={(v) => setEnergy(v)}
+          max={energyMax}
           allowNone
           onClear={() => setEnergy(undefined)}
         />
@@ -399,6 +401,7 @@ interface ActivityManagerProps {
   ) => Activity;
   onUpdate: (id: string, changes: Partial<Omit<Activity, 'id'>>) => void;
   onDelete: (id: string) => void | Promise<void>;
+  energyMax?: number;
 }
 
 export function ActivityManager({
@@ -407,6 +410,7 @@ export function ActivityManager({
   onAdd,
   onUpdate,
   onDelete,
+  energyMax,
 }: ActivityManagerProps) {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -465,6 +469,7 @@ export function ActivityManager({
               categories={categories}
               onSubmit={handleUpdate}
               onCancel={() => setEditingId(null)}
+              energyMax={energyMax}
             />
           ) : (
             <div
@@ -488,7 +493,10 @@ export function ActivityManager({
                       ? activity.schedule.byDay.map((d) => (d as string).slice(0, 3)).join(', ')
                       : 'Daily'}
                   {activity.energy !== undefined && (
-                    <span className="ml-1.5" style={{ color: energyColor(activity.energy) }}>
+                    <span
+                      className="ml-1.5"
+                      style={{ color: energyColor(activity.energy, undefined, energyMax) }}
+                    >
                       {activity.energy}
                     </span>
                   )}
@@ -514,6 +522,7 @@ export function ActivityManager({
             categories={categories}
             onSubmit={handleAdd}
             onCancel={() => setShowForm(false)}
+            energyMax={energyMax}
           />
         </div>
       )}

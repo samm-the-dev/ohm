@@ -11,11 +11,12 @@ interface CardProps {
   card: OhmCard;
   onTap: (card: OhmCard) => void;
   onReorder?: (direction: -1 | 1) => void;
+  energyMax?: number;
 }
 
 const STALE_THRESHOLD_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
 
-export function Card({ card, onTap, onReorder }: CardProps) {
+export function Card({ card, onTap, onReorder, energyMax }: CardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: card.id,
   });
@@ -87,8 +88,8 @@ export function Card({ card, onTap, onReorder }: CardProps) {
           <span
             className="font-display inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wider"
             style={{
-              backgroundColor: energyColor(card.energy, 0.12),
-              color: energyColor(card.energy),
+              backgroundColor: energyColor(card.energy, 0.12, energyMax),
+              color: energyColor(card.energy, undefined, energyMax),
             }}
           >
             {card.energy}

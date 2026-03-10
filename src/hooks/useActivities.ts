@@ -22,10 +22,12 @@ export function useActivities({
   windowSize = WINDOW_DEFAULT,
 }: UseActivitiesOptions) {
   const [instances, setInstances] = useState<ActivityInstance[]>([]);
+  const [instancesReady, setInstancesReady] = useState(false);
 
   const loadInstances = useCallback(async () => {
     const insts = await db.instances.toArray();
     setInstances(insts);
+    setInstancesReady(true);
   }, []);
 
   useEffect(() => {
@@ -242,6 +244,7 @@ export function useActivities({
   return {
     activities,
     instances,
+    instancesReady,
     addActivity,
     updateActivity,
     deleteActivity,

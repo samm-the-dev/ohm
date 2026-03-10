@@ -1,26 +1,30 @@
 import { useMemo } from 'react';
-import { ENERGY_MIN, ENERGY_MAX, energyColor } from '../../types/board';
+import { ENERGY_MIN, ENERGY_MAX_DEFAULT, energyColor } from '../../types/board';
 
 interface EnergySliderProps {
   value: number;
   onChange: (value: number) => void;
+  /** Override the maximum energy value (defaults to ENERGY_MAX_DEFAULT) */
+  max?: number;
   /** Allow deselecting (sets to undefined) */
   allowNone?: boolean;
   onClear?: () => void;
 }
 
 /** Range slider with an energyColor gradient track */
-export function EnergySlider({ value, onChange, allowNone, onClear }: EnergySliderProps) {
+export function EnergySlider({ value, onChange, max, allowNone, onClear }: EnergySliderProps) {
+  const eMax = max ?? ENERGY_MAX_DEFAULT;
+
   const gradient = useMemo(() => {
     const stops: string[] = [];
-    for (let i = ENERGY_MIN; i <= ENERGY_MAX; i++) {
-      const pct = ((i - ENERGY_MIN) / (ENERGY_MAX - ENERGY_MIN)) * 100;
-      stops.push(`${energyColor(i)} ${pct}%`);
+    for (let i = ENERGY_MIN; i <= eMax; i++) {
+      const pct = ((i - ENERGY_MIN) / (eMax - ENERGY_MIN)) * 100;
+      stops.push(`${energyColor(i, undefined, eMax)} ${pct}%`);
     }
     return `linear-gradient(to right, ${stops.join(', ')})`;
-  }, []);
+  }, [eMax]);
 
-  const color = energyColor(value);
+  const color = energyColor(value, undefined, eMax);
 
   return (
     <div className="flex items-center gap-3">
@@ -36,7 +40,7 @@ export function EnergySlider({ value, onChange, allowNone, onClear }: EnergySlid
       <input
         type="range"
         min={ENERGY_MIN}
-        max={ENERGY_MAX}
+        max={eMax}
         step={1}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}

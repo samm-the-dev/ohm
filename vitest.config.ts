@@ -14,6 +14,14 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      '../../.toolbox/lib/local-storage-sync': path.resolve(
+        __dirname,
+        './src/test/__stubs__/local-storage-sync.ts',
+      ),
+      '../../.toolbox/lib/google-drive-sync': path.resolve(
+        __dirname,
+        './src/test/__stubs__/google-drive-sync.ts',
+      ),
     },
   },
 });

@@ -9,3 +9,4 @@
 - [ ] Red-green colorblind mode (deuteranopia-safe palette for energy/status colors)
 - [ ] A11y test fixtures (axe-core + Playwright automated audits -- pair with colorblind mode work)
 - [ ] Powered column glow (ambient header glow based on trailing completion ratio -- explore design)
+- [ ] Day budget focus dialog (click on day budget meter to pop a day focus view)

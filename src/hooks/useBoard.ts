@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type { OhmBoard, OhmCard, ColumnStatus } from '../types/board';
-import { WINDOW_MIN, WINDOW_MAX, WINDOW_DEFAULT } from '../types/board';
+import { ENERGY_MIN, WINDOW_MIN, WINDOW_MAX, WINDOW_DEFAULT } from '../types/board';
 import type { Activity } from '../types/activity';
 import { loadFromLocal, saveToLocal } from '../utils/storage';
 import {
@@ -229,6 +229,24 @@ export function useBoard() {
     });
   }, []);
 
+  /** Update maximum energy per task */
+  const setEnergyMax = useCallback((max: number) => {
+    const now = new Date().toISOString();
+    setBoard((prev) => {
+      const newMax = Math.min(20, Math.max(ENERGY_MIN + 1, Math.round(max)));
+      return {
+        ...prev,
+        energyMax: newMax,
+        // Clamp any cards that exceed the new max
+        cards: prev.cards.map((c) =>
+          c.energy > newMax ? { ...c, energy: newMax, updatedAt: now } : c,
+        ),
+        capacitiesUpdatedAt: now,
+        lastSaved: now,
+      };
+    });
+  }, []);
+
   /** Toggle auto-budget (Total = Window x Live) */
   const setAutoBudget = useCallback((enabled: boolean) => {
     const now = new Date().toISOString();
@@ -288,10 +306,52 @@ export function useBoard() {
     }));
   }, []);
 
-  /** Replace the entire board (used by Drive sync when remote is newer) */
+  /** Replace the entire board (used by Drive sync when remote is newer, or import).
+   *  When activities differ, clears Dexie instances and strips stale activityInstanceId
+   *  references from cards so the materialization flow cleanly regenerates them. */
   const replaceBoard = useCallback((newBoard: OhmBoard) => {
-    setBoard(newBoard);
-    saveToLocal(newBoard);
+    setBoard((prev) => {
+      const prevActs = prev.activities ?? [];
+      const nextActs = newBoard.activities ?? [];
+      const prevIds = new Set(prevActs.map((a) => a.id));
+      const nextIds = new Set(nextActs.map((a) => a.id));
+      const idsChanged =
+        prevIds.size !== nextIds.size || [...prevIds].some((id) => !nextIds.has(id));
+      // Also detect property changes (schedule, energy, etc.) within matching activities
+      const propsChanged =
+        !idsChanged &&
+        prevActs.length === nextActs.length &&
+        prevActs.some((a) => {
+          const b = nextActs.find((n) => n.id === a.id);
+          return !b || JSON.stringify(a) !== JSON.stringify(b);
+        });
+      const activitiesChanged = idsChanged || propsChanged;
+
+      if (activitiesChanged) {
+        const cleaned: OhmBoard = {
+          ...newBoard,
+          cards: newBoard.cards.map((c) =>
+            c.activityInstanceId ? { ...c, activityInstanceId: undefined } : c,
+          ),
+        };
+        saveToLocal(cleaned);
+
+        // Clear stale Dexie instances — refreshWindow will regenerate them
+        void (async () => {
+          try {
+            const { db } = await import('../db');
+            await db.instances.clear();
+          } catch {
+            // IndexedDB may be unavailable (e.g. test environment)
+          }
+        })();
+
+        return cleaned;
+      } else {
+        saveToLocal(newBoard);
+        return newBoard;
+      }
+    });
   }, []);
 
   return {
@@ -306,6 +366,7 @@ export function useBoard() {
     reorderBatch,
     setEnergyBudget,
     setLiveCapacity,
+    setEnergyMax,
     addCategory,
     removeCategory,
     renameCategory,

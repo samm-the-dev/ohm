@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { STATUS, ENERGY_DEFAULT, BUDGET_DEFAULT, LIVE_DEFAULT } from '../types/board';
+import {
+  STATUS,
+  ENERGY_DEFAULT,
+  ENERGY_MAX_DEFAULT,
+  BUDGET_DEFAULT,
+  LIVE_DEFAULT,
+} from '../types/board';
 import type { OhmBoard } from '../types/board';
 import { sanitizeBoard } from './storage';
 
@@ -50,7 +56,7 @@ describe('sanitizeBoard', () => {
     expect(result.capacitiesUpdatedAt).toBe('2026-06-01T00:00:00.000Z');
   });
 
-  it('clamps out-of-range energy to default', () => {
+  it('clamps out-of-range energy to energyMax', () => {
     const board = makeBoard({
       cards: [
         {
@@ -68,7 +74,29 @@ describe('sanitizeBoard', () => {
       ],
     });
     const result = sanitizeBoard(board);
-    expect(result.cards[0].energy).toBe(ENERGY_DEFAULT);
+    expect(result.cards[0].energy).toBe(ENERGY_MAX_DEFAULT);
+  });
+
+  it('clamps energy to custom energyMax when set', () => {
+    const board = makeBoard({
+      energyMax: 5,
+      cards: [
+        {
+          id: 'a',
+          title: 'Test',
+          description: '',
+          status: STATUS.CHARGING,
+          tasks: [],
+          energy: 10 as never,
+          category: '',
+          createdAt: '',
+          updatedAt: '',
+          sortOrder: 0,
+        },
+      ],
+    });
+    const result = sanitizeBoard(board);
+    expect(result.cards[0].energy).toBe(5);
   });
 
   it('clamps out-of-range status to CHARGING', () => {
