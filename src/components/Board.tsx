@@ -257,7 +257,7 @@ export function Board() {
     for (const card of expired) {
       deleteCard(card.id);
     }
-  }, [board.timeFeatures, board.windowSize, board.cards, deleteCard]);
+  }, [board.timeFeatures, board.windowSize, board.cards, deleteCard]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Drag-and-drop sensors
   const pointerSensor = useSensor(PointerSensor, {

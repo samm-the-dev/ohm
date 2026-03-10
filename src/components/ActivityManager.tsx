@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Trash2, Calendar, X } from 'lucide-react';
+import { Plus, Trash2, Calendar } from 'lucide-react';
 import type { Activity } from '../types/activity';
 import type { StoredSchedule } from '../types/schedule';
 import { ENERGY_MIN, ENERGY_MAX, energyColor } from '../types/board';
@@ -97,7 +97,6 @@ function ActivityForm({ initial, onSubmit, onCancel }: ActivityFormProps) {
         onChange={(e) => setName(e.target.value)}
         placeholder="Activity name..."
         aria-label="Activity name"
-        autoFocus
         className="border-ohm-border bg-ohm-bg font-body text-ohm-text placeholder:text-ohm-muted/40 focus-visible:ring-ohm-spark/20 px-3 py-1.5 text-sm focus-visible:ring-offset-0"
       />
       <Input
