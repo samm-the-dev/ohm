@@ -985,6 +985,16 @@ export function Board() {
               toastQuickAdd(updated.title);
             } else {
               const original = board.cards.find((c) => c.id === updated.id);
+              // Grounded card with a new scheduled date → move to Charging
+              if (
+                original &&
+                original.status === STATUS.GROUNDED &&
+                updated.status === STATUS.GROUNDED &&
+                updated.scheduledDate &&
+                !original.scheduledDate
+              ) {
+                updated = { ...updated, status: STATUS.CHARGING };
+              }
               // Apply moveCard side-effects when status changed via CardDetail
               if (original && updated.status !== original.status) {
                 if (updated.status === STATUS.LIVE) {

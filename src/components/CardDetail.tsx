@@ -272,6 +272,8 @@ export function CardDetail({
                 <input
                   id="card-scheduled-date"
                   type="date"
+                  autoComplete="off"
+                  data-form-type="other"
                   value={editing.scheduledDate ?? ''}
                   onChange={(e) =>
                     setEditing((prev) => ({
