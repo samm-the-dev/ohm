@@ -36,7 +36,12 @@ export function useActivities({
   const addActivity = useCallback(
     (
       name: string,
-      opts?: { description?: string; schedule?: StoredSchedule; energy?: number },
+      opts?: {
+        description?: string;
+        schedule?: StoredSchedule;
+        energy?: number;
+        category?: string;
+      },
     ): Activity => {
       const activity: Activity = {
         id: generateId(),
@@ -45,6 +50,7 @@ export function useActivities({
         description: opts?.description,
         schedule: opts?.schedule,
         energy: opts?.energy,
+        category: opts?.category,
       };
       setActivities((prev) => [...prev, activity]);
       return activity;
@@ -60,11 +66,12 @@ export function useActivities({
     [setActivities],
   );
 
-  /** Delete an activity and all its instances */
+  /** Delete an activity and all its instances + dismissals */
   const deleteActivity = useCallback(
     async (id: string) => {
       setActivities((prev) => prev.filter((a) => a.id !== id));
       await db.instances.where('activityId').equals(id).delete();
+      await db.dismissedInstances.where('activityId').equals(id).delete();
       await loadInstances();
     },
     [setActivities, loadInstances],
@@ -88,6 +95,19 @@ export function useActivities({
 
       const existingInstances = await db.instances.toArray();
 
+      // Load dismissed instances and build lookup set
+      const allDismissed = await db.dismissedInstances.toArray();
+      const dismissedKeys = new Set(allDismissed.map((d) => d.id));
+
+      // Auto-cleanup: prune dismissals for past dates (no longer relevant)
+      const staleDismissalIds = allDismissed
+        .filter((d) => d.scheduledDate < todayStr)
+        .map((d) => d.id);
+      if (staleDismissalIds.length > 0) {
+        await db.dismissedInstances.bulkDelete(staleDismissalIds);
+        for (const id of staleDismissalIds) dismissedKeys.delete(id);
+      }
+
       // Deduplicate: remove duplicate instances per [activityId, scheduledDate]
       const seen = new Map<string, string>(); // key → first instance id
       const dupeIds: string[] = [];
@@ -105,7 +125,9 @@ export function useActivities({
       const dedupedInstances = existingInstances.filter((i) => !dupeIdSet.has(i.id));
       const newInstances: ActivityInstance[] = [];
       for (const activity of activities) {
-        newInstances.push(...generateInstances(activity, today, windowEnd, dedupedInstances));
+        newInstances.push(
+          ...generateInstances(activity, today, windowEnd, dedupedInstances, dismissedKeys),
+        );
       }
 
       // Demote expired Potential instances (scheduledDate < today) to Failed
@@ -172,6 +194,27 @@ export function useActivities({
     [loadInstances],
   );
 
+  /** Dismiss a recurring instance (soft delete — prevents regeneration) */
+  const dismissInstance = useCallback(
+    async (instanceId: string) => {
+      const instance = await db.instances.get(instanceId);
+      if (!instance) return;
+
+      const dismissalId = `${instance.activityId}:${instance.scheduledDate}`;
+      await db.transaction('rw', [db.instances, db.dismissedInstances], async () => {
+        await db.dismissedInstances.put({
+          id: dismissalId,
+          activityId: instance.activityId,
+          scheduledDate: instance.scheduledDate,
+          dismissedAt: new Date().toISOString(),
+        });
+        await db.instances.delete(instanceId);
+      });
+      await loadInstances();
+    },
+    [loadInstances],
+  );
+
   /** Column-status → instance-status mapping (Grounded=0, Charging=1, Live=2, Powered=3) */
   const COLUMN_TO_INSTANCE: Record<number, ActivityStatus> = {
     0: ACTIVITY_STATUS.FAILED,
@@ -206,6 +249,7 @@ export function useActivities({
     claimInstance,
     completeInstance,
     skipInstance,
+    dismissInstance,
     syncInstanceToColumn,
   };
 }

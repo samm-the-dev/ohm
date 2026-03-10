@@ -72,6 +72,80 @@ describe('matchesSchedule', () => {
     expect(matchesSchedule(new Date(2026, 2, 11), schedule)).toBe(false);
   });
 
+  it('rejects all days for P1M with no byMonthDay or bySetPos', () => {
+    const schedule = makeSchedule({ repeatFrequency: 'P1M' });
+    expect(matchesSchedule(new Date(2026, 2, 1), schedule)).toBe(false);
+  });
+
+  it('matches bySetPos + byDay for ordinal weekday (2nd Tuesday)', () => {
+    const schedule = makeSchedule({
+      repeatFrequency: 'P1M',
+      bySetPos: [2],
+      byDay: ['Tuesday'],
+    });
+    // 2026-03-10 is the 2nd Tuesday of March
+    expect(matchesSchedule(new Date(2026, 2, 10), schedule)).toBe(true);
+    // 2026-03-03 is the 1st Tuesday
+    expect(matchesSchedule(new Date(2026, 2, 3), schedule)).toBe(false);
+    // 2026-03-17 is the 3rd Tuesday
+    expect(matchesSchedule(new Date(2026, 2, 17), schedule)).toBe(false);
+    // 2026-03-09 is a Monday (wrong day)
+    expect(matchesSchedule(new Date(2026, 2, 9), schedule)).toBe(false);
+  });
+
+  it('matches bySetPos -1 (last weekday of month)', () => {
+    const schedule = makeSchedule({
+      repeatFrequency: 'P1M',
+      bySetPos: [-1],
+      byDay: ['Friday'],
+    });
+    // 2026-03-27 is the last Friday of March 2026
+    expect(matchesSchedule(new Date(2026, 2, 27), schedule)).toBe(true);
+    // 2026-03-20 is the 3rd Friday (not last)
+    expect(matchesSchedule(new Date(2026, 2, 20), schedule)).toBe(false);
+  });
+
+  it('matches byMonthDay -1 as last day of month', () => {
+    const schedule = makeSchedule({
+      repeatFrequency: 'P1M',
+      byMonthDay: [-1],
+    });
+    // March has 31 days → last day is 31
+    expect(matchesSchedule(new Date(2026, 2, 31), schedule)).toBe(true);
+    expect(matchesSchedule(new Date(2026, 2, 30), schedule)).toBe(false);
+    // April has 30 days → last day is 30
+    expect(matchesSchedule(new Date(2026, 3, 30), schedule)).toBe(true);
+    expect(matchesSchedule(new Date(2026, 3, 29), schedule)).toBe(false);
+    // February 2026 has 28 days
+    expect(matchesSchedule(new Date(2026, 1, 28), schedule)).toBe(true);
+    expect(matchesSchedule(new Date(2026, 1, 27), schedule)).toBe(false);
+  });
+
+  it('mixes byMonthDay -1 with positive days', () => {
+    const schedule = makeSchedule({
+      repeatFrequency: 'P1M',
+      byMonthDay: [1, -1],
+    });
+    // 1st and last day of March
+    expect(matchesSchedule(new Date(2026, 2, 1), schedule)).toBe(true);
+    expect(matchesSchedule(new Date(2026, 2, 31), schedule)).toBe(true);
+    expect(matchesSchedule(new Date(2026, 2, 15), schedule)).toBe(false);
+  });
+
+  it('matches multiple bySetPos values', () => {
+    const schedule = makeSchedule({
+      repeatFrequency: 'P1M',
+      bySetPos: [1, 3],
+      byDay: ['Monday'],
+    });
+    // 2026-03-02 is the 1st Monday of March (March 1 is Sunday)
+    expect(matchesSchedule(new Date(2026, 2, 2), schedule)).toBe(true);
+    // 2026-03-16 is the 3rd Monday
+    expect(matchesSchedule(new Date(2026, 2, 16), schedule)).toBe(true);
+    // 2026-03-09 is the 2nd Monday
+    expect(matchesSchedule(new Date(2026, 2, 9), schedule)).toBe(false);
+  });
+
   it('combines multiple constraints', () => {
     const schedule = makeSchedule({
       byDay: ['Monday'],
@@ -173,6 +247,21 @@ describe('generateInstances', () => {
     const instances = generateInstances(activity, new Date(2026, 2, 9), new Date(2026, 2, 11), []);
     const ids = new Set(instances.map((i) => i.id));
     expect(ids.size).toBe(3);
+  });
+
+  it('skips dismissed dates', () => {
+    const activity = makeActivity({
+      schedule: makeSchedule({ repeatFrequency: 'P1D' }),
+    });
+    const dismissed = new Set(['act-1:2026-03-10']);
+    const instances = generateInstances(
+      activity,
+      new Date(2026, 2, 9),
+      new Date(2026, 2, 11),
+      [],
+      dismissed,
+    );
+    expect(instances.map((i) => i.scheduledDate)).toEqual(['2026-03-09', '2026-03-11']);
   });
 
   it('ignores existing instances for other activities', () => {

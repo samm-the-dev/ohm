@@ -12,8 +12,11 @@ export interface StoredSchedule {
   byDay?: DayOfWeek[];
   /** Months of the year (1-12) */
   byMonth?: number[];
-  /** Days of the month (1-31) */
+  /** Days of the month (1-31, or -1 for last day) */
   byMonthDay?: number[];
+  /** Ordinal position within the month (1-5, -1 for last) — used with byDay for
+   *  patterns like "2nd Tuesday" or "last Friday". Mirrors iCalendar BYSETPOS. */
+  bySetPos?: number[];
   /** ISO date -- when recurrence begins */
   startDate?: string;
   /** ISO date -- when recurrence ends (undefined = ongoing) */

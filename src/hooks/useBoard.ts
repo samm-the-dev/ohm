@@ -161,7 +161,7 @@ export function useBoard() {
     });
   }, []);
 
-  /** Remove a category from the board and clear it from any cards using it */
+  /** Remove a category from the board and clear it from any cards and activities using it */
   const removeCategory = useCallback((category: string) => {
     setBoard((prev) => {
       if (!prev.categories.includes(category)) return prev;
@@ -172,13 +172,16 @@ export function useBoard() {
         cards: prev.cards.map((card) =>
           card.category === category ? { ...card, category: '', updatedAt: now } : card,
         ),
+        activities: prev.activities?.map((a) =>
+          a.category === category ? { ...a, category: undefined } : a,
+        ),
         categoriesUpdatedAt: now,
         lastSaved: now,
       };
     });
   }, []);
 
-  /** Rename a category and update all cards using it */
+  /** Rename a category and update all cards and activities using it */
   const renameCategory = useCallback((oldName: string, newName: string) => {
     setBoard((prev) => {
       const trimmed = newName.trim();
@@ -191,6 +194,9 @@ export function useBoard() {
         categories: prev.categories.map((c) => (c === oldName ? trimmed : c)),
         cards: prev.cards.map((card) =>
           card.category === oldName ? { ...card, category: trimmed, updatedAt: now } : card,
+        ),
+        activities: prev.activities?.map((a) =>
+          a.category === oldName ? { ...a, category: trimmed } : a,
         ),
         categoriesUpdatedAt: now,
         lastSaved: now,
@@ -242,6 +248,7 @@ export function useBoard() {
       specs: Array<{
         title: string;
         energy: OhmCard['energy'];
+        category?: string;
         activityInstanceId: string;
         scheduledDate: string;
       }>,
@@ -254,6 +261,7 @@ export function useBoard() {
           .map((s) =>
             createCard(s.title, {
               energy: s.energy,
+              category: s.category ?? '',
               activityInstanceId: s.activityInstanceId,
               scheduledDate: s.scheduledDate,
             }),

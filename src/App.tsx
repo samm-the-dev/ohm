@@ -5,7 +5,7 @@ export default function App() {
   return (
     <>
       <Board />
-      <Toaster position="bottom-center" theme="dark" offset="80px" />
+      <Toaster position="top-center" theme="dark" />
     </>
   );
 }

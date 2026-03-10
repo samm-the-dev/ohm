@@ -3,14 +3,12 @@ import type { OhmCard, ColumnStatus } from '../types/board';
 import {
   STATUS,
   COLUMNS,
-  ENERGY_MIN,
-  ENERGY_MAX,
   energyColor,
   STATUS_CLASSES,
   SPARK_CLASSES,
   VALID_TRANSITIONS,
 } from '../types/board';
-import { EnergyIcon } from './ui/energy-icons';
+import { EnergySlider } from './ui/energy-slider';
 import { Settings, List, Trash2, Calendar } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from './ui/dialog';
 import { Input } from './ui/input';
@@ -247,71 +245,55 @@ export function CardDetail({
           </span>
           {isPowered && !isNew ? (
             <span
-              className="flex items-center gap-1.5"
+              className="font-display text-sm font-bold"
               style={{ color: energyColor(editing.energy) }}
             >
-              <EnergyIcon size={14} value={editing.energy} />
-              <span className="font-body text-sm">{editing.energy}</span>
+              {editing.energy}
             </span>
           ) : (
-            <div className="flex gap-1">
-              {Array.from({ length: ENERGY_MAX - ENERGY_MIN + 1 }, (_, i) => {
-                const value = ENERGY_MIN + i;
-                const selected = editing.energy === value;
-                const color = energyColor(value);
-                return (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setEditing((prev) => ({ ...prev, energy: value }))}
-                    className={`font-body flex items-center justify-center rounded-md border px-2.5 py-1.5 text-xs transition-colors ${
-                      selected
-                        ? 'border-current bg-current/10'
-                        : 'border-ohm-border bg-ohm-bg text-ohm-muted hover:text-ohm-text'
-                    }`}
-                    style={selected ? { color } : undefined}
-                  >
-                    {value}
-                  </button>
-                );
-              })}
-            </div>
+            <EnergySlider
+              value={editing.energy}
+              onChange={(v) => setEditing((prev) => ({ ...prev, energy: v }))}
+            />
           )}
         </div>
 
         {/* Scheduled date (when time features enabled) */}
         {timeFeatures && (
           <div className="mb-3">
-            <label
-              htmlFor="card-scheduled-date"
-              className="font-display text-ohm-muted mb-2 flex items-center gap-1 text-[10px] tracking-widest uppercase"
-            >
+            <span className="font-display text-ohm-muted mb-2 flex items-center gap-1 text-[10px] tracking-widest uppercase">
               <Calendar size={10} />
               Scheduled
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                id="card-scheduled-date"
-                type="date"
-                value={editing.scheduledDate ?? ''}
-                onChange={(e) =>
-                  setEditing((prev) => ({
-                    ...prev,
-                    scheduledDate: e.target.value || undefined,
-                  }))
-                }
-                className={`${accent.border} bg-ohm-bg font-body text-ohm-text focus:ring-ohm-text/10 rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-hidden`}
-              />
-              {editing.scheduledDate && (
-                <button
-                  type="button"
-                  onClick={() => setEditing((prev) => ({ ...prev, scheduledDate: undefined }))}
-                  className="text-ohm-muted hover:text-ohm-text text-[10px] underline decoration-dotted"
-                >
-                  Clear
-                </button>
-              )}
-            </div>
+            </span>
+            {editing.activityInstanceId ? (
+              <p className="font-body text-ohm-muted text-sm">{editing.scheduledDate}</p>
+            ) : (
+              <div className="flex items-center gap-2">
+                <input
+                  id="card-scheduled-date"
+                  type="date"
+                  autoComplete="off"
+                  data-form-type="other"
+                  value={editing.scheduledDate ?? ''}
+                  onChange={(e) =>
+                    setEditing((prev) => ({
+                      ...prev,
+                      scheduledDate: e.target.value || undefined,
+                    }))
+                  }
+                  className={`${accent.border} bg-ohm-bg font-body text-ohm-text focus:ring-ohm-text/10 rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-hidden`}
+                />
+                {editing.scheduledDate && (
+                  <button
+                    type="button"
+                    onClick={() => setEditing((prev) => ({ ...prev, scheduledDate: undefined }))}
+                    className="text-ohm-muted hover:text-ohm-text text-[10px] underline decoration-dotted"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
 

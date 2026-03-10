@@ -22,6 +22,8 @@ export interface Activity {
   schedule?: StoredSchedule;
   /** ohm-specific: energy cost of this activity */
   energy?: number;
+  /** ohm-specific: category label */
+  category?: string;
   /** App-defined metadata */
   meta?: Record<string, unknown>;
 }
@@ -42,6 +44,17 @@ export interface ActivityInstance {
   /** Instance-specific metadata */
   meta?: Record<string, unknown>;
   consumedBy?: ConsumptionRecord[];
+}
+
+/** Record of a dismissed recurring instance (soft delete) */
+export interface DismissedInstance {
+  /** Compound key: `${activityId}:${scheduledDate}` */
+  id: string;
+  activityId: string;
+  /** ISO date */
+  scheduledDate: string;
+  /** ISO timestamp */
+  dismissedAt: string;
 }
 
 /** Tracks which apps have consumed an activity instance */

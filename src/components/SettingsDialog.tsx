@@ -54,7 +54,7 @@ interface SettingsDialogProps {
   activities?: Activity[];
   onAddActivity?: (
     name: string,
-    opts?: { description?: string; schedule?: StoredSchedule; energy?: number },
+    opts?: { description?: string; schedule?: StoredSchedule; energy?: number; category?: string },
   ) => Activity;
   onUpdateActivity?: (id: string, changes: Partial<Omit<Activity, 'id'>>) => void;
   onDeleteActivity?: (id: string) => void | Promise<void>;
@@ -426,6 +426,7 @@ export function SettingsDialog({
         {timeFeatures && activities && onAddActivity && onUpdateActivity && onDeleteActivity && (
           <ActivityManager
             activities={activities}
+            categories={categories}
             onAdd={onAddActivity}
             onUpdate={onUpdateActivity}
             onDelete={onDeleteActivity}

@@ -41,7 +41,6 @@ import {
   getTotalCapacity,
   getDailyEnergy,
   getExpiredPowered,
-  getTrailingPowered,
 } from '../utils/board-utils';
 import { toISODate } from '../utils/schedule-utils';
 import { useBoard } from '../hooks/useBoard';
@@ -198,6 +197,7 @@ export function Board() {
     updateActivity,
     deleteActivity,
     refreshWindow,
+    dismissInstance,
     syncInstanceToColumn,
   } = useActivities({
     activities: board.activities ?? [],
@@ -242,7 +242,7 @@ export function Board() {
       if (prevIds.size === newIds.size && [...prevIds].every((id) => newIds.has(id))) return prev;
       return toPrompt;
     });
-  }, [board.timeFeatures, board.cards, move]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [board.timeFeatures, board.cards, move]);
 
   // Materialize Potential activity instances as Charging cards (atomic — strict-mode safe)
   useEffect(() => {
@@ -257,6 +257,7 @@ export function Board() {
         return {
           title: activity.name,
           energy: activity.energy ?? ENERGY_DEFAULT,
+          category: activity.category ?? '',
           activityInstanceId: inst.id,
           scheduledDate: inst.scheduledDate,
         };
@@ -267,6 +268,7 @@ export function Board() {
         ): s is {
           title: string;
           energy: number;
+          category: string;
           activityInstanceId: string;
           scheduledDate: string;
         } => s !== null,
@@ -274,6 +276,38 @@ export function Board() {
 
     if (specs.length > 0) materializeInstances(specs);
   }, [board.timeFeatures, instances, activities, materializeInstances]);
+
+  // Sync activity edits (name, energy, category) to already-materialized cards
+  useEffect(() => {
+    if (!board.timeFeatures) return;
+    const activityMap = new Map(activities.map((a) => [a.id, a]));
+    const updates: OhmCard[] = [];
+
+    for (const card of board.cards) {
+      if (!card.activityInstanceId) continue;
+      const inst = instances.find((i) => i.id === card.activityInstanceId);
+      if (!inst) continue;
+      const activity = activityMap.get(inst.activityId);
+      if (!activity) continue;
+
+      const expectedEnergy = activity.energy ?? ENERGY_DEFAULT;
+      if (
+        card.title !== activity.name ||
+        card.energy !== expectedEnergy ||
+        card.category !== (activity.category ?? '')
+      ) {
+        updates.push({
+          ...card,
+          title: activity.name,
+          energy: expectedEnergy,
+          category: activity.category ?? '',
+          updatedAt: new Date().toISOString(),
+        });
+      }
+    }
+
+    for (const u of updates) updateCard(u);
+  }, [board.timeFeatures, board.cards, activities, instances, updateCard]);
 
   // Auto-archive Powered cards that have fallen outside the trailing window
   useEffect(() => {
@@ -388,16 +422,6 @@ export function Board() {
   }, [board, queueSync]);
 
   const { summary: welcomeBack, dismiss: dismissWelcome } = useWelcomeBack(board);
-
-  // Trailing powered ratio — used for Powered column glow and milestone toasts
-  const trailingPoweredRatio = useMemo(() => {
-    if (!board.timeFeatures) return 0;
-    const today = new Date();
-    const trailingStart = new Date(today);
-    trailingStart.setDate(trailingStart.getDate() - ((board.windowSize ?? WINDOW_DEFAULT) - 1));
-    const trailing = getTrailingPowered(board, toISODate(trailingStart), toISODate(today));
-    return board.energyBudget > 0 ? trailing.used / board.energyBudget : 0;
-  }, [board]);
 
   // Completion flash — column header animation
   const [poweredFlash, setPoweredFlash] = useState(false);
@@ -620,17 +644,32 @@ export function Board() {
             +
           </button>
           <div className="relative flex h-5 flex-1 items-center">
-            {/* Track background */}
-            <div className="bg-ohm-border absolute inset-x-0 h-1 rounded-full" />
-            {/* Active range fill */}
+            {/* Full gradient track */}
             <div
-              className="absolute h-1 rounded-full"
+              className="absolute inset-x-0 h-1 rounded-full"
               style={{
-                left: `${(((energyMin ?? ENERGY_MIN) - ENERGY_MIN) / (ENERGY_MAX - ENERGY_MIN)) * 100}%`,
-                right: `${(1 - ((energyMax ?? ENERGY_MAX) - ENERGY_MIN) / (ENERGY_MAX - ENERGY_MIN)) * 100}%`,
-                background: `linear-gradient(to right, ${energyColor(energyMin ?? ENERGY_MIN)}, ${energyColor(energyMax ?? ENERGY_MAX)})`,
+                background: `linear-gradient(to right, ${Array.from({ length: ENERGY_MAX - ENERGY_MIN + 1 }, (_, i) => energyColor(ENERGY_MIN + i)).join(', ')})`,
               }}
             />
+            {/* Dim outside active range */}
+            {(energyMin ?? ENERGY_MIN) > ENERGY_MIN && (
+              <div
+                className="absolute h-1 rounded-l-full bg-black/60"
+                style={{
+                  left: 0,
+                  width: `${(((energyMin ?? ENERGY_MIN) - ENERGY_MIN) / (ENERGY_MAX - ENERGY_MIN)) * 100}%`,
+                }}
+              />
+            )}
+            {(energyMax ?? ENERGY_MAX) < ENERGY_MAX && (
+              <div
+                className="absolute h-1 rounded-r-full bg-black/60"
+                style={{
+                  right: 0,
+                  width: `${((ENERGY_MAX - (energyMax ?? ENERGY_MAX)) / (ENERGY_MAX - ENERGY_MIN)) * 100}%`,
+                }}
+              />
+            )}
             {/* Min thumb */}
             <input
               type="range"
@@ -815,8 +854,7 @@ export function Board() {
 
         const total = getTotalCapacity(board, todayStr, windowEndStr);
         const totalRatio = Math.min(total.used / total.total, 1);
-        const totalHue = 120 * (1 - totalRatio);
-        const totalColor = `hsl(${totalHue}, 80%, 50%)`;
+        const totalColor = energyColor(ENERGY_MIN + totalRatio * (ENERGY_MAX - ENERGY_MIN));
 
         return (
           <div
@@ -828,8 +866,10 @@ export function Board() {
               <div className="flex gap-1" style={{ gridColumn: '1 / -1' }}>
                 {daily.map(({ date, used }) => {
                   const ratio = Math.min(used / dayLimit, 1);
-                  const hue = 120 * (1 - ratio);
-                  const color = used > 0 ? `hsl(${hue}, 80%, 50%)` : undefined;
+                  const color =
+                    used > 0
+                      ? energyColor(ENERGY_MIN + ratio * (ENERGY_MAX - ENERGY_MIN))
+                      : undefined;
                   const isToday = date === todayStr;
                   const d = new Date(date + 'T00:00:00');
                   const dayLabel = d.toLocaleDateString(undefined, { weekday: 'short' });
@@ -909,12 +949,9 @@ export function Board() {
                   cards={filteredCards(status)}
                   onCardTap={setSelectedCard}
                   onReorderCards={reorderBatch}
-                  capacity={getColumnCapacity(board, status) ?? undefined}
+                  capacity={getColumnCapacity(board, status, toISODate(new Date())) ?? undefined}
                   defaultExpanded={index === STATUS.LIVE}
                   flash={index === STATUS.POWERED ? poweredFlash : undefined}
-                  glowIntensity={
-                    index === STATUS.POWERED ? Math.min(trailingPoweredRatio, 1) : undefined
-                  }
                 />
               );
             })}
@@ -936,7 +973,8 @@ export function Board() {
           isNew={!!newCard}
           categories={board.categories}
           timeFeatures={board.timeFeatures}
-          onSave={(updated) => {
+          onSave={(saved) => {
+            let updated = saved;
             if (newCard) {
               quickAdd(updated.title, {
                 description: updated.description || undefined,
@@ -947,6 +985,24 @@ export function Board() {
               toastQuickAdd(updated.title);
             } else {
               const original = board.cards.find((c) => c.id === updated.id);
+              // Grounded card with a new scheduled date → move to Charging
+              if (
+                original &&
+                original.status === STATUS.GROUNDED &&
+                updated.status === STATUS.GROUNDED &&
+                updated.scheduledDate &&
+                !original.scheduledDate
+              ) {
+                updated = { ...updated, status: STATUS.CHARGING };
+              }
+              // Apply moveCard side-effects when status changed via CardDetail
+              if (original && updated.status !== original.status) {
+                if (updated.status === STATUS.LIVE) {
+                  updated = { ...updated, scheduledDate: toISODate(new Date()) };
+                } else if (updated.status === STATUS.GROUNDED) {
+                  updated = { ...updated, scheduledDate: undefined };
+                }
+              }
               updateCard(updated);
               if (original && updated.status !== original.status) {
                 if (updated.activityInstanceId) {
@@ -964,6 +1020,9 @@ export function Board() {
           }}
           onDelete={(id) => {
             const deletedCard = board.cards.find((c) => c.id === id);
+            if (deletedCard?.activityInstanceId) {
+              void dismissInstance(deletedCard.activityInstanceId);
+            }
             deleteCard(id);
             setSelectedCard(null);
             if (deletedCard) {
@@ -1028,7 +1087,7 @@ export function Board() {
                           className="border-ohm-live/30 text-ohm-live hover:bg-ohm-live/10 h-6 px-2 text-[10px]"
                           onClick={() => {
                             if (card.activityInstanceId) {
-                              void syncInstanceToColumn(card.activityInstanceId, STATUS.GROUNDED);
+                              void dismissInstance(card.activityInstanceId);
                             }
                             deleteCard(card.id);
                             setPendingExpired((prev) => prev.filter((c) => c.id !== card.id));
@@ -1079,7 +1138,20 @@ export function Board() {
         activities={activities}
         onAddActivity={addActivity}
         onUpdateActivity={updateActivity}
-        onDeleteActivity={deleteActivity}
+        onDeleteActivity={async (id) => {
+          // Remove board cards linked to this activity's instances
+          const linkedCardIds = board.cards
+            .filter(
+              (c) =>
+                c.activityInstanceId &&
+                instances.some(
+                  (inst) => inst.id === c.activityInstanceId && inst.activityId === id,
+                ),
+            )
+            .map((c) => c.id);
+          if (linkedCardIds.length > 0) deleteCards(linkedCardIds);
+          await deleteActivity(id);
+        }}
         driveAvailable={driveAvailable}
         driveConnected={driveConnected}
         onConnectDrive={connect}

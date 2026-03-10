@@ -159,6 +159,19 @@ describe('useBoard', () => {
       expect(result.current.board.cards[0].category).toBe('');
     });
 
+    it('removes a category and clears it from activities', () => {
+      const { result } = renderHook(() => useBoard());
+      act(() => {
+        result.current.setActivities(() => [
+          { id: 'a1', sourceId: 'ohm', name: 'Test', category: 'Personal' },
+        ]);
+      });
+      act(() => {
+        result.current.removeCategory('Personal');
+      });
+      expect(result.current.board.activities![0].category).toBeUndefined();
+    });
+
     it('renames a category across all cards', () => {
       const { result } = renderHook(() => useBoard());
       act(() => {
@@ -170,6 +183,19 @@ describe('useBoard', () => {
       expect(result.current.board.categories).toContain('Private');
       expect(result.current.board.categories).not.toContain('Personal');
       expect(result.current.board.cards[0].category).toBe('Private');
+    });
+
+    it('renames a category across activities', () => {
+      const { result } = renderHook(() => useBoard());
+      act(() => {
+        result.current.setActivities(() => [
+          { id: 'a1', sourceId: 'ohm', name: 'Test', category: 'Personal' },
+        ]);
+      });
+      act(() => {
+        result.current.renameCategory('Personal', 'Private');
+      });
+      expect(result.current.board.activities![0].category).toBe('Private');
     });
 
     it('rejects rename to existing category name', () => {

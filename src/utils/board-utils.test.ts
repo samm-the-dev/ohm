@@ -83,6 +83,30 @@ describe('getColumnCards', () => {
     expect(charging.map((c) => c.id)).toEqual(['c', 'a']);
   });
 
+  it('sorts by scheduledDate ascending, unscheduled last', () => {
+    const board = makeBoard({
+      cards: [
+        makeCard({ id: 'a', status: STATUS.CHARGING, sortOrder: 0 }),
+        makeCard({ id: 'b', status: STATUS.CHARGING, sortOrder: 1, scheduledDate: '2026-03-11' }),
+        makeCard({ id: 'c', status: STATUS.CHARGING, sortOrder: 2, scheduledDate: '2026-03-09' }),
+      ],
+    });
+    const charging = getColumnCards(board, STATUS.CHARGING);
+    // c (Mar 9), b (Mar 11), a (unscheduled → last)
+    expect(charging.map((c) => c.id)).toEqual(['c', 'b', 'a']);
+  });
+
+  it('uses sortOrder as tiebreaker within same date', () => {
+    const board = makeBoard({
+      cards: [
+        makeCard({ id: 'a', status: STATUS.CHARGING, sortOrder: 2, scheduledDate: '2026-03-09' }),
+        makeCard({ id: 'b', status: STATUS.CHARGING, sortOrder: 1, scheduledDate: '2026-03-09' }),
+      ],
+    });
+    const charging = getColumnCards(board, STATUS.CHARGING);
+    expect(charging.map((c) => c.id)).toEqual(['b', 'a']);
+  });
+
   it('returns empty array for empty column', () => {
     const board = makeBoard();
     expect(getColumnCards(board, STATUS.LIVE)).toEqual([]);
@@ -99,6 +123,36 @@ describe('getColumnCapacity', () => {
       ],
     });
     expect(getColumnCapacity(board, STATUS.LIVE)).toEqual({ used: 6, total: 10 });
+  });
+
+  it('includes today Powered cards in Live capacity', () => {
+    const board = makeBoard({
+      liveCapacity: 10,
+      cards: [
+        makeCard({ id: 'a', status: STATUS.LIVE, energy: 2 }),
+        makeCard({ id: 'b', status: STATUS.POWERED, energy: 3, scheduledDate: '2026-03-09' }),
+        makeCard({ id: 'c', status: STATUS.POWERED, energy: 4, scheduledDate: '2026-03-08' }),
+      ],
+    });
+    // Live(2) + today's Powered(3) = 5; yesterday's Powered excluded
+    expect(getColumnCapacity(board, STATUS.LIVE, '2026-03-09')).toEqual({ used: 5, total: 10 });
+  });
+
+  it('uses cardEffectiveDate fallback for Powered cards without scheduledDate', () => {
+    const board = makeBoard({
+      liveCapacity: 10,
+      cards: [
+        makeCard({ id: 'a', status: STATUS.LIVE, energy: 2 }),
+        makeCard({
+          id: 'b',
+          status: STATUS.POWERED,
+          energy: 3,
+          updatedAt: '2026-03-09T12:00:00.000Z',
+        }),
+      ],
+    });
+    // Powered card has no scheduledDate but updatedAt is today → counts
+    expect(getColumnCapacity(board, STATUS.LIVE, '2026-03-09')).toEqual({ used: 5, total: 10 });
   });
 
   it('returns null for non-Live columns', () => {
