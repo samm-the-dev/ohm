@@ -7,6 +7,10 @@ import {
   getColumnCards,
   getColumnCapacity,
   getTotalCapacity,
+  getDailyEnergy,
+  cardEffectiveDate,
+  getTrailingPowered,
+  getExpiredPowered,
   addCardToBoard,
   updateCardInBoard,
   removeCardFromBoard,
@@ -106,7 +110,7 @@ describe('getColumnCapacity', () => {
 });
 
 describe('getTotalCapacity', () => {
-  it('sums energy across all columns', () => {
+  it('excludes Powered cards from used total', () => {
     const board = makeBoard({
       energyBudget: 42,
       cards: [
@@ -115,12 +119,66 @@ describe('getTotalCapacity', () => {
         makeCard({ id: 'c', status: STATUS.POWERED, energy: 6 }),
       ],
     });
-    expect(getTotalCapacity(board)).toEqual({ used: 12, total: 42 });
+    expect(getTotalCapacity(board)).toEqual({ used: 6, total: 42 });
   });
 
   it('returns zero used when board is empty', () => {
     const board = makeBoard({ energyBudget: 42 });
     expect(getTotalCapacity(board)).toEqual({ used: 0, total: 42 });
+  });
+});
+
+describe('cardEffectiveDate', () => {
+  it('returns scheduledDate when set', () => {
+    const card = makeCard({ scheduledDate: '2026-03-10' });
+    expect(cardEffectiveDate(card)).toBe('2026-03-10');
+  });
+
+  it('falls back to updatedAt date when no scheduledDate', () => {
+    const card = makeCard({ updatedAt: '2026-03-09T14:30:00.000Z' });
+    expect(cardEffectiveDate(card)).toBe('2026-03-09');
+  });
+});
+
+describe('getTrailingPowered', () => {
+  it('sums energy of Powered cards within the window', () => {
+    const board = makeBoard({
+      cards: [
+        makeCard({ id: 'a', status: STATUS.POWERED, energy: 3, scheduledDate: '2026-03-08' }),
+        makeCard({ id: 'b', status: STATUS.POWERED, energy: 5, scheduledDate: '2026-03-09' }),
+        makeCard({ id: 'c', status: STATUS.CHARGING, energy: 2, scheduledDate: '2026-03-09' }),
+      ],
+    });
+    const result = getTrailingPowered(board, '2026-03-08', '2026-03-09');
+    expect(result.used).toBe(8);
+    expect(result.cards).toHaveLength(2);
+  });
+
+  it('excludes Powered cards outside the window', () => {
+    const board = makeBoard({
+      cards: [
+        makeCard({ id: 'a', status: STATUS.POWERED, energy: 4, scheduledDate: '2026-03-01' }),
+        makeCard({ id: 'b', status: STATUS.POWERED, energy: 2, scheduledDate: '2026-03-09' }),
+      ],
+    });
+    const result = getTrailingPowered(board, '2026-03-08', '2026-03-09');
+    expect(result.used).toBe(2);
+    expect(result.cards).toHaveLength(1);
+  });
+});
+
+describe('getExpiredPowered', () => {
+  it('finds Powered cards before the window start', () => {
+    const board = makeBoard({
+      cards: [
+        makeCard({ id: 'a', status: STATUS.POWERED, energy: 3, scheduledDate: '2026-03-01' }),
+        makeCard({ id: 'b', status: STATUS.POWERED, energy: 5, scheduledDate: '2026-03-09' }),
+        makeCard({ id: 'c', status: STATUS.CHARGING, energy: 2, scheduledDate: '2026-03-01' }),
+      ],
+    });
+    const expired = getExpiredPowered(board, '2026-03-08');
+    expect(expired).toHaveLength(1);
+    expect(expired[0].id).toBe('a');
   });
 });
 
@@ -155,6 +213,43 @@ describe('updateCardInBoard', () => {
     const board = makeBoard({ cards: [a, b] });
     const updated = updateCardInBoard(board, { ...a, title: 'Changed' });
     expect(updated.cards[1]).toBe(b);
+  });
+});
+
+describe('getDailyEnergy', () => {
+  it('returns per-day energy for scheduled cards', () => {
+    const board = makeBoard({
+      cards: [
+        makeCard({ id: 'a', energy: 2, scheduledDate: '2026-03-09' }),
+        makeCard({ id: 'b', energy: 4, scheduledDate: '2026-03-09' }),
+        makeCard({ id: 'c', energy: 3, scheduledDate: '2026-03-11' }),
+      ],
+    });
+    const result = getDailyEnergy(board, '2026-03-09', '2026-03-11');
+    expect(result).toEqual([
+      { date: '2026-03-09', used: 6 },
+      { date: '2026-03-10', used: 0 },
+      { date: '2026-03-11', used: 3 },
+    ]);
+  });
+
+  it('excludes cards outside the window', () => {
+    const board = makeBoard({
+      cards: [
+        makeCard({ id: 'a', energy: 5, scheduledDate: '2026-03-08' }),
+        makeCard({ id: 'b', energy: 2, scheduledDate: '2026-03-09' }),
+      ],
+    });
+    const result = getDailyEnergy(board, '2026-03-09', '2026-03-09');
+    expect(result).toEqual([{ date: '2026-03-09', used: 2 }]);
+  });
+
+  it('skips cards without scheduledDate', () => {
+    const board = makeBoard({
+      cards: [makeCard({ id: 'a', energy: 3 })],
+    });
+    const result = getDailyEnergy(board, '2026-03-09', '2026-03-09');
+    expect(result).toEqual([{ date: '2026-03-09', used: 0 }]);
   });
 });
 

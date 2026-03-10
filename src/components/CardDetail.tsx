@@ -11,7 +11,7 @@ import {
   VALID_TRANSITIONS,
 } from '../types/board';
 import { EnergyIcon } from './ui/energy-icons';
-import { Settings, List, Trash2 } from 'lucide-react';
+import { Settings, List, Trash2, Calendar } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from './ui/dialog';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
@@ -36,6 +36,7 @@ interface CardDetailProps {
   onClose: () => void;
   onOpenSettings: () => void;
   isNew?: boolean;
+  timeFeatures?: boolean;
 }
 
 export function CardDetail({
@@ -46,6 +47,7 @@ export function CardDetail({
   onClose,
   onOpenSettings,
   isNew,
+  timeFeatures,
 }: CardDetailProps) {
   const [editing, setEditing] = useState(card);
   const [newNote, setNewNote] = useState('');
@@ -276,6 +278,53 @@ export function CardDetail({
             </div>
           )}
         </div>
+
+        {/* Scheduled date (when time features enabled) */}
+        {timeFeatures && !isPowered && (
+          <div className="mb-3">
+            <label
+              htmlFor="card-scheduled-date"
+              className="font-display text-ohm-muted mb-2 flex items-center gap-1 text-[10px] tracking-widest uppercase"
+            >
+              <Calendar size={10} />
+              Scheduled
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                id="card-scheduled-date"
+                type="date"
+                value={editing.scheduledDate ?? ''}
+                onChange={(e) =>
+                  setEditing((prev) => ({
+                    ...prev,
+                    scheduledDate: e.target.value || undefined,
+                  }))
+                }
+                className={`${accent.border} bg-ohm-bg font-body text-ohm-text focus:ring-ohm-text/10 rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-hidden`}
+              />
+              {editing.scheduledDate && (
+                <button
+                  type="button"
+                  onClick={() => setEditing((prev) => ({ ...prev, scheduledDate: undefined }))}
+                  className="text-ohm-muted hover:text-ohm-text text-[10px] underline decoration-dotted"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Scheduled date (read-only for Powered) */}
+        {timeFeatures && isPowered && editing.scheduledDate && (
+          <div className="mb-3">
+            <span className="font-display text-ohm-muted mb-1 flex items-center gap-1 text-[10px] tracking-widest uppercase">
+              <Calendar size={10} />
+              Scheduled
+            </span>
+            <p className="font-body text-ohm-muted text-sm">{editing.scheduledDate}</p>
+          </div>
+        )}
 
         {/* Category */}
         {!isPowered && (

@@ -12,6 +12,8 @@ interface ColumnProps {
   capacity?: { used: number; total: number };
   defaultExpanded?: boolean;
   flash?: boolean;
+  /** 0-1 intensity for an ambient warm glow (used on Powered column) */
+  glowIntensity?: number;
 }
 
 /** Interpolate hue from green (120) through yellow (60) to red (0) */
@@ -29,6 +31,7 @@ export function Column({
   capacity,
   defaultExpanded = false,
   flash,
+  glowIntensity = 0,
 }: ColumnProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
@@ -49,7 +52,14 @@ export function Column({
     <div className="flex w-full min-w-0 flex-col rounded-xl md:w-auto md:flex-1">
       {/* Column header — mobile: button toggle, desktop: static */}
       <div
-        className={`bg-ohm-bg/80 sticky top-0 z-10 mb-1 flex w-full items-center rounded-lg px-3 py-2 backdrop-blur-xs ${flash ? 'animate-completion-flash' : ''}`}
+        className={`bg-ohm-bg/80 sticky top-0 z-10 mb-1 flex w-full items-center rounded-lg px-3 py-2 backdrop-blur-xs transition-shadow duration-500 ${flash ? 'animate-completion-flash' : ''}`}
+        style={
+          glowIntensity > 0
+            ? {
+                boxShadow: `0 0 ${8 + glowIntensity * 12}px rgba(34, 197, 94, ${0.1 + glowIntensity * 0.3})`,
+              }
+            : undefined
+        }
       >
         {/* Mobile toggle button — full width for easy tapping */}
         <button

@@ -219,3 +219,26 @@ body {
   border-radius: calc(var(--radius) - 2px);
   padding: 2px 10px;
 }
+
+/* Dual-range slider thumbs */
+.ohm-range-thumb::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  pointer-events: all;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #e0e0e8;
+  border: 2px solid #0a0a0f;
+  cursor: pointer;
+}
+
+.ohm-range-thumb::-moz-range-thumb {
+  pointer-events: all;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #e0e0e8;
+  border: 2px solid #0a0a0f;
+  cursor: pointer;
+}

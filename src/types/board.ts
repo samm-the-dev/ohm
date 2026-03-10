@@ -7,6 +7,10 @@ export const ENERGY_MIN = 1;
 export const ENERGY_MAX = 6;
 export const ENERGY_DEFAULT = 3;
 
+/** Rolling window size limits */
+export const WINDOW_MIN = 1;
+export const WINDOW_MAX = 7;
+
 /** Interpolate hue from green (120) at energy 1 to red (0) at energy 6 */
 export function energyColor(value: number): string {
   const ratio = Math.min(Math.max((value - ENERGY_MIN) / (ENERGY_MAX - ENERGY_MIN), 0), 1);
@@ -68,6 +72,8 @@ export interface OhmBoard {
   timeFeatures?: boolean;
   /** Rolling window size in days (default 7) */
   windowSize?: number;
+  /** Auto-calculate energyBudget = windowSize * liveCapacity */
+  autoBudget?: boolean;
 }
 
 /** Column config — static definition, indexed by ColumnStatus */

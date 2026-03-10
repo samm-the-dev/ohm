@@ -75,6 +75,31 @@ export function toastLinkFailed() {
   });
 }
 
+const MILESTONES = [
+  { threshold: 1.0, message: 'Full power! Budget complete.' },
+  { threshold: 0.75, message: 'Three quarters powered!' },
+  { threshold: 0.5, message: 'Halfway there!' },
+  { threshold: 0.25, message: 'Getting started!' },
+] as const;
+
+/**
+ * Fire a celebratory toast when trailing powered energy crosses a milestone.
+ * Call with the ratio BEFORE and AFTER the change — only fires if a threshold was crossed.
+ */
+export function toastMilestone(prevRatio: number, newRatio: number) {
+  const col = COLUMNS[STATUS.POWERED]!;
+  for (const { threshold, message } of MILESTONES) {
+    if (prevRatio < threshold && newRatio >= threshold) {
+      toast(message, {
+        duration: 3000,
+        style: accentStyle(col.hex),
+        icon: zapIcon,
+      });
+      return; // only fire the highest crossed milestone
+    }
+  }
+}
+
 export function toastSyncResult(success: boolean) {
   const col = success ? COLUMNS[STATUS.POWERED]! : COLUMNS[STATUS.LIVE]!;
   toast(success ? 'Synced to Drive' : 'Drive sync failed', {

@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type { OhmBoard, OhmCard, ColumnStatus } from '../types/board';
+import { WINDOW_MIN, WINDOW_MAX } from '../types/board';
 import { loadFromLocal, saveToLocal } from '../utils/storage';
 import {
   createCard,
@@ -122,12 +123,16 @@ export function useBoard() {
   /** Update Live column capacity */
   const setLiveCapacity = useCallback((capacity: number) => {
     const now = new Date().toISOString();
-    setBoard((prev) => ({
-      ...prev,
-      liveCapacity: Math.max(1, capacity),
-      capacitiesUpdatedAt: now,
-      lastSaved: now,
-    }));
+    setBoard((prev) => {
+      const newLive = Math.max(1, capacity);
+      return {
+        ...prev,
+        liveCapacity: newLive,
+        ...(prev.autoBudget ? { energyBudget: (prev.windowSize ?? 7) * newLive } : {}),
+        capacitiesUpdatedAt: now,
+        lastSaved: now,
+      };
+    });
   }, []);
 
   /** Add a category to the board */
@@ -190,7 +195,27 @@ export function useBoard() {
   /** Update rolling window size */
   const setWindowSize = useCallback((size: number) => {
     const now = new Date().toISOString();
-    setBoard((prev) => ({ ...prev, windowSize: Math.max(1, size), lastSaved: now }));
+    setBoard((prev) => {
+      const newSize = Math.min(WINDOW_MAX, Math.max(WINDOW_MIN, size));
+      return {
+        ...prev,
+        windowSize: newSize,
+        ...(prev.autoBudget ? { energyBudget: newSize * prev.liveCapacity } : {}),
+        lastSaved: now,
+      };
+    });
+  }, []);
+
+  /** Toggle auto-budget (Total = Window x Live) */
+  const setAutoBudget = useCallback((enabled: boolean) => {
+    const now = new Date().toISOString();
+    setBoard((prev) => ({
+      ...prev,
+      autoBudget: enabled,
+      ...(enabled ? { energyBudget: (prev.windowSize ?? 7) * prev.liveCapacity } : {}),
+      capacitiesUpdatedAt: now,
+      lastSaved: now,
+    }));
   }, []);
 
   /** Atomically add cards for activity instances not yet linked to a card.
@@ -249,6 +274,7 @@ export function useBoard() {
     renameCategory,
     setTimeFeatures,
     setWindowSize,
+    setAutoBudget,
     materializeInstances,
     replaceBoard,
   };

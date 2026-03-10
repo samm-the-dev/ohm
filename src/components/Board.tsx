@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   Zap,
   Settings,
@@ -37,7 +37,11 @@ import {
   getColumnCards,
   getColumnCapacity,
   getTotalCapacity,
+  getDailyEnergy,
+  getExpiredPowered,
+  getTrailingPowered,
 } from '../utils/board-utils';
+import { toISODate } from '../utils/schedule-utils';
 import { useBoard } from '../hooks/useBoard';
 import { useActivities } from '../hooks/useActivities';
 import { useDriveSync } from '../hooks/useDriveSync';
@@ -53,16 +57,19 @@ import {
   toastQuickAdd,
   toastLinkCopied,
   toastLinkFailed,
+  toastMilestone,
 } from '../utils/toast';
 
 function CategoryFilter({
   categories,
   selected,
   onToggle,
+  fullWidth,
 }: {
   categories: string[];
   selected: string[];
   onToggle: (cat: string) => void;
+  fullWidth?: boolean;
 }) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
@@ -84,7 +91,10 @@ function CategoryFilter({
   }, []);
 
   return (
-    <div ref={wrapperRef} className="relative flex flex-wrap items-center gap-1.5">
+    <div
+      ref={wrapperRef}
+      className={`relative flex flex-wrap items-center gap-1.5 ${fullWidth ? 'w-full' : ''}`}
+    >
       {selected.map((cat) => (
         <span
           key={cat}
@@ -102,7 +112,7 @@ function CategoryFilter({
         </span>
       ))}
       {available.length > 0 && (
-        <div className="relative">
+        <div className={`relative ${fullWidth ? 'flex-1' : ''}`}>
           <div className="relative flex items-center">
             <Tag size={10} className="text-ohm-muted absolute left-2" />
             <input
@@ -115,7 +125,9 @@ function CategoryFilter({
               onFocus={() => setOpen(true)}
               placeholder={selected.length ? '+ Add' : 'Category...'}
               aria-label="Filter categories"
-              className={`${selected.length ? 'w-16' : 'w-24'} border-ohm-border font-body text-ohm-text placeholder:text-ohm-muted/40 focus:ring-ohm-text/10 rounded-full border bg-transparent py-1 pr-2 pl-6 text-[11px] focus:ring-1 focus:outline-hidden`}
+              autoComplete="off"
+              data-form-type="other"
+              className={`${fullWidth ? 'w-full' : selected.length ? 'w-16' : 'w-24'} border-ohm-border font-body text-ohm-text placeholder:text-ohm-muted/40 focus:ring-ohm-text/10 rounded-full border bg-transparent py-1 pr-2 pl-6 text-[11px] focus:ring-1 focus:outline-hidden`}
             />
           </div>
           {open && matches.length > 0 && (
@@ -158,6 +170,7 @@ export function Board() {
     setLiveCapacity,
     setTimeFeatures,
     setWindowSize,
+    setAutoBudget,
     materializeInstances,
     replaceBoard,
   } = useBoard();
@@ -193,6 +206,17 @@ export function Board() {
     });
   }, [board.timeFeatures, refreshWindow]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Auto-demote: move Charging cards whose scheduledDate is before today to Grounded
+  useEffect(() => {
+    if (!board.timeFeatures) return;
+    const today = toISODate(new Date());
+    for (const card of board.cards) {
+      if (card.status === STATUS.CHARGING && card.scheduledDate && card.scheduledDate < today) {
+        move(card.id, STATUS.GROUNDED);
+      }
+    }
+  }, [board.timeFeatures, board.cards, move]);
+
   // Materialize Potential activity instances as Charging cards (atomic — strict-mode safe)
   useEffect(() => {
     if (!board.timeFeatures) return;
@@ -223,6 +247,17 @@ export function Board() {
 
     if (specs.length > 0) materializeInstances(specs);
   }, [board.timeFeatures, instances, activities, materializeInstances]);
+
+  // Auto-archive Powered cards that have fallen outside the trailing window
+  useEffect(() => {
+    if (!board.timeFeatures) return;
+    const trailingStart = new Date();
+    trailingStart.setDate(trailingStart.getDate() - ((board.windowSize ?? 7) - 1));
+    const expired = getExpiredPowered(board, toISODate(trailingStart));
+    for (const card of expired) {
+      deleteCard(card.id);
+    }
+  }, [board.timeFeatures, board.windowSize, board.cards, deleteCard]);
 
   // Drag-and-drop sensors
   const pointerSensor = useSensor(PointerSensor, {
@@ -291,6 +326,16 @@ export function Board() {
   }, [board, queueSync]);
 
   const { summary: welcomeBack, dismiss: dismissWelcome } = useWelcomeBack(board);
+
+  // Trailing powered ratio — used for Powered column glow and milestone toasts
+  const trailingPoweredRatio = useMemo(() => {
+    if (!board.timeFeatures) return 0;
+    const today = new Date();
+    const trailingStart = new Date(today);
+    trailingStart.setDate(trailingStart.getDate() - ((board.windowSize ?? 7) - 1));
+    const trailing = getTrailingPowered(board, toISODate(trailingStart), toISODate(today));
+    return board.energyBudget > 0 ? trailing.used / board.energyBudget : 0;
+  }, [board]);
 
   // Completion flash — column header animation (toast handled in onSave)
   const [poweredFlash, setPoweredFlash] = useState(false);
@@ -477,78 +522,117 @@ export function Board() {
           <span className="font-display text-ohm-muted shrink-0 text-[10px] tracking-widest uppercase">
             Energy
           </span>
-          <input
-            type="number"
-            min={ENERGY_MIN}
-            max={ENERGY_MAX}
-            value={energyMin ?? ''}
-            onChange={(e) => setEnergyMin(e.target.value ? Number(e.target.value) : null)}
-            placeholder="Min"
-            aria-label="Minimum energy"
-            className="border-ohm-border font-body text-ohm-text placeholder:text-ohm-muted/40 focus:ring-ohm-text/10 w-14 rounded-full border bg-transparent px-2 py-1 text-center text-[11px] focus:ring-1 focus:outline-hidden"
-          />
-          <span className="text-ohm-muted text-[10px]">-</span>
-          <input
-            type="number"
-            min={ENERGY_MIN}
-            max={ENERGY_MAX}
-            value={energyMax ?? ''}
-            onChange={(e) => setEnergyMax(e.target.value ? Number(e.target.value) : null)}
-            placeholder="Max"
-            aria-label="Maximum energy"
-            className="border-ohm-border font-body text-ohm-text placeholder:text-ohm-muted/40 focus:ring-ohm-text/10 w-14 rounded-full border bg-transparent px-2 py-1 text-center text-[11px] focus:ring-1 focus:outline-hidden"
-          />
-
-          {/* Desktop: inline category + search (hidden on mobile) */}
-          <div className="bg-ohm-border mx-1 hidden h-3 w-px shrink-0 md:block" />
-          <div className="hidden items-center gap-2 md:flex">
-            <CategoryFilter
-              categories={board.categories}
-              selected={categoryFilter}
-              onToggle={toggleCategory}
+          {/* Min stepper (desktop) */}
+          <button
+            type="button"
+            className="text-ohm-muted hover:text-ohm-text hidden shrink-0 px-1 py-0.5 text-sm font-bold disabled:opacity-30 md:inline"
+            disabled={(energyMin ?? ENERGY_MIN) <= ENERGY_MIN}
+            onClick={() => {
+              const v = (energyMin ?? ENERGY_MIN) - 1;
+              setEnergyMin(v <= ENERGY_MIN ? null : v);
+            }}
+            aria-label="Decrease minimum energy"
+          >
+            -
+          </button>
+          <span
+            className="font-display text-[10px] font-bold tabular-nums"
+            style={{ color: energyColor(energyMin ?? ENERGY_MIN) }}
+          >
+            {energyMin ?? ENERGY_MIN}
+          </span>
+          <button
+            type="button"
+            className="text-ohm-muted hover:text-ohm-text hidden shrink-0 px-1 py-0.5 text-sm font-bold disabled:opacity-30 md:inline"
+            disabled={(energyMin ?? ENERGY_MIN) >= (energyMax ?? ENERGY_MAX)}
+            onClick={() => {
+              const v = (energyMin ?? ENERGY_MIN) + 1;
+              setEnergyMin(v <= ENERGY_MIN ? null : v);
+            }}
+            aria-label="Increase minimum energy"
+          >
+            +
+          </button>
+          <div className="relative flex h-5 flex-1 items-center">
+            {/* Track background */}
+            <div className="bg-ohm-border absolute inset-x-0 h-1 rounded-full" />
+            {/* Active range fill */}
+            <div
+              className="absolute h-1 rounded-full"
+              style={{
+                left: `${(((energyMin ?? ENERGY_MIN) - ENERGY_MIN) / (ENERGY_MAX - ENERGY_MIN)) * 100}%`,
+                right: `${(1 - ((energyMax ?? ENERGY_MAX) - ENERGY_MIN) / (ENERGY_MAX - ENERGY_MIN)) * 100}%`,
+                background: `linear-gradient(to right, ${energyColor(energyMin ?? ENERGY_MIN)}, ${energyColor(energyMax ?? ENERGY_MAX)})`,
+              }}
             />
-            <div className="bg-ohm-border mx-1 h-3 w-px shrink-0" />
-            <div className="relative flex items-center">
-              <Search size={12} className="text-ohm-muted absolute left-2" />
-              <input
-                ref={searchRef}
-                type="text"
-                value={searchFilter}
-                onChange={(e) => setSearchFilter(e.target.value)}
-                placeholder="Search..."
-                className="border-ohm-border font-body text-ohm-text placeholder:text-ohm-muted/40 focus:ring-ohm-text/10 w-32 rounded-full border bg-transparent py-1 pr-2 pl-7 text-[11px] focus:ring-1 focus:outline-hidden"
-              />
-              {searchFilter && (
-                <button
-                  type="button"
-                  onClick={() => setSearchFilter('')}
-                  className="text-ohm-muted hover:text-ohm-text absolute right-1.5"
-                >
-                  <X size={10} />
-                </button>
-              )}
-            </div>
+            {/* Min thumb */}
+            <input
+              type="range"
+              min={ENERGY_MIN}
+              max={ENERGY_MAX}
+              step={1}
+              value={energyMin ?? ENERGY_MIN}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                setEnergyMin(v === ENERGY_MIN ? null : v);
+                if ((energyMax ?? ENERGY_MAX) < v) setEnergyMax(v === ENERGY_MAX ? null : v);
+              }}
+              aria-label="Minimum energy"
+              className="ohm-range-thumb pointer-events-none absolute inset-x-0 m-0 h-0 w-full appearance-none bg-transparent"
+            />
+            {/* Max thumb */}
+            <input
+              type="range"
+              min={ENERGY_MIN}
+              max={ENERGY_MAX}
+              step={1}
+              value={energyMax ?? ENERGY_MAX}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                setEnergyMax(v === ENERGY_MAX ? null : v);
+                if ((energyMin ?? ENERGY_MIN) > v) setEnergyMin(v === ENERGY_MIN ? null : v);
+              }}
+              aria-label="Maximum energy"
+              className="ohm-range-thumb pointer-events-none absolute inset-x-0 m-0 h-0 w-full appearance-none bg-transparent"
+            />
           </div>
-
-          {/* Spacer */}
-          <div className="flex-1" />
+          {/* Max stepper (desktop) */}
+          <button
+            type="button"
+            className="text-ohm-muted hover:text-ohm-text hidden shrink-0 px-1 py-0.5 text-sm font-bold disabled:opacity-30 md:inline"
+            disabled={(energyMax ?? ENERGY_MAX) <= (energyMin ?? ENERGY_MIN)}
+            onClick={() => {
+              const v = (energyMax ?? ENERGY_MAX) - 1;
+              setEnergyMax(v >= ENERGY_MAX ? null : v);
+            }}
+            aria-label="Decrease maximum energy"
+          >
+            -
+          </button>
+          <span
+            className="font-display text-[10px] font-bold tabular-nums"
+            style={{ color: energyColor(energyMax ?? ENERGY_MAX) }}
+          >
+            {energyMax ?? ENERGY_MAX}
+          </span>
+          <button
+            type="button"
+            className="text-ohm-muted hover:text-ohm-text hidden shrink-0 px-1 py-0.5 text-sm font-bold disabled:opacity-30 md:inline"
+            disabled={(energyMax ?? ENERGY_MAX) >= ENERGY_MAX}
+            onClick={() => {
+              const v = (energyMax ?? ENERGY_MAX) + 1;
+              setEnergyMax(v >= ENERGY_MAX ? null : v);
+            }}
+            aria-label="Increase maximum energy"
+          >
+            +
+          </button>
 
           {/* Mobile: active advanced filter indicator (when collapsed) */}
           {!filtersExpanded && hasAdvancedFilter && (
             <span className="bg-ohm-text/10 font-body text-ohm-text flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] md:hidden">
               +{advancedFilterCount} filter{advancedFilterCount > 1 ? 's' : ''}
             </span>
-          )}
-
-          {/* Reset button */}
-          {hasActiveFilter && (
-            <button
-              type="button"
-              onClick={resetFilters}
-              className="font-display text-ohm-muted hover:text-ohm-text shrink-0 text-[10px] tracking-wider uppercase"
-            >
-              Reset
-            </button>
           )}
 
           {/* Mobile: expand/collapse toggle */}
@@ -562,6 +646,44 @@ export function Board() {
           </button>
         </div>
 
+        {/* Desktop: category + search + reset (own row, won't squish energy slider) */}
+        <div className="mt-1.5 hidden items-center gap-2 md:flex">
+          <CategoryFilter
+            categories={board.categories}
+            selected={categoryFilter}
+            onToggle={toggleCategory}
+          />
+          <div className="bg-ohm-border mx-1 h-3 w-px shrink-0" />
+          <div className="relative flex flex-1 items-center">
+            <Search size={12} className="text-ohm-muted absolute left-2" />
+            <input
+              ref={searchRef}
+              type="text"
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+              placeholder="Search..."
+              className="border-ohm-border font-body text-ohm-text placeholder:text-ohm-muted/40 focus:ring-ohm-text/10 w-full rounded-full border bg-transparent py-1 pr-2 pl-7 text-[11px] focus:ring-1 focus:outline-hidden"
+            />
+            {searchFilter && (
+              <button
+                type="button"
+                onClick={() => setSearchFilter('')}
+                className="text-ohm-muted hover:text-ohm-text absolute right-1.5"
+              >
+                <X size={10} />
+              </button>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={resetFilters}
+            disabled={!hasActiveFilter}
+            className="font-display text-ohm-muted hover:text-ohm-text shrink-0 text-[10px] tracking-wider uppercase disabled:pointer-events-none disabled:opacity-30"
+          >
+            Reset
+          </button>
+        </div>
+
         {/* Mobile expanded: category + search rows */}
         {filtersExpanded && (
           <div className="mt-2 flex flex-col gap-2 md:hidden">
@@ -569,50 +691,121 @@ export function Board() {
               categories={board.categories}
               selected={categoryFilter}
               onToggle={toggleCategory}
+              fullWidth
             />
-            <div className="relative flex items-center">
-              <Search size={12} className="text-ohm-muted absolute left-2" />
-              <input
-                type="text"
-                value={searchFilter}
-                onChange={(e) => setSearchFilter(e.target.value)}
-                placeholder="Search cards..."
-                className="border-ohm-border font-body text-ohm-text placeholder:text-ohm-muted/40 focus:ring-ohm-text/10 w-full rounded-full border bg-transparent py-1.5 pr-2 pl-7 text-xs focus:ring-1 focus:outline-hidden"
-              />
-              {searchFilter && (
-                <button
-                  type="button"
-                  onClick={() => setSearchFilter('')}
-                  className="text-ohm-muted hover:text-ohm-text absolute right-2"
-                >
-                  <X size={12} />
-                </button>
-              )}
+            <div className="flex items-center gap-2">
+              <div className="relative flex flex-1 items-center">
+                <Search size={12} className="text-ohm-muted absolute left-2" />
+                <input
+                  type="text"
+                  value={searchFilter}
+                  onChange={(e) => setSearchFilter(e.target.value)}
+                  placeholder="Search cards..."
+                  className="border-ohm-border font-body text-ohm-text placeholder:text-ohm-muted/40 focus:ring-ohm-text/10 w-full rounded-full border bg-transparent py-1.5 pr-2 pl-7 text-xs focus:ring-1 focus:outline-hidden"
+                />
+                {searchFilter && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchFilter('')}
+                    className="text-ohm-muted hover:text-ohm-text absolute right-2"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={resetFilters}
+                disabled={!hasActiveFilter}
+                className="font-display text-ohm-muted hover:text-ohm-text shrink-0 text-[10px] tracking-wider uppercase disabled:pointer-events-none disabled:opacity-30"
+              >
+                Reset
+              </button>
             </div>
           </div>
         )}
       </div>
 
-      {/* Total budget bar */}
+      {/* Energy meters — shared grid so bars align */}
       {(() => {
         const total = getTotalCapacity(board);
-        const ratio = Math.min(total.used / total.total, 1);
-        const hue = 120 * (1 - ratio);
-        const color = `hsl(${hue}, 80%, 50%)`;
+        const totalRatio = Math.min(total.used / total.total, 1);
+        const totalHue = 120 * (1 - totalRatio);
+        const totalColor = `hsl(${totalHue}, 80%, 50%)`;
+
+        const today = new Date();
+        const todayStr = toISODate(today);
+
+        // Daily meters
+        let daily: Array<{ date: string; used: number }> = [];
+        let dayLimit = board.liveCapacity;
+        if (board.timeFeatures) {
+          const windowEnd = new Date(today);
+          windowEnd.setDate(windowEnd.getDate() + (board.windowSize ?? 7) - 1);
+          daily = getDailyEnergy(board, todayStr, toISODate(windowEnd));
+          dayLimit = board.liveCapacity;
+        }
+
         return (
-          <div className="border-ohm-border flex items-center gap-3 border-b px-4 py-1.5">
-            <span className="font-display text-ohm-muted shrink-0 text-[10px] tracking-widest uppercase">
+          <div
+            className="border-ohm-border grid items-center gap-x-3 gap-y-1 border-b px-4 py-2.5"
+            style={{ gridTemplateColumns: '2.5rem 1fr 3rem' }}
+          >
+            {/* Daily row */}
+            {board.timeFeatures && daily.length > 0 && (
+              <div className="flex gap-1" style={{ gridColumn: '1 / -1' }}>
+                {daily.map(({ date, used }) => {
+                  const ratio = Math.min(used / dayLimit, 1);
+                  const hue = 120 * (1 - ratio);
+                  const color = used > 0 ? `hsl(${hue}, 80%, 50%)` : undefined;
+                  const isToday = date === todayStr;
+                  const d = new Date(date + 'T00:00:00');
+                  const dayLabel = d.toLocaleDateString(undefined, { weekday: 'short' });
+                  const dateNum = d.getDate();
+                  return (
+                    <div
+                      key={date}
+                      className="flex min-w-0 flex-1 flex-col items-center gap-0.5"
+                      title={`${date}: ${used}/${dayLimit}`}
+                    >
+                      <span
+                        className={`font-display text-[10px] leading-tight ${isToday ? 'text-ohm-text font-bold' : 'text-ohm-muted'}`}
+                      >
+                        {dayLabel}&nbsp;{dateNum}
+                      </span>
+                      <div className="bg-ohm-border relative h-1.5 w-full overflow-hidden rounded-full">
+                        {used > 0 && (
+                          <div
+                            className="absolute inset-y-0 left-0 rounded-full transition-all duration-300"
+                            style={{ width: `${ratio * 100}%`, backgroundColor: color }}
+                          />
+                        )}
+                      </div>
+                      <span
+                        className={`font-display text-[10px] leading-none font-bold ${used === 0 ? 'text-ohm-muted/30' : ''}`}
+                        style={color ? { color } : undefined}
+                      >
+                        {used}/{dayLimit}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Total row */}
+            <span className="font-display text-ohm-muted text-[10px] tracking-widest uppercase">
               Total
             </span>
-            <div className="bg-ohm-border relative h-1.5 flex-1 overflow-hidden rounded-full">
+            <div className="bg-ohm-border relative h-1.5 overflow-hidden rounded-full">
               <div
                 className="absolute inset-y-0 left-0 rounded-full transition-all duration-300"
-                style={{ width: `${ratio * 100}%`, backgroundColor: color }}
+                style={{ width: `${totalRatio * 100}%`, backgroundColor: totalColor }}
               />
             </div>
             <span
-              className={`font-display shrink-0 text-[10px] font-bold ${total.used > total.total ? 'animate-pulse' : ''}`}
-              style={{ color }}
+              className={`font-display text-right text-[10px] font-bold ${total.used > total.total ? 'animate-pulse' : ''}`}
+              style={{ color: totalColor }}
             >
               {total.used}/{total.total}
             </span>
@@ -642,6 +835,9 @@ export function Board() {
                   capacity={getColumnCapacity(board, status) ?? undefined}
                   defaultExpanded={index === STATUS.LIVE}
                   flash={index === STATUS.POWERED ? poweredFlash : undefined}
+                  glowIntensity={
+                    index === STATUS.POWERED ? Math.min(trailingPoweredRatio, 1) : undefined
+                  }
                 />
               );
             })}
@@ -662,12 +858,14 @@ export function Board() {
           card={activeCard}
           isNew={!!newCard}
           categories={board.categories}
+          timeFeatures={board.timeFeatures}
           onSave={(updated) => {
             if (newCard) {
               quickAdd(updated.title, {
                 description: updated.description || undefined,
                 energy: updated.energy,
                 category: updated.category || undefined,
+                scheduledDate: updated.scheduledDate || undefined,
               });
               toastQuickAdd(updated.title);
             } else {
@@ -681,6 +879,10 @@ export function Board() {
                 if (updated.status === STATUS.POWERED) {
                   setPoweredFlash(true);
                   setTimeout(() => setPoweredFlash(false), 1000);
+                  if (board.timeFeatures && board.energyBudget > 0) {
+                    const newRatio = trailingPoweredRatio + updated.energy / board.energyBudget;
+                    toastMilestone(trailingPoweredRatio, newRatio);
+                  }
                 }
               }
             }
@@ -723,6 +925,8 @@ export function Board() {
         windowSize={board.windowSize}
         onSetTimeFeatures={setTimeFeatures}
         onSetWindowSize={setWindowSize}
+        autoBudget={board.autoBudget}
+        onSetAutoBudget={setAutoBudget}
         activities={activities}
         onAddActivity={addActivity}
         onUpdateActivity={updateActivity}
