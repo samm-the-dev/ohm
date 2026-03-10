@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowRight, GripVertical } from 'lucide-react';
+import { ArrowRight, GripVertical, Repeat } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { OhmCard } from '../types/board';
@@ -62,6 +62,9 @@ export function Card({ card, onTap, onReorder }: CardProps) {
       >
         {/* Title row with drag handle */}
         <div className="flex items-center gap-1.5">
+          {card.activityInstanceId && (
+            <Repeat size={12} className="text-ohm-muted shrink-0" aria-label="Recurring" />
+          )}
           <p className="font-body text-ohm-text min-w-0 flex-1 text-sm leading-snug font-medium">
             {card.title}
           </p>
@@ -88,6 +91,11 @@ export function Card({ card, onTap, onReorder }: CardProps) {
               {energyInfo.label}
             </span>
           </span>
+
+          {/* Scheduled date */}
+          {card.scheduledDate && (
+            <span className="font-body text-ohm-muted text-[10px]">{card.scheduledDate}</span>
+          )}
 
           {/* Category pill */}
           {card.category && (

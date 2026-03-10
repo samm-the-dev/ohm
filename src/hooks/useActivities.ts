@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { db } from '../db';
 import type { Activity, ActivityInstance } from '../types/activity';
 import type { StoredSchedule } from '../types/schedule';
 import type { EnergyTag } from '../types/board';
 import { ACTIVITY_STATUS } from '../types/activity';
-import { generateInstances } from '../utils/schedule-utils';
+import { generateInstances, toISODate } from '../utils/schedule-utils';
 import { generateId } from '../utils/board-utils';
 
 const DEFAULT_WINDOW_SIZE = 7;
@@ -65,24 +65,70 @@ export function useActivities(windowSize = DEFAULT_WINDOW_SIZE) {
     [loadAll],
   );
 
-  /** Generate missing instances for all scheduled activities within the rolling window */
+  // Prevent concurrent refreshWindow calls (React strict mode runs effects twice)
+  const refreshingRef = useRef(false);
+
+  /** Generate missing instances for all scheduled activities within the rolling window,
+   *  and demote expired Potential instances to Failed. */
   const refreshWindow = useCallback(async () => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const windowEnd = new Date(today);
-    windowEnd.setDate(windowEnd.getDate() + windowSize - 1);
+    if (refreshingRef.current) return [];
+    refreshingRef.current = true;
 
-    const allActivities = await db.activities.toArray();
-    const existingInstances = await db.instances.toArray();
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayStr = toISODate(today);
+      const windowEnd = new Date(today);
+      windowEnd.setDate(windowEnd.getDate() + windowSize - 1);
 
-    const newInstances: ActivityInstance[] = [];
-    for (const activity of allActivities) {
-      newInstances.push(...generateInstances(activity, today, windowEnd, existingInstances));
-    }
+      const allActivities = await db.activities.toArray();
+      const existingInstances = await db.instances.toArray();
 
-    if (newInstances.length > 0) {
-      await db.instances.bulkAdd(newInstances);
-      await loadAll();
+      // Deduplicate: remove duplicate instances per [activityId, scheduledDate]
+      const seen = new Map<string, string>(); // key → first instance id
+      const dupeIds: string[] = [];
+      for (const inst of existingInstances) {
+        const key = `${inst.activityId}:${inst.scheduledDate}`;
+        if (seen.has(key)) {
+          dupeIds.push(inst.id);
+        } else {
+          seen.set(key, inst.id);
+        }
+      }
+
+      // Generate new instances for the window (exclude dupes from existing set)
+      const dedupedInstances = existingInstances.filter((i) => !dupeIds.includes(i.id));
+      const newInstances: ActivityInstance[] = [];
+      for (const activity of allActivities) {
+        newInstances.push(...generateInstances(activity, today, windowEnd, dedupedInstances));
+      }
+
+      // Demote expired Potential instances (scheduledDate < today) to Failed
+      const expired = dedupedInstances.filter(
+        (inst) => inst.status === ACTIVITY_STATUS.POTENTIAL && inst.scheduledDate < todayStr,
+      );
+
+      let changed = false;
+      await db.transaction('rw', db.instances, async () => {
+        if (dupeIds.length > 0) {
+          await db.instances.bulkDelete(dupeIds);
+          changed = true;
+        }
+        if (newInstances.length > 0) {
+          await db.instances.bulkAdd(newInstances);
+          changed = true;
+        }
+        for (const inst of expired) {
+          await db.instances.update(inst.id, { status: ACTIVITY_STATUS.FAILED });
+          changed = true;
+        }
+      });
+
+      if (changed) await loadAll();
+
+      return expired.map((inst) => inst.id);
+    } finally {
+      refreshingRef.current = false;
     }
   }, [windowSize, loadAll]);
 

@@ -126,6 +126,43 @@ describe('useActivities', () => {
       expect(result.current.instances).toHaveLength(7);
     });
 
+    it('demotes expired Potential instances to Failed', async () => {
+      const { result } = renderHook(() => useActivities());
+      await act(async () => {
+        await result.current.addActivity('Daily', {
+          schedule: { repeatFrequency: 'P1D' },
+        });
+      });
+      // Manually insert an instance with a past scheduledDate
+      await db.instances.add({
+        id: 'expired-1',
+        activityId: result.current.activities[0]!.id,
+        scheduledDate: '2020-01-01',
+        status: ACTIVITY_STATUS.POTENTIAL,
+      });
+      await act(async () => {
+        const expiredIds = await result.current.refreshWindow();
+        expect(expiredIds).toContain('expired-1');
+      });
+      const expired = result.current.instances.find((i) => i.id === 'expired-1')!;
+      expect(expired.status).toBe(ACTIVITY_STATUS.FAILED);
+    });
+
+    it('returns expired instance IDs from refreshWindow', async () => {
+      const { result } = renderHook(() => useActivities());
+      await act(async () => {
+        await result.current.addActivity('Daily', {
+          schedule: { repeatFrequency: 'P1D' },
+        });
+      });
+      let expiredIds: string[] = [];
+      await act(async () => {
+        expiredIds = await result.current.refreshWindow();
+      });
+      // No expired instances on first run (all generated for today+)
+      expect(expiredIds).toEqual([]);
+    });
+
     it('skips activities without schedules', async () => {
       const { result } = renderHook(() => useActivities());
       await act(async () => {

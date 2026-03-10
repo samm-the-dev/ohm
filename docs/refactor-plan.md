@@ -62,6 +62,14 @@ The core orchestrator features. May combine with Phase 0 into one PR depending o
 - Instance generation from `matchesSchedule` logic
 - `exceptDate` support for skip/reschedule
 - Time features toggle controls visibility of all temporal UI
+- Auto-demotion: instances whose `scheduledDate` < today and still Potential move to Failed (Grounded)
+
+**Capacity model (breaking change -- no migration needed, no real users):**
+
+- Replace per-column capacities (`chargingCapacity`, `groundedCapacity`) with a single `energyBudget` for the rolling window
+- `liveCapacity` stays separate -- limits active/today work
+- Energy budget covers total energy segments allocated across the window period (Charging + Grounded combined)
+- Budget indicator shows total energy used vs budget across the window
 
 **Activity lifecycle:**
 
@@ -193,8 +201,11 @@ interface OhmCard {
 
 ```typescript
 interface OhmBoard {
-  version: 2;
-  // ... existing fields unchanged ...
+  version: 1;
+  // ... existing fields ...
+  energyBudget: number; // total energy segments for the rolling window
+  liveCapacity: number; // energy segments limit for Live column (today)
+  // chargingCapacity and groundedCapacity removed -- replaced by energyBudget
   timeFeatures?: boolean; // enable rolling window + schedules
   windowSize?: number; // rolling window days (default 7)
 }

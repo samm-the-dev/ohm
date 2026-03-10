@@ -23,7 +23,8 @@ import {
 } from '@dnd-kit/core';
 import { arrayMove } from '@dnd-kit/sortable';
 import type { OhmCard, EnergyTag, ColumnStatus } from '../types/board';
-import { STATUS, COLUMNS, ENERGY_CONFIG, ENERGY_CLASSES } from '../types/board';
+import { STATUS, ENERGY, COLUMNS, ENERGY_CONFIG, ENERGY_CLASSES } from '../types/board';
+import { ACTIVITY_STATUS } from '../types/activity';
 import { createCard, getColumnCards, getColumnCapacity } from '../utils/board-utils';
 import { useBoard } from '../hooks/useBoard';
 import { useActivities } from '../hooks/useActivities';
@@ -133,6 +134,7 @@ export function Board() {
   const {
     board,
     quickAdd,
+    move,
     updateCard,
     deleteCard,
     restoreCard,
@@ -140,22 +142,67 @@ export function Board() {
     addCategory,
     removeCategory,
     renameCategory,
-    setCapacity,
+    setEnergyBudget,
+    setLiveCapacity,
     setTimeFeatures,
     setWindowSize,
+    materializeInstances,
     replaceBoard,
   } = useBoard();
 
-  const { activities, addActivity, updateActivity, deleteActivity, refreshWindow } = useActivities(
-    board.windowSize,
-  );
+  const { activities, instances, addActivity, updateActivity, deleteActivity, refreshWindow } =
+    useActivities(board.windowSize);
 
-  // Refresh activity instances when time features are enabled
+  // Refresh activity instances when time features are enabled;
+  // demote cards linked to expired instances to Grounded
   useEffect(() => {
-    if (board.timeFeatures) {
-      void refreshWindow();
-    }
-  }, [board.timeFeatures, refreshWindow]);
+    if (!board.timeFeatures) return;
+    void refreshWindow().then((expiredIds) => {
+      if (!expiredIds || expiredIds.length === 0) return;
+      const expiredSet = new Set(expiredIds);
+      for (const card of board.cards) {
+        if (
+          card.activityInstanceId &&
+          expiredSet.has(card.activityInstanceId) &&
+          card.status !== STATUS.GROUNDED &&
+          card.status !== STATUS.POWERED
+        ) {
+          move(card.id, STATUS.GROUNDED);
+        }
+      }
+    });
+  }, [board.timeFeatures, refreshWindow]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Materialize Potential activity instances as Charging cards (atomic — strict-mode safe)
+  useEffect(() => {
+    if (!board.timeFeatures) return;
+
+    const activityMap = new Map(activities.map((a) => [a.id, a]));
+    const specs = instances
+      .filter((inst) => inst.status === ACTIVITY_STATUS.POTENTIAL)
+      .map((inst) => {
+        const activity = activityMap.get(inst.activityId);
+        if (!activity) return null;
+        return {
+          title: activity.name,
+          energy: activity.energy ?? ENERGY.MED,
+          activityInstanceId: inst.id,
+          scheduledDate: inst.scheduledDate,
+        };
+      })
+      .filter(
+        (
+          s,
+        ): s is {
+          title: string;
+          energy: number;
+          activityInstanceId: string;
+          scheduledDate: string;
+        } => s !== null,
+      );
+
+    if (specs.length > 0) materializeInstances(specs);
+  }, [board.timeFeatures, instances, activities, materializeInstances]);
 
   // Drag-and-drop sensors
   const pointerSensor = useSensor(PointerSensor, {
@@ -606,12 +653,10 @@ export function Board() {
         onAddCategory={addCategory}
         onRemoveCategory={removeCategory}
         onRenameCategory={renameCategory}
-        capacities={{
-          charging: board.chargingCapacity,
-          live: board.liveCapacity,
-          grounded: board.groundedCapacity,
-        }}
-        onSetCapacity={setCapacity}
+        energyBudget={board.energyBudget}
+        liveCapacity={board.liveCapacity}
+        onSetEnergyBudget={setEnergyBudget}
+        onSetLiveCapacity={setLiveCapacity}
         timeFeatures={board.timeFeatures}
         windowSize={board.windowSize}
         onSetTimeFeatures={setTimeFeatures}
