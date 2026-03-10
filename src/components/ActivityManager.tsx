@@ -29,7 +29,7 @@ interface ScheduleEditorProps {
 }
 
 function ScheduleEditor({ schedule, onChange }: ScheduleEditorProps) {
-  const freq = schedule.repeatFrequency ?? 'P1W';
+  const freq = schedule.repeatFrequency ?? 'P1D';
 
   const setFreq = (value: string) => {
     const next: Partial<StoredSchedule> = { ...schedule, repeatFrequency: value };

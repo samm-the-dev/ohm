@@ -894,7 +894,11 @@ export function Board() {
         onDragCancel={handleDragCancel}
         accessibility={{ announcements: dndAnnouncements }}
       >
-        <main id="board" className="flex-1 overflow-y-auto md:overflow-x-auto md:overflow-y-hidden">
+        <main
+          id="board"
+          tabIndex={-1}
+          className="flex-1 overflow-y-auto focus:outline-none md:overflow-x-auto md:overflow-y-hidden"
+        >
           <div className="flex flex-col gap-3 p-4 md:min-h-[calc(100vh-56px)] md:flex-row md:gap-4">
             {COLUMNS.map((col, index) => {
               const status = index as ColumnStatus;
