@@ -22,6 +22,8 @@ export interface Activity {
   schedule?: StoredSchedule;
   /** ohm-specific: energy cost of this activity */
   energy?: number;
+  /** ohm-specific: category label */
+  category?: string;
   /** App-defined metadata */
   meta?: Record<string, unknown>;
 }

@@ -426,6 +426,7 @@ export function SettingsDialog({
         {timeFeatures && activities && onAddActivity && onUpdateActivity && onDeleteActivity && (
           <ActivityManager
             activities={activities}
+            categories={categories}
             onAdd={onAddActivity}
             onUpdate={onUpdateActivity}
             onDelete={onDeleteActivity}

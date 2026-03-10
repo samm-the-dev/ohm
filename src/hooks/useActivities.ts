@@ -41,7 +41,12 @@ export function useActivities({
   const addActivity = useCallback(
     (
       name: string,
-      opts?: { description?: string; schedule?: StoredSchedule; energy?: number },
+      opts?: {
+        description?: string;
+        schedule?: StoredSchedule;
+        energy?: number;
+        category?: string;
+      },
     ): Activity => {
       const activity: Activity = {
         id: generateId(),
@@ -50,6 +55,7 @@ export function useActivities({
         description: opts?.description,
         schedule: opts?.schedule,
         energy: opts?.energy,
+        category: opts?.category,
       };
       setActivities((prev) => [...prev, activity]);
       return activity;

@@ -264,17 +264,19 @@ function ScheduleEditor({ schedule, onChange }: ScheduleEditorProps) {
 
 interface ActivityFormProps {
   initial?: Activity;
+  categories?: string[];
   onSubmit: (
     name: string,
-    opts: { description?: string; schedule?: StoredSchedule; energy?: number },
+    opts: { description?: string; schedule?: StoredSchedule; energy?: number; category?: string },
   ) => void;
   onCancel: () => void;
 }
 
-function ActivityForm({ initial, onSubmit, onCancel }: ActivityFormProps) {
+function ActivityForm({ initial, categories, onSubmit, onCancel }: ActivityFormProps) {
   const [name, setName] = useState(initial?.name ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
   const [energy, setEnergy] = useState<number | undefined>(initial?.energy);
+  const [category, setCategory] = useState(initial?.category ?? '');
   const [schedule, setSchedule] = useState<Partial<StoredSchedule>>(
     initial?.schedule ?? { repeatFrequency: 'P1D' },
   );
@@ -290,6 +292,7 @@ function ActivityForm({ initial, onSubmit, onCancel }: ActivityFormProps) {
         repeatFrequency: schedule.repeatFrequency ?? 'P1D',
       } as StoredSchedule,
       energy,
+      category: category || undefined,
     });
   };
 
@@ -338,6 +341,30 @@ function ActivityForm({ initial, onSubmit, onCancel }: ActivityFormProps) {
         </div>
       </div>
 
+      {/* Category */}
+      {categories && categories.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="font-display text-ohm-muted text-[10px] tracking-widest uppercase">
+            Category
+          </span>
+          {categories.map((cat) => {
+            const active = category === cat;
+            return (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setCategory(active ? '' : cat)}
+                className={`font-body rounded-full px-2 py-0.5 text-[10px] transition-colors ${
+                  active ? 'bg-ohm-text/10 text-ohm-text' : 'text-ohm-muted hover:text-ohm-text'
+                }`}
+              >
+                {cat}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Schedule */}
       <div>
         <span className="font-display text-ohm-muted mb-1.5 block text-[10px] tracking-widest uppercase">
@@ -369,21 +396,28 @@ function ActivityForm({ initial, onSubmit, onCancel }: ActivityFormProps) {
 
 interface ActivityManagerProps {
   activities: Activity[];
+  categories?: string[];
   onAdd: (
     name: string,
-    opts?: { description?: string; schedule?: StoredSchedule; energy?: number },
+    opts?: { description?: string; schedule?: StoredSchedule; energy?: number; category?: string },
   ) => Activity;
   onUpdate: (id: string, changes: Partial<Omit<Activity, 'id'>>) => void;
   onDelete: (id: string) => void | Promise<void>;
 }
 
-export function ActivityManager({ activities, onAdd, onUpdate, onDelete }: ActivityManagerProps) {
+export function ActivityManager({
+  activities,
+  categories,
+  onAdd,
+  onUpdate,
+  onDelete,
+}: ActivityManagerProps) {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const handleAdd = (
     name: string,
-    opts: { description?: string; schedule?: StoredSchedule; energy?: number },
+    opts: { description?: string; schedule?: StoredSchedule; energy?: number; category?: string },
   ) => {
     onAdd(name, opts);
     setShowForm(false);
@@ -391,7 +425,7 @@ export function ActivityManager({ activities, onAdd, onUpdate, onDelete }: Activ
 
   const handleUpdate = (
     name: string,
-    opts: { description?: string; schedule?: StoredSchedule; energy?: number },
+    opts: { description?: string; schedule?: StoredSchedule; energy?: number; category?: string },
   ) => {
     if (!editingId) return;
     onUpdate(editingId, { name, ...opts });
@@ -432,6 +466,7 @@ export function ActivityManager({ activities, onAdd, onUpdate, onDelete }: Activ
             <ActivityForm
               key={activity.id}
               initial={activity}
+              categories={categories}
               onSubmit={handleUpdate}
               onCancel={() => setEditingId(null)}
             />
@@ -479,7 +514,11 @@ export function ActivityManager({ activities, onAdd, onUpdate, onDelete }: Activ
       {/* New activity form */}
       {showForm && (
         <div className="mt-2">
-          <ActivityForm onSubmit={handleAdd} onCancel={() => setShowForm(false)} />
+          <ActivityForm
+            categories={categories}
+            onSubmit={handleAdd}
+            onCancel={() => setShowForm(false)}
+          />
         </div>
       )}
     </div>

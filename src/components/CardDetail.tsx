@@ -264,13 +264,12 @@ export function CardDetail({
                     key={value}
                     type="button"
                     onClick={() => setEditing((prev) => ({ ...prev, energy: value }))}
-                    className={`font-body flex items-center justify-center rounded-md border px-2.5 py-1.5 text-xs transition-colors ${
-                      selected
-                        ? 'border-current bg-current/10'
-                        : 'border-ohm-border bg-ohm-bg text-ohm-muted hover:text-ohm-text'
+                    className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] transition-colors ${
+                      selected ? 'bg-current/10' : 'text-ohm-muted hover:text-ohm-text'
                     }`}
                     style={selected ? { color } : undefined}
                   >
+                    <EnergyIcon size={10} value={value} />
                     {value}
                   </button>
                 );
@@ -289,29 +288,33 @@ export function CardDetail({
               <Calendar size={10} />
               Scheduled
             </label>
-            <div className="flex items-center gap-2">
-              <input
-                id="card-scheduled-date"
-                type="date"
-                value={editing.scheduledDate ?? ''}
-                onChange={(e) =>
-                  setEditing((prev) => ({
-                    ...prev,
-                    scheduledDate: e.target.value || undefined,
-                  }))
-                }
-                className={`${accent.border} bg-ohm-bg font-body text-ohm-text focus:ring-ohm-text/10 rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-hidden`}
-              />
-              {editing.scheduledDate && (
-                <button
-                  type="button"
-                  onClick={() => setEditing((prev) => ({ ...prev, scheduledDate: undefined }))}
-                  className="text-ohm-muted hover:text-ohm-text text-[10px] underline decoration-dotted"
-                >
-                  Clear
-                </button>
-              )}
-            </div>
+            {editing.activityInstanceId ? (
+              <p className="font-body text-ohm-muted text-sm">{editing.scheduledDate}</p>
+            ) : (
+              <div className="flex items-center gap-2">
+                <input
+                  id="card-scheduled-date"
+                  type="date"
+                  value={editing.scheduledDate ?? ''}
+                  onChange={(e) =>
+                    setEditing((prev) => ({
+                      ...prev,
+                      scheduledDate: e.target.value || undefined,
+                    }))
+                  }
+                  className={`${accent.border} bg-ohm-bg font-body text-ohm-text focus:ring-ohm-text/10 rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-hidden`}
+                />
+                {editing.scheduledDate && (
+                  <button
+                    type="button"
+                    onClick={() => setEditing((prev) => ({ ...prev, scheduledDate: undefined }))}
+                    className="text-ohm-muted hover:text-ohm-text text-[10px] underline decoration-dotted"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
 

@@ -258,6 +258,7 @@ export function Board() {
         return {
           title: activity.name,
           energy: activity.energy ?? ENERGY_DEFAULT,
+          category: activity.category ?? '',
           activityInstanceId: inst.id,
           scheduledDate: inst.scheduledDate,
         };
@@ -268,6 +269,7 @@ export function Board() {
         ): s is {
           title: string;
           energy: number;
+          category: string;
           activityInstanceId: string;
           scheduledDate: string;
         } => s !== null,
@@ -275,6 +277,38 @@ export function Board() {
 
     if (specs.length > 0) materializeInstances(specs);
   }, [board.timeFeatures, instances, activities, materializeInstances]);
+
+  // Sync activity edits (name, energy, category) to already-materialized cards
+  useEffect(() => {
+    if (!board.timeFeatures) return;
+    const activityMap = new Map(activities.map((a) => [a.id, a]));
+    const updates: OhmCard[] = [];
+
+    for (const card of board.cards) {
+      if (!card.activityInstanceId) continue;
+      const inst = instances.find((i) => i.id === card.activityInstanceId);
+      if (!inst) continue;
+      const activity = activityMap.get(inst.activityId);
+      if (!activity) continue;
+
+      const expectedEnergy = activity.energy ?? ENERGY_DEFAULT;
+      if (
+        card.title !== activity.name ||
+        card.energy !== expectedEnergy ||
+        card.category !== (activity.category ?? '')
+      ) {
+        updates.push({
+          ...card,
+          title: activity.name,
+          energy: expectedEnergy,
+          category: activity.category ?? '',
+          updatedAt: new Date().toISOString(),
+        });
+      }
+    }
+
+    for (const u of updates) updateCard(u);
+  }, [board.timeFeatures, board.cards, activities, instances, updateCard]);
 
   // Auto-archive Powered cards that have fallen outside the trailing window
   useEffect(() => {
@@ -965,6 +999,9 @@ export function Board() {
           }}
           onDelete={(id) => {
             const deletedCard = board.cards.find((c) => c.id === id);
+            if (deletedCard?.activityInstanceId) {
+              void dismissInstance(deletedCard.activityInstanceId);
+            }
             deleteCard(id);
             setSelectedCard(null);
             if (deletedCard) {
