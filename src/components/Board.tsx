@@ -41,7 +41,6 @@ import {
   getTotalCapacity,
   getDailyEnergy,
   getExpiredPowered,
-  getTrailingPowered,
 } from '../utils/board-utils';
 import { toISODate } from '../utils/schedule-utils';
 import { useBoard } from '../hooks/useBoard';
@@ -423,16 +422,6 @@ export function Board() {
   }, [board, queueSync]);
 
   const { summary: welcomeBack, dismiss: dismissWelcome } = useWelcomeBack(board);
-
-  // Trailing powered ratio — used for Powered column glow and milestone toasts
-  const trailingPoweredRatio = useMemo(() => {
-    if (!board.timeFeatures) return 0;
-    const today = new Date();
-    const trailingStart = new Date(today);
-    trailingStart.setDate(trailingStart.getDate() - ((board.windowSize ?? WINDOW_DEFAULT) - 1));
-    const trailing = getTrailingPowered(board, toISODate(trailingStart), toISODate(today));
-    return board.energyBudget > 0 ? trailing.used / board.energyBudget : 0;
-  }, [board]);
 
   // Completion flash — column header animation
   const [poweredFlash, setPoweredFlash] = useState(false);
@@ -865,8 +854,7 @@ export function Board() {
 
         const total = getTotalCapacity(board, todayStr, windowEndStr);
         const totalRatio = Math.min(total.used / total.total, 1);
-        const totalHue = 120 * (1 - totalRatio);
-        const totalColor = `hsl(${totalHue}, 80%, 50%)`;
+        const totalColor = energyColor(ENERGY_MIN + totalRatio * (ENERGY_MAX - ENERGY_MIN));
 
         return (
           <div
@@ -878,8 +866,10 @@ export function Board() {
               <div className="flex gap-1" style={{ gridColumn: '1 / -1' }}>
                 {daily.map(({ date, used }) => {
                   const ratio = Math.min(used / dayLimit, 1);
-                  const hue = 120 * (1 - ratio);
-                  const color = used > 0 ? `hsl(${hue}, 80%, 50%)` : undefined;
+                  const color =
+                    used > 0
+                      ? energyColor(ENERGY_MIN + ratio * (ENERGY_MAX - ENERGY_MIN))
+                      : undefined;
                   const isToday = date === todayStr;
                   const d = new Date(date + 'T00:00:00');
                   const dayLabel = d.toLocaleDateString(undefined, { weekday: 'short' });
@@ -962,9 +952,6 @@ export function Board() {
                   capacity={getColumnCapacity(board, status, toISODate(new Date())) ?? undefined}
                   defaultExpanded={index === STATUS.LIVE}
                   flash={index === STATUS.POWERED ? poweredFlash : undefined}
-                  glowIntensity={
-                    index === STATUS.POWERED ? Math.min(trailingPoweredRatio, 1) : undefined
-                  }
                 />
               );
             })}
@@ -986,7 +973,8 @@ export function Board() {
           isNew={!!newCard}
           categories={board.categories}
           timeFeatures={board.timeFeatures}
-          onSave={(updated) => {
+          onSave={(saved) => {
+            let updated = saved;
             if (newCard) {
               quickAdd(updated.title, {
                 description: updated.description || undefined,
@@ -997,6 +985,14 @@ export function Board() {
               toastQuickAdd(updated.title);
             } else {
               const original = board.cards.find((c) => c.id === updated.id);
+              // Apply moveCard side-effects when status changed via CardDetail
+              if (original && updated.status !== original.status) {
+                if (updated.status === STATUS.LIVE) {
+                  updated = { ...updated, scheduledDate: toISODate(new Date()) };
+                } else if (updated.status === STATUS.GROUNDED) {
+                  updated = { ...updated, scheduledDate: undefined };
+                }
+              }
               updateCard(updated);
               if (original && updated.status !== original.status) {
                 if (updated.activityInstanceId) {

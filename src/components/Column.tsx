@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import type { OhmCard, OhmColumn as OhmColumnType } from '../types/board';
+import { ENERGY_MIN, ENERGY_MAX, energyColor } from '../types/board';
 import { Card } from './Card';
 
 interface ColumnProps {
@@ -12,15 +13,6 @@ interface ColumnProps {
   capacity?: { used: number; total: number };
   defaultExpanded?: boolean;
   flash?: boolean;
-  /** 0-1 intensity for an ambient warm glow (used on Powered column) */
-  glowIntensity?: number;
-}
-
-/** Interpolate hue from green (120) through yellow (60) to red (0) */
-function capacityColor(used: number, total: number): string {
-  const ratio = Math.min(used / total, 1);
-  const hue = 120 * (1 - ratio);
-  return `hsl(${hue}, 80%, 50%)`;
 }
 
 export function Column({
@@ -31,7 +23,6 @@ export function Column({
   capacity,
   defaultExpanded = false,
   flash,
-  glowIntensity = 0,
 }: ColumnProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
@@ -53,13 +44,6 @@ export function Column({
       {/* Column header — mobile: button toggle, desktop: static */}
       <div
         className={`bg-ohm-bg/80 sticky top-0 z-10 mb-1 flex w-full items-center rounded-lg px-3 py-2 backdrop-blur-xs transition-shadow duration-500 ${flash ? 'animate-completion-flash' : ''}`}
-        style={
-          glowIntensity > 0
-            ? {
-                boxShadow: `0 0 ${8 + glowIntensity * 12}px rgba(34, 197, 94, ${0.1 + glowIntensity * 0.3})`,
-              }
-            : undefined
-        }
       >
         {/* Mobile toggle button — full width for easy tapping */}
         <button
@@ -80,7 +64,12 @@ export function Column({
           {capacity && (
             <span
               className={`font-display ml-auto shrink-0 text-[10px] font-bold ${capacity.used > capacity.total ? 'animate-pulse' : ''}`}
-              style={{ color: capacityColor(capacity.used, capacity.total) }}
+              style={{
+                color: energyColor(
+                  ENERGY_MIN +
+                    Math.min(capacity.used / capacity.total, 1) * (ENERGY_MAX - ENERGY_MIN),
+                ),
+              }}
             >
               {capacity.used}/{capacity.total}
             </span>
@@ -96,7 +85,12 @@ export function Column({
           {capacity && (
             <span
               className={`font-display ml-auto shrink-0 text-[10px] font-bold ${capacity.used > capacity.total ? 'animate-pulse' : ''}`}
-              style={{ color: capacityColor(capacity.used, capacity.total) }}
+              style={{
+                color: energyColor(
+                  ENERGY_MIN +
+                    Math.min(capacity.used / capacity.total, 1) * (ENERGY_MAX - ENERGY_MIN),
+                ),
+              }}
             >
               {capacity.used}/{capacity.total}
             </span>

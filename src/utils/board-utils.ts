@@ -30,13 +30,17 @@ export function createCard(
   };
 }
 
-/** Move a card to a new column. Grounded clears scheduledDate (paused = no date). */
+/** Move a card to a new column.
+ *  Live sets scheduledDate to today (counts toward daily energy).
+ *  Grounded clears scheduledDate (paused = no date). */
 export function moveCard(card: OhmCard, newStatus: ColumnStatus): OhmCard {
+  const now = new Date();
   return {
     ...card,
     status: newStatus,
+    ...(newStatus === STATUS.LIVE ? { scheduledDate: now.toISOString().slice(0, 10) } : {}),
     ...(newStatus === STATUS.GROUNDED ? { scheduledDate: undefined } : {}),
-    updatedAt: new Date().toISOString(),
+    updatedAt: now.toISOString(),
   };
 }
 

@@ -8,3 +8,4 @@
 - [ ] Analytics (completion rates, time-in-column trends)
 - [ ] Red-green colorblind mode (deuteranopia-safe palette for energy/status colors)
 - [ ] A11y test fixtures (axe-core + Playwright automated audits -- pair with colorblind mode work)
+- [ ] Powered column glow (ambient header glow based on trailing completion ratio -- explore design)

@@ -78,8 +78,13 @@ export function Card({ card, onTap, onReorder }: CardProps) {
           </button>
         </div>
 
+        {/* Scheduled date */}
+        {card.scheduledDate && (
+          <p className="font-body text-ohm-muted mt-1 text-[10px]">{card.scheduledDate}</p>
+        )}
+
         {/* Meta row */}
-        <div className="mt-2 flex items-center gap-2">
+        <div className="mt-2 flex items-center justify-between gap-2">
           <span
             className="flex items-center gap-1"
             style={{ color: energyColor(card.energy) }}
@@ -88,11 +93,6 @@ export function Card({ card, onTap, onReorder }: CardProps) {
             <EnergyIcon size={10} value={card.energy} aria-hidden="true" />
             <span className="font-body text-[10px] tracking-wider uppercase">{card.energy}</span>
           </span>
-
-          {/* Scheduled date */}
-          {card.scheduledDate && (
-            <span className="font-body text-ohm-muted text-[10px]">{card.scheduledDate}</span>
-          )}
 
           {/* Category pill */}
           {card.category && (
