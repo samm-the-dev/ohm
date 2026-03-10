@@ -288,11 +288,38 @@ export function useBoard() {
     }));
   }, []);
 
-  /** Replace the entire board (used by Drive sync when remote is newer) */
-  const replaceBoard = useCallback((newBoard: OhmBoard) => {
-    setBoard(newBoard);
-    saveToLocal(newBoard);
-  }, []);
+  /** Replace the entire board (used by Drive sync when remote is newer, or import).
+   *  When activities differ, clears Dexie instances and strips stale activityInstanceId
+   *  references from cards so the materialization flow cleanly regenerates them. */
+  const replaceBoard = useCallback(
+    (newBoard: OhmBoard) => {
+      const prevIds = new Set((board.activities ?? []).map((a) => a.id));
+      const nextIds = new Set((newBoard.activities ?? []).map((a) => a.id));
+      const activitiesChanged =
+        prevIds.size !== nextIds.size || [...prevIds].some((id) => !nextIds.has(id));
+
+      if (activitiesChanged) {
+        const cleaned: OhmBoard = {
+          ...newBoard,
+          cards: newBoard.cards.map((c) =>
+            c.activityInstanceId ? { ...c, activityInstanceId: undefined } : c,
+          ),
+        };
+        setBoard(cleaned);
+        saveToLocal(cleaned);
+
+        // Clear stale Dexie instances — refreshWindow will regenerate them
+        void (async () => {
+          const { db } = await import('../db');
+          await db.instances.clear();
+        })();
+      } else {
+        setBoard(newBoard);
+        saveToLocal(newBoard);
+      }
+    },
+    [board.activities],
+  );
 
   return {
     board,
