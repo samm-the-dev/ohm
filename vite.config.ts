@@ -5,7 +5,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 import mkcert from 'vite-plugin-mkcert';
 import path from 'path';
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [
     react(),
     tailwindcss(),
@@ -37,8 +37,8 @@ export default defineConfig({
         theme_color: '#0a0a0f',
         background_color: '#0a0a0f',
         display: 'standalone',
-        scope: '/ohm/',
-        start_url: '/ohm/',
+        scope: command === 'build' ? '/ohm/' : '/',
+        start_url: command === 'build' ? '/ohm/' : '/',
         icons: [
           { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
@@ -52,7 +52,7 @@ export default defineConfig({
       },
     }),
   ],
-  base: '/ohm/',
+  base: command === 'build' ? '/ohm/' : '/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -62,4 +62,4 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
   },
-});
+}));
