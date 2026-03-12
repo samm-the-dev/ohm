@@ -2,7 +2,7 @@
   "name": "ohm",
   "version": "0.1.0",
   "private": true,
-  "description": "A personal kanban for ADHD brains — manage the current",
+  "description": "A personal kanban for ADHD brains, a bottle for cognitive thunderstorms.",
   "type": "module",
   "scripts": {
     "prepare": "husky",
@@ -16,6 +16,7 @@
     "test:run": "vitest run",
     "audit:a11y": "node scripts/audit-a11y.mjs",
     "gen:og": "node scripts/gen-og.mjs",
+    "gen:icons": "node scripts/gen-icons.mjs",
     "deploy": "gh-pages -d dist"
   },
   "lint-staged": {

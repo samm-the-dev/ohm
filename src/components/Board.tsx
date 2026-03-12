@@ -568,9 +568,21 @@ export function Board() {
           </div>
 
           {/* Center -- title */}
-          <h1 className="flex items-center gap-2">
-            <Zap size={18} className="text-ohm-spark" aria-hidden="true" />
-            <span className="font-display text-ohm-text text-sm font-bold tracking-widest uppercase">
+          <h1 className="flex items-center gap-[0.15em] text-lg">
+            <span className="text-ohm-spark flex items-center">
+              <svg
+                className="h-[0.8em] w-[0.8em] flex-shrink-0"
+                viewBox="1.5 1 21 22"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path
+                  d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"
+                  fill="currentColor"
+                />
+              </svg>
+            </span>
+            <span className="font-display text-ohm-text font-bold tracking-widest uppercase">
               Ohm
             </span>
           </h1>
@@ -1192,10 +1204,10 @@ export function Board() {
       <Button
         size="icon"
         onClick={handleQuickSpark}
-        className="bg-ohm-spark text-ohm-bg shadow-ohm-spark/30 hover:bg-ohm-spark/90 fixed right-6 bottom-24 z-40 h-14 w-14 rounded-full shadow-lg transition-transform active:scale-95 md:hidden"
+        className="bg-ohm-spark text-ohm-bg hover:bg-ohm-spark/90 fixed right-6 bottom-24 z-40 h-14 w-14 rounded-full transition-transform active:scale-95 md:hidden [&_svg]:size-7"
         aria-label="Quick spark"
       >
-        <Zap size={24} />
+        <Zap fill="currentColor" stroke="none" />
       </Button>
     </div>
   );

@@ -1,8 +1,8 @@
-# Ohm
+# OHM
 
 **A personal kanban for ADHD brains -- manage the current.**
 
-Ohm uses an electrical metaphor to map ADHD energy cycles into a visual workflow.
+OHM uses an electrical metaphor to map ADHD energy cycles into a visual workflow.
 
 | Column       | Metaphor           | Purpose                                |
 | ------------ | ------------------ | -------------------------------------- |

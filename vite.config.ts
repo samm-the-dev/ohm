@@ -33,9 +33,9 @@ export default defineConfig(({ command }) => {
           ],
         },
         manifest: {
-          name: 'Ohm - Personal Kanban',
-          short_name: 'Ohm',
-          description: 'A personal kanban for ADHD brains',
+          name: 'OHM - Personal Kanban',
+          short_name: 'OHM',
+          description: 'A personal kanban for ADHD brains, a bottle for cognitive thunderstorms.',
           theme_color: '#0a0a0f',
           background_color: '#0a0a0f',
           display: 'standalone',

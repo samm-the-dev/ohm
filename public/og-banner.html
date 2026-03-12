@@ -5,7 +5,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400&family=Space+Mono:wght@700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Quicksand:wght@700&display=swap"
       rel="stylesheet"
     />
     <style>
@@ -26,84 +26,54 @@
         width: 1200px;
         height: 630px;
         background: #0a0a0f;
-        background-image: radial-gradient(
-          ellipse 60% 55% at 50% 45%,
-          rgba(240, 168, 48, 0.08) 0%,
-          transparent 100%
-        );
         display: flex;
-        flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 36px;
       }
 
       .title-row {
         display: flex;
         align-items: center;
-        gap: 28px;
+        gap: 4px;
+        font-size: 256px;
+      }
+
+      .bolt-wrap {
+        display: flex;
+        align-items: center;
       }
 
       .bolt {
-        width: 80px;
-        height: 80px;
+        width: 0.8em;
+        height: 0.8em;
         flex-shrink: 0;
       }
 
       .title-text {
-        font-family: 'Space Mono', monospace;
+        font-family: 'Quicksand', sans-serif;
         font-weight: 700;
-        font-size: 96px;
+        font-size: inherit;
         color: #f0f0f8;
         letter-spacing: 4px;
         line-height: 1;
-      }
-
-      .taglines {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 10px;
-      }
-
-      .tagline-1 {
-        font-family: 'IBM Plex Sans', sans-serif;
-        font-weight: 400;
-        font-size: 28px;
-        color: #7878a0;
-      }
-
-      .tagline-2 {
-        font-family: 'IBM Plex Sans', sans-serif;
-        font-weight: 400;
-        font-size: 28px;
-        color: #5a5a88;
       }
     </style>
   </head>
   <body>
     <div class="banner">
       <div class="title-row">
-        <svg
+        <span class="bolt-wrap"><svg
           class="bolt"
-          viewBox="0 0 24 24"
+          viewBox="1.5 0 21 22"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
           <path
             d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"
-            fill="none"
-            stroke="#f0a830"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+            fill="#f0a830"
           />
-        </svg>
+        </svg></span>
         <span class="title-text">OHM</span>
-      </div>
-      <div class="taglines">
-        <span class="tagline-1">Personal kanban for ADHD brains</span>
-        <span class="tagline-2">map energy cycles into a visual workflow</span>
       </div>
     </div>
   </body>
