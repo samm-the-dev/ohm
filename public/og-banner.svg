@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
   <defs>
-    <radialGradient id="glow" cx="80%" cy="50%" r="40%">
-      <stop offset="0%" stop-color="#f0a830" stop-opacity="0.10"/>
+    <radialGradient id="glow" cx="50%" cy="46%" r="42%">
+      <stop offset="0%" stop-color="#f0a830" stop-opacity="0.08"/>
       <stop offset="100%" stop-color="#0a0a0f" stop-opacity="0"/>
     </radialGradient>
   </defs>
@@ -10,39 +10,39 @@
   <rect width="1200" height="630" fill="#0a0a0f"/>
   <rect width="1200" height="630" fill="url(#glow)"/>
 
-  <!-- App icon — right side, 216×216 (scale=9) centered at 960,315 -->
-  <g transform="translate(960, 315) scale(9) translate(-12, -12)">
+  <!--
+    Icon + "OHM" row, horizontally centered.
+    Icon: scale=4 → 96×96, center at (505, 295).
+    "OHM" at Space Mono 96px, ~172px wide, starts at x=571.
+    Group spans ~457–743 = 286px, center ≈ 600.
+  -->
+  <g transform="translate(505, 295) scale(4) translate(-12, -12)">
     <rect width="24" height="24" rx="4.5" fill="#1c1c22"/>
     <g transform="translate(12 12) scale(0.65) translate(-12 -12)">
       <path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" fill="#f0a830"/>
     </g>
   </g>
 
-  <!-- App name -->
-  <text x="80" y="280"
-    font-family="'IBM Plex Sans', system-ui, -apple-system, sans-serif"
-    font-weight="700"
-    font-size="120"
-    fill="#f0f0f8"
-    letter-spacing="-2">Ohm</text>
-
-  <!-- Tagline -->
-  <text x="82" y="346"
-    font-family="'IBM Plex Sans', system-ui, -apple-system, sans-serif"
-    font-weight="400"
-    font-size="30"
-    fill="#8888a8">Personal kanban for ADHD brains</text>
-
-  <text x="82" y="388"
-    font-family="'IBM Plex Sans', system-ui, -apple-system, sans-serif"
-    font-weight="400"
-    font-size="30"
-    fill="#6868a0">map energy cycles into a visual workflow</text>
-
-  <!-- URL -->
-  <text x="82" y="512"
+  <!-- "OHM" — Space Mono bold, matching app bar -->
+  <text x="571" y="330"
     font-family="'Space Mono', 'Courier New', monospace"
-    font-size="24"
-    fill="#f0a830"
-    opacity="0.75">apps.samm-the.dev/ohm</text>
+    font-weight="700"
+    font-size="96"
+    fill="#f0f0f8"
+    letter-spacing="3">OHM</text>
+
+  <!-- Tagline — two lines, centered -->
+  <text x="600" y="420"
+    text-anchor="middle"
+    font-family="'IBM Plex Sans', system-ui, -apple-system, sans-serif"
+    font-weight="400"
+    font-size="30"
+    fill="#7878a0">Personal kanban for ADHD brains</text>
+
+  <text x="600" y="462"
+    text-anchor="middle"
+    font-family="'IBM Plex Sans', system-ui, -apple-system, sans-serif"
+    font-weight="400"
+    font-size="30"
+    fill="#5a5a88">map energy cycles into a visual workflow</text>
 </svg>
