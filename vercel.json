@@ -3,11 +3,6 @@
   "outputDirectory": "dist",
   "installCommand": "npm ci",
   "framework": "vite",
-  "redirects": [{ "source": "/", "destination": "/ohm/", "permanent": false }],
-  "rewrites": [
-    { "source": "/ohm/assets/(.*)", "destination": "/assets/$1" },
-    { "source": "/ohm/(.*)", "destination": "/index.html" },
-    { "source": "/ohm", "destination": "/index.html" }
-  ],
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
   "ignoreCommand": "[ \"$VERCEL_ENV\" = \"production\" ]"
 }
