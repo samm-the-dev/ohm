@@ -32,6 +32,15 @@ A kanban app using an electrical metaphor to map energy cycles into a visual wor
 - **CardDetail** handles both creation (`isNew` mode) and editing with contextual field visibility.
 - **Mobile-first** responsive layout. Filter bar: energy chips + expandable category/search.
 
+### Testing
+
+@.toolbox/ai-context/testing.md
+
+- **Vitest + RTL + jsdom**. Setup: `src/test/setup.ts`. Config: `vitest.config.ts`.
+- **Toolbox stubs**: specific `.toolbox/lib` modules used in production (e.g., `../../.toolbox/lib/local-storage-sync`) are aliased in `vitest.config.ts` to matching files in `src/test/__stubs__/`. When adding a new toolbox stub, add an explicit alias from the module's import path to its stub file. See the stub isolation pattern in the testing companion above.
+- **IndexedDB**: `useActivities` tests import `fake-indexeddb/auto` for Dexie. Production code touching Dexie asynchronously (e.g., `replaceBoard`'s instance cleanup) should `try/catch` for test environments without IndexedDB.
+- **`act()` wrapping**: All state-updating hook calls (including helpers like `quickAdd`) must be inside `act()` — unwrapped calls cause async re-renders that leak between tests.
+
 ### Google Drive Auth
 
 Dual-flow OAuth: authorization code flow (persistent) when `VITE_TOKEN_EXCHANGE_URL` is set, implicit flow (session-only) as fallback. See `src/utils/google-drive.ts`.

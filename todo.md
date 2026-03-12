@@ -3,6 +3,7 @@
 - [x] Review refactor plan (energy orchestrator evolution, companion apps, shared-origin ecosystem) -- see [docs/](docs/)
 - [x] Add testing (Vitest + React Testing Library; hooks, board-utils, component interactions)
 - [x] Card archive (auto-archive expired Powered cards in rolling window)
+- [ ] Migrate inline `handleShare` in Board.tsx to use `.toolbox/lib/share.ts` (wrap with toasts)
 - [ ] Cross-column drag-and-drop (currently DnD is reorder-only within same column)
 - [ ] Keyboard shortcuts
 - [ ] Analytics (completion rates, time-in-column trends)
