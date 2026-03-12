@@ -3,13 +3,14 @@ import type { OhmCard, ColumnStatus } from '../types/board';
 import {
   STATUS,
   COLUMNS,
+  VALID_TRANSITIONS,
   energyColor,
   STATUS_CLASSES,
   SPARK_CLASSES,
-  VALID_TRANSITIONS,
 } from '../types/board';
 import { EnergySlider } from './ui/energy-slider';
 import { Settings, List, Trash2, Calendar } from 'lucide-react';
+import { toISODate } from '../utils/schedule-utils';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from './ui/dialog';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
@@ -81,7 +82,21 @@ export function CardDetail({
   };
 
   const handleStatusChange = (newStatus: ColumnStatus) => {
-    setEditing((prev) => ({ ...prev, status: newStatus }));
+    setEditing((prev) => {
+      const updated = { ...prev, status: newStatus };
+      // Reset scheduledDate to today when moving from Grounded→Charging,
+      // Powered→Live, or Powered→Charging (re-activating a card)
+      if (timeFeatures) {
+        const reactivating =
+          (prev.status === STATUS.GROUNDED && newStatus === STATUS.CHARGING) ||
+          (prev.status === STATUS.POWERED &&
+            (newStatus === STATUS.LIVE || newStatus === STATUS.CHARGING));
+        if (reactivating) {
+          updated.scheduledDate = toISODate(new Date());
+        }
+      }
+      return updated;
+    });
   };
 
   const handleAddNote = () => {
@@ -109,7 +124,7 @@ export function CardDetail({
   const hasChangedStatus = editing.status !== card.status;
   const availableTransitions = hasChangedStatus
     ? [card.status]
-    : (VALID_TRANSITIONS[card.status] ?? []);
+    : (VALID_TRANSITIONS[editing.status] ?? []);
 
   return (
     <Dialog
@@ -134,7 +149,7 @@ export function CardDetail({
         {/* Title */}
         <div className="mb-4">
           {isPowered && !isNew ? (
-            <p className="font-body text-ohm-text text-sm font-medium">{editing.title}</p>
+            <p className="font-body text-ohm-text text-base font-medium">{editing.title}</p>
           ) : (
             <Input
               ref={titleRef}
@@ -142,7 +157,7 @@ export function CardDetail({
               onChange={(e) => setEditing((prev) => ({ ...prev, title: e.target.value }))}
               aria-label="Card title"
               placeholder={isNew ? "What's the idea?" : undefined}
-              className={`${accent.border} bg-ohm-bg font-body text-ohm-text placeholder:text-ohm-muted/50 text-sm font-medium ${accent.ring} focus-visible:ring-offset-0`}
+              className={`${accent.border} bg-ohm-bg font-body text-ohm-text placeholder:text-ohm-muted/50 text-base font-medium ${accent.ring} focus-visible:ring-offset-0`}
             />
           )}
         </div>
@@ -151,12 +166,12 @@ export function CardDetail({
         <div className="mb-3">
           <label
             htmlFor="card-description"
-            className="font-display text-ohm-muted mb-1 block text-[10px] tracking-widest uppercase"
+            className="font-display text-ohm-muted mb-1 block text-xs tracking-widest uppercase"
           >
             Description
           </label>
           {isPowered && !isNew ? (
-            <p className="font-body text-ohm-muted text-sm">
+            <p className="font-body text-ohm-muted text-base">
               {editing.description || <span className="text-ohm-muted/40 italic">None</span>}
             </p>
           ) : (
@@ -170,14 +185,14 @@ export function CardDetail({
               }}
               placeholder="Notes, context, details..."
               rows={2}
-              className={`resize-none ${accent.border} bg-ohm-bg font-body text-ohm-text placeholder:text-ohm-muted/50 text-sm ${accent.ring} focus-visible:ring-offset-0`}
+              className={`resize-none ${accent.border} bg-ohm-bg font-body text-ohm-text placeholder:text-ohm-muted/50 text-base ${accent.ring} focus-visible:ring-offset-0`}
             />
           )}
         </div>
 
         {/* Tasks */}
         <div className="mb-3">
-          <span className="font-display text-ohm-muted mb-2 flex items-center gap-1 text-[10px] tracking-widest uppercase">
+          <span className="font-display text-ohm-muted mb-2 flex items-center gap-1 text-xs tracking-widest uppercase">
             <List size={10} />
             Tasks
           </span>
@@ -186,14 +201,14 @@ export function CardDetail({
               {editing.tasks.map((note, index) => (
                 <div key={index} className="flex items-center gap-2">
                   {isPowered ? (
-                    <span className="border-ohm-border bg-ohm-bg font-body text-ohm-text min-w-0 flex-1 rounded-md border px-3 py-2 text-sm">
+                    <span className="border-ohm-border bg-ohm-bg font-body text-ohm-text min-w-0 flex-1 rounded-md border px-3 py-2 text-base">
                       {note}
                     </span>
                   ) : (
                     <Input
                       value={note}
                       onChange={(e) => handleUpdateNote(index, e.target.value)}
-                      className={`flex-1 ${accent.border} bg-ohm-bg font-body text-ohm-text text-sm ${accent.ring} focus-visible:ring-offset-0`}
+                      className={`flex-1 ${accent.border} bg-ohm-bg font-body text-ohm-text text-base ${accent.ring} focus-visible:ring-offset-0`}
                     />
                   )}
                   {!isPowered && (
@@ -224,12 +239,12 @@ export function CardDetail({
                 value={newNote}
                 onChange={(e) => setNewNote(e.target.value)}
                 placeholder="Add a task..."
-                className={`flex-1 ${accent.border} bg-ohm-bg font-body text-ohm-text placeholder:text-ohm-muted/50 text-sm ${accent.ring} focus-visible:ring-offset-0`}
+                className={`flex-1 ${accent.border} bg-ohm-bg font-body text-ohm-text placeholder:text-ohm-muted/50 text-base ${accent.ring} focus-visible:ring-offset-0`}
               />
               <Button
                 type="submit"
                 disabled={!newNote.trim()}
-                className="bg-ohm-spark/20 font-display text-ohm-spark hover:bg-ohm-spark/30 active:bg-ohm-spark/40 text-xs tracking-wider uppercase"
+                className="bg-ohm-spark/20 font-display text-ohm-spark hover:bg-ohm-spark/30 active:bg-ohm-spark/40 text-sm tracking-wider uppercase"
               >
                 Add
               </Button>
@@ -242,12 +257,12 @@ export function CardDetail({
 
         {/* Energy tag */}
         <div className="mb-3">
-          <span className="font-display text-ohm-muted mb-2 block text-[10px] tracking-widest uppercase">
+          <span className="font-display text-ohm-muted mb-2 block text-xs tracking-widest uppercase">
             Energy
           </span>
           {isPowered && !isNew ? (
             <span
-              className="font-display text-sm font-bold"
+              className="font-display text-base font-bold"
               style={{ color: energyColor(editing.energy, undefined, energyMax) }}
             >
               {editing.energy}
@@ -264,12 +279,12 @@ export function CardDetail({
         {/* Scheduled date (when time features enabled) */}
         {timeFeatures && (
           <div className="mb-3">
-            <span className="font-display text-ohm-muted mb-2 flex items-center gap-1 text-[10px] tracking-widest uppercase">
+            <span className="font-display text-ohm-muted mb-2 flex items-center gap-1 text-xs tracking-widest uppercase">
               <Calendar size={10} />
               Scheduled
             </span>
             {editing.activityInstanceId ? (
-              <p className="font-body text-ohm-muted text-sm">{editing.scheduledDate}</p>
+              <p className="font-body text-ohm-muted text-base">{editing.scheduledDate}</p>
             ) : (
               <div className="flex items-center gap-2">
                 <input
@@ -284,13 +299,13 @@ export function CardDetail({
                       scheduledDate: e.target.value || undefined,
                     }))
                   }
-                  className={`${accent.border} bg-ohm-bg font-body text-ohm-text focus:ring-ohm-text/10 rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-hidden`}
+                  className={`${accent.border} bg-ohm-bg font-body text-ohm-text focus:ring-ohm-text/10 rounded-md border px-3 py-1.5 text-base focus:ring-1 focus:outline-hidden`}
                 />
                 {editing.scheduledDate && (
                   <button
                     type="button"
                     onClick={() => setEditing((prev) => ({ ...prev, scheduledDate: undefined }))}
-                    className="text-ohm-muted hover:text-ohm-text text-[10px] underline decoration-dotted"
+                    className="text-ohm-muted hover:text-ohm-text text-xs underline decoration-dotted"
                   >
                     Clear
                   </button>
@@ -303,7 +318,7 @@ export function CardDetail({
         {/* Category */}
         {!isPowered && (
           <div className="mb-4">
-            <span className="font-display text-ohm-muted mb-2 block text-[10px] tracking-widest uppercase">
+            <span className="font-display text-ohm-muted mb-2 block text-xs tracking-widest uppercase">
               Category
             </span>
             <div className="flex flex-wrap gap-2">
@@ -311,7 +326,7 @@ export function CardDetail({
                 variant="outline"
                 size="sm"
                 onClick={() => setEditing((prev) => ({ ...prev, category: '' }))}
-                className={`font-body text-xs ${
+                className={`font-body text-sm ${
                   !editing.category
                     ? 'border-ohm-text/30 bg-ohm-text/10 text-ohm-text'
                     : 'border-ohm-border bg-ohm-bg text-ohm-muted hover:text-ohm-text'
@@ -325,7 +340,7 @@ export function CardDetail({
                   variant="outline"
                   size="sm"
                   onClick={() => setEditing((prev) => ({ ...prev, category: cat }))}
-                  className={`font-body text-xs ${
+                  className={`font-body text-sm ${
                     editing.category === cat
                       ? 'border-ohm-text/30 bg-ohm-text/10 text-ohm-text'
                       : 'border-ohm-border bg-ohm-bg text-ohm-muted hover:text-ohm-text'
@@ -349,17 +364,17 @@ export function CardDetail({
         {/* Powered: show category as read-only if set */}
         {isPowered && editing.category && (
           <div className="mb-4">
-            <span className="font-display text-ohm-muted mb-1 block text-[10px] tracking-widest uppercase">
+            <span className="font-display text-ohm-muted mb-1 block text-xs tracking-widest uppercase">
               Category
             </span>
-            <p className="font-body text-ohm-muted text-sm">{editing.category}</p>
+            <p className="font-body text-ohm-muted text-base">{editing.category}</p>
           </div>
         )}
 
         {/* Status -- contextual transitions only (hidden for new cards) */}
         {!isNew && availableTransitions.length > 0 && (
           <div className="mb-5">
-            <span className="font-display text-ohm-muted mb-2 block text-[10px] tracking-widest uppercase">
+            <span className="font-display text-ohm-muted mb-2 block text-xs tracking-widest uppercase">
               Move to
             </span>
             <div className="flex gap-2">
@@ -372,7 +387,7 @@ export function CardDetail({
                     variant="outline"
                     size="sm"
                     onClick={() => handleStatusChange(status)}
-                    className={`${targetAccent.border} bg-ohm-bg font-body text-ohm-muted hover:text-ohm-text text-xs uppercase`}
+                    className={`${targetAccent.border} bg-ohm-bg font-body text-ohm-muted hover:text-ohm-text text-sm uppercase`}
                   >
                     {col.label}
                   </Button>
@@ -389,7 +404,7 @@ export function CardDetail({
               <AlertDialogTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="font-display text-ohm-live hover:text-ohm-live/80 text-xs tracking-wider uppercase hover:bg-transparent"
+                  className="font-display text-ohm-live hover:text-ohm-live/80 text-sm tracking-wider uppercase hover:bg-transparent"
                 >
                   Delete
                 </Button>
@@ -425,7 +440,7 @@ export function CardDetail({
               <Button
                 variant="ghost"
                 onClick={onClose}
-                className="font-display text-ohm-muted hover:text-ohm-text text-xs tracking-wider uppercase"
+                className="font-display text-ohm-muted hover:text-ohm-text text-sm tracking-wider uppercase"
               >
                 Close
               </Button>
@@ -434,14 +449,14 @@ export function CardDetail({
                 <Button
                   variant="ghost"
                   onClick={onClose}
-                  className="font-display text-ohm-muted hover:text-ohm-text text-xs tracking-wider uppercase"
+                  className="font-display text-ohm-muted hover:text-ohm-text text-sm tracking-wider uppercase"
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={handleSave}
                   disabled={isNew && !editing.title.trim()}
-                  className="bg-ohm-powered/20 font-display text-ohm-powered hover:bg-ohm-powered/30 active:bg-ohm-powered/40 text-xs tracking-wider uppercase"
+                  className="bg-ohm-powered/20 font-display text-ohm-powered hover:bg-ohm-powered/30 active:bg-ohm-powered/40 text-sm tracking-wider uppercase"
                 >
                   Save
                 </Button>
@@ -452,7 +467,7 @@ export function CardDetail({
 
         {/* Timestamps -- only for existing cards */}
         {!isNew && (
-          <div className="font-body text-ohm-muted/60 mt-3 text-[11px]">
+          <div className="font-body text-ohm-muted/60 mt-3 text-xs">
             Created {new Date(card.createdAt).toLocaleDateString()} &middot; Updated{' '}
             {new Date(card.updatedAt).toLocaleDateString()}
           </div>

@@ -175,10 +175,10 @@ export const SPARK_CLASSES = {
 
 /** Valid transitions from each status (indexed by ColumnStatus) */
 export const VALID_TRANSITIONS: readonly (readonly ColumnStatus[])[] = [
-  [STATUS.LIVE, STATUS.POWERED], // grounded -> live, powered
+  [STATUS.CHARGING, STATUS.LIVE, STATUS.POWERED], // grounded -> charging, live, powered
   [STATUS.GROUNDED, STATUS.LIVE, STATUS.POWERED], // charging -> any
-  [STATUS.GROUNDED, STATUS.POWERED], // live -> grounded, powered
-  [STATUS.CHARGING], // powered -> charging
+  [STATUS.GROUNDED, STATUS.CHARGING, STATUS.POWERED], // live -> grounded, charging, powered
+  [STATUS.CHARGING, STATUS.GROUNDED, STATUS.LIVE], // powered -> charging, grounded, live
 ];
 
 /** Create a default empty board */

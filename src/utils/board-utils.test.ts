@@ -14,6 +14,8 @@ import {
   addCardToBoard,
   updateCardInBoard,
   removeCardFromBoard,
+  groupCardsByDate,
+  getCardsForDate,
 } from './board-utils';
 
 function makeCard(overrides: Partial<OhmCard> = {}): OhmCard {
@@ -395,5 +397,130 @@ describe('removeCardFromBoard', () => {
     const board = makeBoard({ cards: [makeCard({ id: 'a' })] });
     const updated = removeCardFromBoard(board, 'nonexistent');
     expect(updated.cards).toHaveLength(1);
+  });
+});
+
+describe('groupCardsByDate', () => {
+  const TODAY = '2026-03-11';
+
+  it('groups cards by scheduledDate with correct labels', () => {
+    const cards = [
+      makeCard({ id: 'a', scheduledDate: '2026-03-11' }),
+      makeCard({ id: 'b', scheduledDate: '2026-03-11' }),
+      makeCard({ id: 'c', scheduledDate: '2026-03-12' }),
+      makeCard({ id: 'd' }), // unscheduled
+    ];
+    const groups = groupCardsByDate(cards, TODAY);
+    expect(groups).toHaveLength(3);
+    expect(groups[0].key).toBe('2026-03-11');
+    expect(groups[0].label).toBe('Today');
+    expect(groups[0].isToday).toBe(true);
+    expect(groups[0].cards.map((c) => c.id)).toEqual(['a', 'b']);
+    expect(groups[1].key).toBe('2026-03-12');
+    expect(groups[1].label).toBe('Tomorrow');
+    expect(groups[2].key).toBe('unscheduled');
+    expect(groups[2].label).toBe('Unscheduled');
+  });
+
+  it('marks past dates as isPast', () => {
+    const cards = [makeCard({ id: 'a', scheduledDate: '2026-03-09' })];
+    const groups = groupCardsByDate(cards, TODAY);
+    expect(groups[0].isPast).toBe(true);
+    expect(groups[0].isToday).toBe(false);
+  });
+
+  it('calculates energyTotal per group', () => {
+    const cards = [
+      makeCard({ id: 'a', energy: 3, scheduledDate: '2026-03-11' }),
+      makeCard({ id: 'b', energy: 5, scheduledDate: '2026-03-11' }),
+    ];
+    const groups = groupCardsByDate(cards, TODAY);
+    expect(groups[0].energyTotal).toBe(8);
+  });
+
+  it('returns empty array for no cards', () => {
+    expect(groupCardsByDate([], TODAY)).toEqual([]);
+  });
+
+  it('puts unscheduled group last', () => {
+    const cards = [
+      makeCard({ id: 'a' }), // unscheduled (sorted first in input)
+      makeCard({ id: 'b', scheduledDate: '2026-03-11' }),
+    ];
+    const groups = groupCardsByDate(cards, TODAY);
+    expect(groups[0].key).toBe('2026-03-11');
+    expect(groups[1].key).toBe('unscheduled');
+  });
+
+  it('preserves card order within groups', () => {
+    const cards = [
+      makeCard({ id: 'x', scheduledDate: '2026-03-11', sortOrder: 10 }),
+      makeCard({ id: 'y', scheduledDate: '2026-03-11', sortOrder: 20 }),
+    ];
+    const groups = groupCardsByDate(cards, TODAY);
+    expect(groups[0].cards.map((c) => c.id)).toEqual(['x', 'y']);
+  });
+});
+
+describe('getCardsForDate', () => {
+  it('returns non-Grounded cards for a given date', () => {
+    const board = makeBoard({
+      cards: [
+        makeCard({ id: 'a', status: STATUS.CHARGING, scheduledDate: '2026-03-11' }),
+        makeCard({ id: 'b', status: STATUS.LIVE, scheduledDate: '2026-03-11' }),
+        makeCard({ id: 'c', status: STATUS.GROUNDED, scheduledDate: '2026-03-11' }),
+        makeCard({ id: 'd', status: STATUS.POWERED, scheduledDate: '2026-03-11' }),
+      ],
+    });
+    const result = getCardsForDate(board, '2026-03-11');
+    expect(result.map((c) => c.id)).toEqual(['a', 'b', 'd']);
+  });
+
+  it('excludes cards on different dates', () => {
+    const board = makeBoard({
+      cards: [
+        makeCard({ id: 'a', status: STATUS.LIVE, scheduledDate: '2026-03-11' }),
+        makeCard({ id: 'b', status: STATUS.LIVE, scheduledDate: '2026-03-12' }),
+      ],
+    });
+    const result = getCardsForDate(board, '2026-03-11');
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('a');
+  });
+
+  it('sorts by status ascending then sortOrder ascending', () => {
+    const board = makeBoard({
+      cards: [
+        makeCard({
+          id: 'a',
+          status: STATUS.LIVE,
+          energy: 3,
+          sortOrder: 0,
+          scheduledDate: '2026-03-11',
+        }),
+        makeCard({
+          id: 'b',
+          status: STATUS.CHARGING,
+          energy: 5,
+          sortOrder: 1,
+          scheduledDate: '2026-03-11',
+        }),
+        makeCard({
+          id: 'c',
+          status: STATUS.CHARGING,
+          energy: 7,
+          sortOrder: 0,
+          scheduledDate: '2026-03-11',
+        }),
+      ],
+    });
+    const result = getCardsForDate(board, '2026-03-11');
+    // Charging (status 1) before Live (status 2); within Charging, lower sortOrder first
+    expect(result.map((c) => c.id)).toEqual(['c', 'b', 'a']);
+  });
+
+  it('returns empty array when no cards match', () => {
+    const board = makeBoard();
+    expect(getCardsForDate(board, '2026-03-11')).toEqual([]);
   });
 });

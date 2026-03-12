@@ -1,6 +1,18 @@
 import type { OhmCard, OhmBoard, ColumnStatus } from '../types/board';
 import { STATUS, ENERGY_DEFAULT } from '../types/board';
 
+/** A group of cards sharing the same scheduledDate (or unscheduled). */
+export interface DayGroup {
+  /** Date string (YYYY-MM-DD) or 'unscheduled' */
+  key: string;
+  /** Human-readable label: "Today", "Tomorrow", "Wed Mar 12", "Unscheduled" */
+  label: string;
+  cards: OhmCard[];
+  energyTotal: number;
+  isPast: boolean;
+  isToday: boolean;
+}
+
 /** Generate a short unique ID */
 export function generateId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
@@ -182,4 +194,62 @@ export function removeCardFromBoard(board: OhmBoard, cardId: string): OhmBoard {
     cards: board.cards.filter((c) => c.id !== cardId),
     lastSaved: new Date().toISOString(),
   };
+}
+
+/** Format a date label relative to today: "Today", "Tomorrow", "Wed Mar 12", etc. */
+function formatDayLabel(dateStr: string, today: string, tomorrow: string): string {
+  if (dateStr === today) return 'Today';
+  if (dateStr === tomorrow) return 'Tomorrow';
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+/** Group already-sorted cards by scheduledDate into DayGroup[].
+ *  Cards without a scheduledDate go into an "Unscheduled" group at the end. */
+export function groupCardsByDate(cards: OhmCard[], today: string): DayGroup[] {
+  const tomorrowDate = new Date(today + 'T00:00:00');
+  tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+  const tomorrow = `${tomorrowDate.getFullYear()}-${String(tomorrowDate.getMonth() + 1).padStart(2, '0')}-${String(tomorrowDate.getDate()).padStart(2, '0')}`;
+
+  const groupMap = new Map<string, OhmCard[]>();
+  for (const card of cards) {
+    const key = card.scheduledDate ?? 'unscheduled';
+    const list = groupMap.get(key);
+    if (list) list.push(card);
+    else groupMap.set(key, [card]);
+  }
+
+  const groups: DayGroup[] = [];
+  for (const [key, groupCards] of groupMap) {
+    if (key === 'unscheduled') continue; // added last
+    groups.push({
+      key,
+      label: formatDayLabel(key, today, tomorrow),
+      cards: groupCards,
+      energyTotal: groupCards.reduce((sum, c) => sum + c.energy, 0),
+      isPast: key < today,
+      isToday: key === today,
+    });
+  }
+
+  const unscheduled = groupMap.get('unscheduled');
+  if (unscheduled) {
+    groups.push({
+      key: 'unscheduled',
+      label: 'Unscheduled',
+      cards: unscheduled,
+      energyTotal: unscheduled.reduce((sum, c) => sum + c.energy, 0),
+      isPast: false,
+      isToday: false,
+    });
+  }
+
+  return groups;
+}
+
+/** Get all non-Grounded cards for a specific date, sorted by status then sortOrder. */
+export function getCardsForDate(board: OhmBoard, date: string): OhmCard[] {
+  return board.cards
+    .filter((c) => c.status !== STATUS.GROUNDED && c.scheduledDate === date)
+    .sort((a, b) => a.status - b.status || a.sortOrder - b.sortOrder);
 }

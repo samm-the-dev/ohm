@@ -3,7 +3,9 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import type { OhmCard, OhmColumn as OhmColumnType } from '../types/board';
 import { budgetColor } from '../types/board';
+import type { DayGroup as DayGroupType } from '../utils/board-utils';
 import { Card } from './Card';
+import { DayGroup } from './DayGroup';
 
 interface ColumnProps {
   column: OhmColumnType;
@@ -14,6 +16,10 @@ interface ColumnProps {
   defaultExpanded?: boolean;
   flash?: boolean;
   energyMax?: number;
+  /** When provided, renders cards grouped by date instead of flat */
+  dayGroups?: DayGroupType[];
+  /** Day energy limit for budget coloring in group headers */
+  dayLimit?: number;
 }
 
 export function Column({
@@ -25,6 +31,8 @@ export function Column({
   defaultExpanded = false,
   flash,
   energyMax,
+  dayGroups,
+  dayLimit,
 }: ColumnProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
@@ -59,13 +67,13 @@ export function Column({
             {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           </span>
           <div className={`h-2 w-2 rounded-full bg-${column.color}`} aria-hidden="true" />
-          <h2 className="font-display text-ohm-text text-xs font-bold tracking-widest uppercase">
+          <h2 className="font-display text-ohm-text text-sm font-bold tracking-widest uppercase">
             {column.label}
           </h2>
-          <span className="font-body text-ohm-muted ml-1 text-[10px]">{cards.length}</span>
+          <span className="font-body text-ohm-muted ml-1 text-xs">{cards.length}</span>
           {capacity && (
             <span
-              className={`font-display ml-auto shrink-0 text-[10px] font-bold ${capacity.used > capacity.total ? 'animate-pulse' : ''}`}
+              className={`font-display ml-auto shrink-0 text-xs font-bold ${capacity.used > capacity.total ? 'animate-pulse' : ''}`}
               style={{ color: budgetColor(capacity.used / capacity.total) }}
             >
               {capacity.used}/{capacity.total}
@@ -75,13 +83,13 @@ export function Column({
         {/* Desktop static header */}
         <div className="hidden items-center gap-2 md:flex md:w-full">
           <div className={`h-2 w-2 rounded-full bg-${column.color}`} aria-hidden="true" />
-          <h2 className="font-display text-ohm-text text-xs font-bold tracking-widest uppercase">
+          <h2 className="font-display text-ohm-text text-sm font-bold tracking-widest uppercase">
             {column.label}
           </h2>
-          <span className="font-body text-ohm-muted ml-1 text-[10px]">{cards.length}</span>
+          <span className="font-body text-ohm-muted ml-1 text-xs">{cards.length}</span>
           {capacity && (
             <span
-              className={`font-display ml-auto shrink-0 text-[10px] font-bold ${capacity.used > capacity.total ? 'animate-pulse' : ''}`}
+              className={`font-display ml-auto shrink-0 text-xs font-bold ${capacity.used > capacity.total ? 'animate-pulse' : ''}`}
               style={{ color: budgetColor(capacity.used / capacity.total) }}
             >
               {capacity.used}/{capacity.total}
@@ -91,27 +99,48 @@ export function Column({
       </div>
 
       {/* Cards — hidden on mobile when collapsed, always visible on md+ */}
-      <SortableContext items={cards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
-        <div
-          id={`column-cards-${column.label}`}
-          className={`flex-col gap-2 px-2 pb-4 ${expanded ? 'flex min-h-[60px]' : 'hidden'} md:flex md:min-h-[100px]`}
-        >
-          {cards.map((card, idx) => (
-            <Card
-              key={card.id}
-              card={card}
-              onTap={onCardTap}
-              onReorder={(dir) => handleReorder(idx, card.id, dir)}
-              energyMax={energyMax}
-            />
-          ))}
-          {cards.length === 0 && (
-            <div className="font-body text-ohm-muted/40 py-8 text-center text-xs italic">
-              {column.description}
-            </div>
-          )}
-        </div>
-      </SortableContext>
+      <div
+        id={`column-cards-${column.label}`}
+        className={`flex-col gap-2 px-2 pb-4 ${expanded ? 'flex min-h-[60px]' : 'hidden'} md:flex md:min-h-[100px]`}
+      >
+        {dayGroups ? (
+          (() => {
+            let offset = 0;
+            return dayGroups.map((group) => {
+              const currentOffset = offset;
+              offset += group.cards.length;
+              return (
+                <DayGroup
+                  key={group.key}
+                  group={group}
+                  onCardTap={onCardTap}
+                  onReorder={onReorderCards ? handleReorder : undefined}
+                  indexOffset={currentOffset}
+                  energyMax={energyMax}
+                  dayLimit={dayLimit}
+                />
+              );
+            });
+          })()
+        ) : (
+          <SortableContext items={cards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
+            {cards.map((card, idx) => (
+              <Card
+                key={card.id}
+                card={card}
+                onTap={onCardTap}
+                onReorder={(dir) => handleReorder(idx, card.id, dir)}
+                energyMax={energyMax}
+              />
+            ))}
+          </SortableContext>
+        )}
+        {cards.length === 0 && (
+          <div className="font-body text-ohm-muted/40 py-8 text-center text-xs italic">
+            {column.description}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

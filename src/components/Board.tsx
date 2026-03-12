@@ -11,6 +11,7 @@ import {
   Share2,
   MonitorDown,
   Filter,
+  CalendarDays,
 } from 'lucide-react';
 import {
   DndContext,
@@ -34,7 +35,6 @@ import {
   ENERGY_DEFAULT,
   WINDOW_DEFAULT,
   energyColor,
-  budgetColor,
 } from '../types/board';
 import { ACTIVITY_STATUS } from '../types/activity';
 import {
@@ -44,6 +44,7 @@ import {
   getTotalCapacity,
   getDailyEnergy,
   getExpiredPowered,
+  groupCardsByDate,
 } from '../utils/board-utils';
 import { toISODate } from '../utils/schedule-utils';
 import { useBoard } from '../hooks/useBoard';
@@ -54,6 +55,8 @@ import { useInstallPrompt } from '../hooks/useInstallPrompt';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from './ui/dialog';
 import { Column } from './Column';
+import { BudgetBar } from './BudgetBar';
+import { DayFocusDialog } from './DayFocusDialog';
 import { CardDetail } from './CardDetail';
 import { SettingsPage } from './SettingsPage';
 import { SyncIndicator } from './SyncIndicator';
@@ -103,7 +106,7 @@ function CategoryFilter({
       {selected.map((cat) => (
         <span
           key={cat}
-          className="bg-ohm-text/10 font-body text-ohm-text flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]"
+          className="bg-ohm-text/10 font-body text-ohm-text flex items-center gap-1 rounded-full px-2 py-0.5 text-xs"
         >
           {cat}
           <button
@@ -132,7 +135,7 @@ function CategoryFilter({
               aria-label="Filter categories"
               autoComplete="off"
               data-form-type="other"
-              className={`${fullWidth ? 'w-full' : selected.length ? 'w-16' : 'w-24'} border-ohm-border font-body text-ohm-text placeholder:text-ohm-muted/40 focus:ring-ohm-text/10 rounded-full border bg-transparent py-1 pr-2 pl-6 text-[11px] focus:ring-1 focus:outline-hidden`}
+              className={`${fullWidth ? 'w-full' : selected.length ? 'w-16' : 'w-24'} border-ohm-border font-body text-ohm-text placeholder:text-ohm-muted/40 focus:ring-ohm-text/10 rounded-full border bg-transparent py-1 pr-2 pl-6 text-xs focus:ring-1 focus:outline-hidden`}
             />
           </div>
           {open && matches.length > 0 && (
@@ -146,7 +149,7 @@ function CategoryFilter({
                     setQuery('');
                     setOpen(false);
                   }}
-                  className="font-body text-ohm-muted hover:bg-ohm-text/5 hover:text-ohm-text block w-full px-3 py-1.5 text-left text-[11px] transition-colors"
+                  className="font-body text-ohm-muted hover:bg-ohm-text/5 hover:text-ohm-text block w-full px-3 py-1.5 text-left text-xs transition-colors"
                 >
                   {cat}
                 </button>
@@ -359,18 +362,9 @@ export function Board() {
       onDragOver() {
         return '';
       },
-      onDragEnd({ active, over }: DragEndEvent) {
+      onDragEnd({ active }: DragEndEvent) {
         const card = board.cards.find((c) => c.id === active.id);
         if (!card) return '';
-        if (!over || active.id === over.id) return `Dropped card: ${card.title}`;
-        const overCard = board.cards.find((c) => c.id === over.id);
-        if (overCard) {
-          const columnCards = getColumnCards(board, overCard.status);
-          const newIndex = columnCards.findIndex((c) => c.id === over.id);
-          return newIndex >= 0
-            ? `Dropped ${card.title} at position ${newIndex + 1}`
-            : `Dropped card: ${card.title}`;
-        }
         return `Dropped card: ${card.title}`;
       },
       onDragCancel({ active }: { active: { id: string | number } }) {
@@ -382,7 +376,6 @@ export function Board() {
   );
 
   const [draggingCard, setDraggingCard] = useState<OhmCard | null>(null);
-
   const handleDragStart = useCallback(
     (event: DragStartEvent) => {
       const card = board.cards.find((c) => c.id === event.active.id);
@@ -401,9 +394,11 @@ export function Board() {
       const overCard = board.cards.find((c) => c.id === over.id);
       if (!draggedCard || !overCard) return;
 
-      // Only reorder within same column
+      // Only allow reorder within the same group (same status + same day)
       if (draggedCard.status !== overCard.status) return;
+      if (board.timeFeatures && draggedCard.scheduledDate !== overCard.scheduledDate) return;
 
+      // Same-group reorder
       const columnCards = getColumnCards(board, draggedCard.status);
       const oldIndex = columnCards.findIndex((c) => c.id === active.id);
       const newIndex = columnCards.findIndex((c) => c.id === over.id);
@@ -453,10 +448,16 @@ export function Board() {
   const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
   const [searchFilter, setSearchFilter] = useState('');
   const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [todayFilter, setTodayFilter] = useState(false);
+  const [focusDate, setFocusDate] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
   const filteredCards = (status: ColumnStatus) => {
     let cards = getColumnCards(board, status);
+    if (todayFilter && board.timeFeatures) {
+      const todayStr = toISODate(new Date());
+      cards = cards.filter((c) => c.scheduledDate === todayStr);
+    }
     if (energyMin !== null) cards = cards.filter((c) => c.energy >= energyMin);
     if (energyMax !== null) cards = cards.filter((c) => c.energy <= energyMax);
     if (categoryFilter.length > 0) cards = cards.filter((c) => categoryFilter.includes(c.category));
@@ -470,13 +471,18 @@ export function Board() {
   };
 
   const hasActiveFilter =
-    energyMin !== null || energyMax !== null || categoryFilter.length > 0 || searchFilter !== '';
+    energyMin !== null ||
+    energyMax !== null ||
+    categoryFilter.length > 0 ||
+    searchFilter !== '' ||
+    todayFilter;
   const hasAdvancedFilter = categoryFilter.length > 0 || searchFilter !== '';
   const advancedFilterCount =
     categoryFilter.length +
     (searchFilter ? 1 : 0) +
     (energyMin !== null ? 1 : 0) +
-    (energyMax !== null ? 1 : 0);
+    (energyMax !== null ? 1 : 0) +
+    (todayFilter ? 1 : 0);
 
   const toggleCategory = (cat: string) => {
     setCategoryFilter((prev) =>
@@ -489,7 +495,25 @@ export function Board() {
     setEnergyMax(null);
     setCategoryFilter([]);
     setSearchFilter('');
+    setTodayFilter(false);
   };
+
+  // Budget bar data — computed each render to keep today/window bounds fresh across midnight
+  const budgetData = (() => {
+    const today = new Date();
+    const todayStr = toISODate(today);
+    let windowEndStr: string | undefined;
+    let daily: Array<{ date: string; used: number }> = [];
+    const dayLimit = board.liveCapacity;
+    if (board.timeFeatures) {
+      const windowEnd = new Date(today);
+      windowEnd.setDate(windowEnd.getDate() + (board.windowSize ?? WINDOW_DEFAULT) - 1);
+      windowEndStr = toISODate(windowEnd);
+      daily = getDailyEnergy(board, todayStr, windowEndStr);
+    }
+    const total = getTotalCapacity(board, todayStr, windowEndStr);
+    return { daily, dayLimit, total, todayStr };
+  })();
 
   const handleQuickSpark = () => {
     setNewCard(createCard(''));
@@ -639,7 +663,22 @@ export function Board() {
         {/* Row 1: Energy min/max filter + expand toggle (mobile) */}
         <div className="flex items-center gap-2">
           <Filter size={12} className="text-ohm-muted shrink-0" aria-hidden="true" />
-          <span className="font-display text-ohm-muted shrink-0 text-[10px] tracking-widest uppercase">
+          {board.timeFeatures && (
+            <button
+              type="button"
+              onClick={() => setTodayFilter((prev) => !prev)}
+              className={`font-display flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-bold tracking-wide transition-colors ${
+                todayFilter
+                  ? 'border-ohm-spark/40 bg-ohm-spark/10 text-ohm-spark'
+                  : 'border-ohm-border text-ohm-muted hover:text-ohm-text'
+              }`}
+              aria-pressed={todayFilter}
+            >
+              <CalendarDays size={10} />
+              Today
+            </button>
+          )}
+          <span className="font-display text-ohm-muted shrink-0 text-xs tracking-widest uppercase">
             Energy
           </span>
           {/* Min stepper (desktop) */}
@@ -656,7 +695,7 @@ export function Board() {
             -
           </button>
           <span
-            className="font-display text-[10px] font-bold tabular-nums"
+            className="font-display text-xs font-bold tabular-nums"
             style={{ color: energyColor(energyMin ?? ENERGY_MIN, undefined, eMax) }}
           >
             {energyMin ?? ENERGY_MIN}
@@ -745,7 +784,7 @@ export function Board() {
             -
           </button>
           <span
-            className="font-display text-[10px] font-bold tabular-nums"
+            className="font-display text-xs font-bold tabular-nums"
             style={{ color: energyColor(energyMax ?? eMax, undefined, eMax) }}
           >
             {energyMax ?? eMax}
@@ -765,7 +804,7 @@ export function Board() {
 
           {/* Mobile: active advanced filter indicator (when collapsed) */}
           {!filtersExpanded && hasAdvancedFilter && (
-            <span className="bg-ohm-text/10 font-body text-ohm-text flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] md:hidden">
+            <span className="bg-ohm-text/10 font-body text-ohm-text flex items-center gap-1 rounded-full px-2 py-0.5 text-xs md:hidden">
               +{advancedFilterCount} filter{advancedFilterCount > 1 ? 's' : ''}
             </span>
           )}
@@ -798,7 +837,7 @@ export function Board() {
               onChange={(e) => setSearchFilter(e.target.value)}
               placeholder="Search..."
               aria-label="Search cards"
-              className="border-ohm-border font-body text-ohm-text placeholder:text-ohm-muted/40 focus:ring-ohm-text/10 w-full rounded-full border bg-transparent py-1 pr-2 pl-7 text-[11px] focus:ring-1 focus:outline-hidden"
+              className="border-ohm-border font-body text-ohm-text placeholder:text-ohm-muted/40 focus:ring-ohm-text/10 w-full rounded-full border bg-transparent py-1 pr-2 pl-7 text-xs focus:ring-1 focus:outline-hidden"
             />
             {searchFilter && (
               <button
@@ -815,7 +854,7 @@ export function Board() {
             type="button"
             onClick={resetFilters}
             disabled={!hasActiveFilter}
-            className="font-display text-ohm-muted hover:text-ohm-text shrink-0 text-[10px] tracking-wider uppercase disabled:pointer-events-none disabled:opacity-30"
+            className="font-display text-ohm-muted hover:text-ohm-text shrink-0 text-xs tracking-wider uppercase disabled:pointer-events-none disabled:opacity-30"
           >
             Reset
           </button>
@@ -856,7 +895,7 @@ export function Board() {
                 type="button"
                 onClick={resetFilters}
                 disabled={!hasActiveFilter}
-                className="font-display text-ohm-muted hover:text-ohm-text shrink-0 text-[10px] tracking-wider uppercase disabled:pointer-events-none disabled:opacity-30"
+                className="font-display text-ohm-muted hover:text-ohm-text shrink-0 text-xs tracking-wider uppercase disabled:pointer-events-none disabled:opacity-30"
               >
                 Reset
               </button>
@@ -864,96 +903,6 @@ export function Board() {
           </div>
         )}
       </nav>
-
-      {/* Energy meters — shared grid so bars align */}
-      {(() => {
-        const today = new Date();
-        const todayStr = toISODate(today);
-
-        // Window bounds for budget calculation
-        let windowEndStr: string | undefined;
-        let daily: Array<{ date: string; used: number }> = [];
-        let dayLimit = board.liveCapacity;
-        if (board.timeFeatures) {
-          const windowEnd = new Date(today);
-          windowEnd.setDate(windowEnd.getDate() + (board.windowSize ?? WINDOW_DEFAULT) - 1);
-          windowEndStr = toISODate(windowEnd);
-          daily = getDailyEnergy(board, todayStr, windowEndStr);
-          dayLimit = board.liveCapacity;
-        }
-
-        const total = getTotalCapacity(board, todayStr, windowEndStr);
-        const totalRatio = total.used / total.total;
-        const totalColor = budgetColor(totalRatio);
-
-        return (
-          <div
-            className="border-ohm-border grid items-center gap-x-3 gap-y-1 border-b px-4 py-2.5"
-            style={{ gridTemplateColumns: '2.5rem 1fr 3rem' }}
-          >
-            {/* Daily row */}
-            {board.timeFeatures && daily.length > 0 && (
-              <div className="flex gap-1" style={{ gridColumn: '1 / -1' }}>
-                {daily.map(({ date, used }) => {
-                  const ratio = used / dayLimit;
-                  const color = used > 0 ? budgetColor(ratio) : undefined;
-                  const isToday = date === todayStr;
-                  const d = new Date(date + 'T00:00:00');
-                  const dayLabel = d.toLocaleDateString(undefined, { weekday: 'short' });
-                  const dateNum = d.getDate();
-                  return (
-                    <div
-                      key={date}
-                      className="flex min-w-0 flex-1 flex-col items-center gap-0.5"
-                      title={`${date}: ${used}/${dayLimit}`}
-                    >
-                      <span
-                        className={`font-display text-[10px] leading-tight ${isToday ? 'text-ohm-text font-bold' : 'text-ohm-muted'}`}
-                      >
-                        {dayLabel}&nbsp;{dateNum}
-                      </span>
-                      <div className="bg-ohm-border relative h-1.5 w-full overflow-hidden rounded-full">
-                        {used > 0 && (
-                          <div
-                            className="absolute inset-y-0 left-0 rounded-full transition-all duration-300"
-                            style={{
-                              width: `${Math.min(ratio, 1) * 100}%`,
-                              backgroundColor: color,
-                            }}
-                          />
-                        )}
-                      </div>
-                      <span
-                        className={`font-display text-[10px] leading-none font-bold ${used === 0 ? 'text-ohm-muted/30' : ''}`}
-                        style={color ? { color } : undefined}
-                      >
-                        {used}/{dayLimit}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Total row */}
-            <span className="font-display text-ohm-muted text-[10px] tracking-widest uppercase">
-              Total
-            </span>
-            <div className="bg-ohm-border relative h-1.5 overflow-hidden rounded-full">
-              <div
-                className="absolute inset-y-0 left-0 rounded-full transition-all duration-300"
-                style={{ width: `${Math.min(totalRatio, 1) * 100}%`, backgroundColor: totalColor }}
-              />
-            </div>
-            <span
-              className={`font-display text-right text-[10px] font-bold ${total.used > total.total ? 'animate-pulse' : ''}`}
-              style={{ color: totalColor }}
-            >
-              {total.used}/{total.total}
-            </span>
-          </div>
-        );
-      })()}
 
       {/* Board */}
       <DndContext
@@ -969,20 +918,24 @@ export function Board() {
           tabIndex={-1}
           className="flex-1 overflow-y-auto focus:outline-none md:overflow-x-auto md:overflow-y-hidden"
         >
-          <div className="flex flex-col gap-3 p-4 md:min-h-[calc(100vh-56px)] md:flex-row md:gap-4">
+          <div className="flex flex-col gap-3 p-4 pb-28 md:min-h-[calc(100vh-56px)] md:flex-row md:gap-4">
             {COLUMNS.map((col, index) => {
               const status = index as ColumnStatus;
+              const cards = filteredCards(status);
+              const todayStr = toISODate(new Date());
               return (
                 <Column
                   key={index}
                   column={col}
-                  cards={filteredCards(status)}
+                  cards={cards}
                   onCardTap={setSelectedCard}
                   onReorderCards={reorderBatch}
-                  capacity={getColumnCapacity(board, status, toISODate(new Date())) ?? undefined}
+                  capacity={getColumnCapacity(board, status, todayStr) ?? undefined}
                   defaultExpanded={index === STATUS.LIVE}
                   flash={index === STATUS.POWERED ? poweredFlash : undefined}
                   energyMax={eMax}
+                  dayGroups={board.timeFeatures ? groupCardsByDate(cards, todayStr) : undefined}
+                  dayLimit={board.timeFeatures ? board.liveCapacity : undefined}
                 />
               );
             })}
@@ -996,6 +949,49 @@ export function Board() {
           )}
         </DragOverlay>
       </DndContext>
+
+      {/* Budget bar — fixed bottom */}
+      <BudgetBar
+        daily={board.timeFeatures ? budgetData.daily : []}
+        dayLimit={budgetData.dayLimit}
+        total={budgetData.total}
+        todayStr={budgetData.todayStr}
+        onDayClick={setFocusDate}
+      />
+
+      {/* Day focus dialog */}
+      {focusDate && (
+        <DayFocusDialog
+          date={focusDate}
+          board={board}
+          todayStr={budgetData.todayStr}
+          energyMax={eMax}
+          onReschedule={(cardId, newDate) => {
+            const card = board.cards.find((c) => c.id === cardId);
+            if (!card || card.activityInstanceId) return;
+            updateCard({
+              ...card,
+              scheduledDate: newDate,
+              updatedAt: new Date().toISOString(),
+            });
+          }}
+          onReorder={(activeId, overId) => {
+            const draggedCard = board.cards.find((c) => c.id === activeId);
+            const overCard = board.cards.find((c) => c.id === overId);
+            if (!draggedCard || !overCard || draggedCard.status !== overCard.status) return;
+            const columnCards = getColumnCards(board, draggedCard.status);
+            const oldIdx = columnCards.findIndex((c) => c.id === activeId);
+            const newIdx = columnCards.findIndex((c) => c.id === overId);
+            if (oldIdx === -1 || newIdx === -1) return;
+            const reordered = arrayMove(columnCards, oldIdx, newIdx);
+            reorderBatch(
+              reordered.map((c) => c.id),
+              activeId,
+            );
+          }}
+          onClose={() => setFocusDate(null)}
+        />
+      )}
 
       {/* Card detail / new card modal */}
       {activeCard && (
@@ -1092,16 +1088,14 @@ export function Board() {
                     className="border-ohm-border flex items-center justify-between gap-2 rounded-md border px-3 py-2"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="font-body text-ohm-text truncate text-xs">{card.title}</p>
-                      <p className="font-body text-ohm-muted/60 text-[10px]">
-                        {card.scheduledDate}
-                      </p>
+                      <p className="font-body text-ohm-text truncate text-sm">{card.title}</p>
+                      <p className="font-body text-ohm-muted/60 text-xs">{card.scheduledDate}</p>
                     </div>
                     <div className="flex shrink-0 gap-1">
                       <Button
                         size="sm"
                         variant="outline"
-                        className="border-ohm-powered/30 text-ohm-powered hover:bg-ohm-powered/10 h-6 px-2 text-[10px]"
+                        className="border-ohm-powered/30 text-ohm-powered hover:bg-ohm-powered/10 h-6 px-2 text-xs"
                         onClick={() => {
                           move(card.id, STATUS.POWERED);
                           if (card.activityInstanceId) {
@@ -1116,7 +1110,7 @@ export function Board() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="border-ohm-live/30 text-ohm-live hover:bg-ohm-live/10 h-6 px-2 text-[10px]"
+                          className="border-ohm-live/30 text-ohm-live hover:bg-ohm-live/10 h-6 px-2 text-xs"
                           onClick={() => {
                             if (card.activityInstanceId) {
                               void dismissInstance(card.activityInstanceId);
@@ -1131,7 +1125,7 @@ export function Board() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="border-ohm-grounded/30 text-ohm-grounded hover:bg-ohm-grounded/10 h-6 px-2 text-[10px]"
+                          className="border-ohm-grounded/30 text-ohm-grounded hover:bg-ohm-grounded/10 h-6 px-2 text-xs"
                           onClick={() => {
                             move(card.id, STATUS.GROUNDED);
                             setPendingExpired((prev) => prev.filter((c) => c.id !== card.id));
@@ -1198,7 +1192,7 @@ export function Board() {
       <Button
         size="icon"
         onClick={handleQuickSpark}
-        className="bg-ohm-spark text-ohm-bg shadow-ohm-spark/30 hover:bg-ohm-spark/90 fixed right-6 bottom-6 z-40 h-14 w-14 rounded-full shadow-lg transition-transform active:scale-95 md:hidden"
+        className="bg-ohm-spark text-ohm-bg shadow-ohm-spark/30 hover:bg-ohm-spark/90 fixed right-6 bottom-24 z-40 h-14 w-14 rounded-full shadow-lg transition-transform active:scale-95 md:hidden"
         aria-label="Quick spark"
       >
         <Zap size={24} />

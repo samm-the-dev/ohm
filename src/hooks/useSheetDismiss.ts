@@ -32,6 +32,9 @@ export function useSheetDismiss(onDismiss: (() => void) | undefined) {
       if (!onDismiss) return;
       const el = sheetRef.current;
       if (!el) return;
+      // Don't activate swipe-dismiss when touch starts on a draggable element
+      const target = e.target;
+      if (target instanceof Element && target.closest('[data-no-sheet-swipe]')) return;
       // Only begin if content is scrolled to top
       if (el.scrollTop > 0) return;
       startY.current = e.touches[0]!.clientY;

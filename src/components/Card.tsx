@@ -22,7 +22,7 @@ export function Card({ card, onTap, onReorder, energyMax }: CardProps) {
   });
 
   const style = {
-    transform: CSS.Transform.toString(transform),
+    transform: CSS.Translate.toString(transform),
     transition,
   };
 
@@ -63,7 +63,7 @@ export function Card({ card, onTap, onReorder, energyMax }: CardProps) {
           {card.activityInstanceId && (
             <Repeat size={12} className="text-ohm-muted shrink-0" aria-label="Recurring" />
           )}
-          <p className="font-body text-ohm-text min-w-0 flex-1 text-sm leading-snug font-medium">
+          <p className="font-body text-ohm-text min-w-0 flex-1 text-base leading-snug font-medium">
             {card.title}
           </p>
           <button
@@ -80,13 +80,13 @@ export function Card({ card, onTap, onReorder, energyMax }: CardProps) {
 
         {/* Scheduled date */}
         {card.scheduledDate && (
-          <p className="font-body text-ohm-muted mt-1 text-[10px]">{card.scheduledDate}</p>
+          <p className="font-body text-ohm-muted mt-1 text-xs">{card.scheduledDate}</p>
         )}
 
         {/* Meta row */}
         <div className="mt-2 flex items-center justify-between gap-2">
           <span
-            className="font-display inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wider"
+            className="font-display inline-flex items-center rounded px-1.5 py-0.5 text-xs font-bold tracking-wider"
             style={{
               backgroundColor: energyColor(card.energy, 0.12, energyMax),
               color: energyColor(card.energy, undefined, energyMax),
@@ -99,7 +99,7 @@ export function Card({ card, onTap, onReorder, energyMax }: CardProps) {
           {card.category && (
             <Badge
               variant="secondary"
-              className="bg-ohm-bg font-body text-ohm-muted rounded px-1.5 py-0.5 text-[10px] font-medium tracking-wider uppercase"
+              className="bg-ohm-bg font-body text-ohm-muted rounded px-1.5 py-0.5 text-xs font-medium tracking-wider uppercase"
             >
               {card.category}
             </Badge>
@@ -108,7 +108,7 @@ export function Card({ card, onTap, onReorder, energyMax }: CardProps) {
 
         {/* Notes preview */}
         {card.tasks.length > 0 && (
-          <div className="border-ohm-border text-ohm-muted mt-2 flex flex-col gap-1 border-t pt-1.5 text-xs">
+          <div className="border-ohm-border text-ohm-muted mt-2 flex flex-col gap-1 border-t pt-1.5 text-sm">
             {card.tasks.map((note, i) => (
               <div key={i} className="flex items-start gap-1">
                 <ArrowRight size={12} className="mt-0.5 shrink-0" />
