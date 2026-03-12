@@ -54,7 +54,7 @@ function groupByStatus(
   for (const card of cards) {
     let group = groups.find((g) => g.status === card.status);
     if (!group) {
-      group = { status: card.status, label: COLUMNS[card.status].label, cards: [] };
+      group = { status: card.status, label: COLUMNS[card.status]!.label, cards: [] };
       groups.push(group);
     }
     group.cards.push(card);
@@ -139,7 +139,7 @@ export function DayFocusDialog({
           >
             <div className="mt-3 space-y-4">
               {statusGroups.map((group) => {
-                const col = COLUMNS[group.status];
+                const col = COLUMNS[group.status]!;
                 return (
                   <div key={group.status} className="rounded-lg p-1">
                     {/* Column-styled section header */}
