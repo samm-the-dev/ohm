@@ -37,7 +37,7 @@ A kanban app using an electrical metaphor to map energy cycles into a visual wor
 @.toolbox/ai-context/testing.md
 
 - **Vitest + RTL + jsdom**. Setup: `src/test/setup.ts`. Config: `vitest.config.ts`.
-- **Toolbox stubs**: `.toolbox/lib/*` imports are aliased to `src/test/__stubs__/` in vitest config. See the stub isolation pattern in the testing companion above.
+- **Toolbox stubs**: specific `.toolbox/lib` modules used in production (e.g., `../../.toolbox/lib/local-storage-sync`) are aliased in `vitest.config.ts` to matching files in `src/test/__stubs__/`. When adding a new toolbox stub, add an explicit alias from the module's import path to its stub file. See the stub isolation pattern in the testing companion above.
 - **IndexedDB**: `useActivities` tests import `fake-indexeddb/auto` for Dexie. Production code touching Dexie asynchronously (e.g., `replaceBoard`'s instance cleanup) should `try/catch` for test environments without IndexedDB.
 - **`act()` wrapping**: All state-updating hook calls (including helpers like `quickAdd`) must be inside `act()` — unwrapped calls cause async re-renders that leak between tests.
 
