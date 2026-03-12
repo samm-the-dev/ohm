@@ -35,7 +35,6 @@ import {
   ENERGY_DEFAULT,
   WINDOW_DEFAULT,
   energyColor,
-  budgetColor,
 } from '../types/board';
 import { ACTIVITY_STATUS } from '../types/activity';
 import {
