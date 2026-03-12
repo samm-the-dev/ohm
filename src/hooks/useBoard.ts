@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type { OhmBoard, OhmCard, ColumnStatus } from '../types/board';
-import { ENERGY_MIN, WINDOW_MIN, WINDOW_MAX, WINDOW_DEFAULT } from '../types/board';
+import { ENERGY_MIN, WINDOW_MIN, WINDOW_MAX, WINDOW_DEFAULT, STATUS } from '../types/board';
 import type { Activity } from '../types/activity';
 import { loadFromLocal, saveToLocal } from '../utils/storage';
 import {
@@ -330,9 +330,12 @@ export function useBoard() {
       if (activitiesChanged) {
         const cleaned: OhmBoard = {
           ...newBoard,
-          cards: newBoard.cards.map((c) =>
-            c.activityInstanceId ? { ...c, activityInstanceId: undefined } : c,
-          ),
+          // Remove Charging activity-linked cards — they'll be re-materialized from fresh instances.
+          // Strip activityInstanceId from non-Charging activity cards (Live/Powered/Grounded) so
+          // they survive as regular cards rather than becoming orphans after the Dexie clear.
+          cards: newBoard.cards
+            .filter((c) => !(c.activityInstanceId && c.status === STATUS.CHARGING))
+            .map((c) => (c.activityInstanceId ? { ...c, activityInstanceId: undefined } : c)),
         };
         saveToLocal(cleaned);
 
