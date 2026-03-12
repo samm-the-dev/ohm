@@ -248,14 +248,12 @@ describe('useBoard', () => {
   });
 
   describe('replaceBoard', () => {
-    it('strips activityInstanceId when activities differ', () => {
+    it('removes Charging activity-linked cards when activities differ', () => {
       const { result } = renderHook(() => useBoard());
-      // Set up activities
       act(() => {
         result.current.setActivities(() => [{ id: 'a1', sourceId: 'ohm', name: 'Activity A' }]);
       });
 
-      // Replace with board that has different activities and linked cards
       let linkedCard: ReturnType<typeof result.current.quickAdd>;
       act(() => {
         linkedCard = { ...result.current.quickAdd('Linked card'), activityInstanceId: 'inst-1' };
@@ -269,6 +267,34 @@ describe('useBoard', () => {
       });
 
       expect(result.current.board.activities![0].id).toBe('a2');
+      // Charging activity-linked cards are removed (they'll be re-materialized)
+      expect(result.current.board.cards).toHaveLength(0);
+    });
+
+    it('keeps non-Charging activity-linked cards but strips activityInstanceId', () => {
+      const { result } = renderHook(() => useBoard());
+      act(() => {
+        result.current.setActivities(() => [{ id: 'a1', sourceId: 'ohm', name: 'Activity A' }]);
+      });
+
+      let liveCard: ReturnType<typeof result.current.quickAdd>;
+      act(() => {
+        liveCard = {
+          ...result.current.quickAdd('Live card'),
+          activityInstanceId: 'inst-1',
+          status: STATUS.LIVE,
+        };
+      });
+      act(() => {
+        result.current.replaceBoard({
+          ...result.current.board,
+          activities: [{ id: 'a2', sourceId: 'ohm', name: 'Activity B' }],
+          cards: [liveCard],
+        });
+      });
+
+      // Live card is kept but activityInstanceId is stripped
+      expect(result.current.board.cards).toHaveLength(1);
       expect(result.current.board.cards[0].activityInstanceId).toBeUndefined();
     });
 
@@ -310,8 +336,8 @@ describe('useBoard', () => {
         });
       });
 
-      // Energy changed → should strip activityInstanceId
-      expect(result.current.board.cards[0].activityInstanceId).toBeUndefined();
+      // Energy changed → Charging activity-linked card is removed
+      expect(result.current.board.cards).toHaveLength(0);
     });
   });
 
