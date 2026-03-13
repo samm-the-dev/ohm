@@ -172,6 +172,7 @@ export function SettingsPage({
   const pendingActivityTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const handleRemoveCategory = (cat: string) => {
+    if (pendingDeleteTimers.current.has(cat)) return;
     setPendingDeletes((prev) => new Set([...prev, cat]));
     const timer = setTimeout(() => {
       onRemoveCategory(cat);
@@ -196,6 +197,7 @@ export function SettingsPage({
 
   const handleDeleteActivity = (id: string) => {
     if (!onDeleteActivity) return;
+    if (pendingActivityTimers.current.has(id)) return;
     const activity = activities?.find((a) => a.id === id);
     if (!activity) return;
     setPendingActivityDeletes((prev) => new Set([...prev, id]));

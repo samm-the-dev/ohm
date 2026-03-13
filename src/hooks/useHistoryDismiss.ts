@@ -22,6 +22,7 @@ export function useHistoryDismiss(open: boolean, onClose: () => void) {
     }
 
     closedByPop.current = false;
+    if (pushed.current) return; // StrictMode double-mount guard
     pushed.current = true;
     history.pushState({ ohm_dialog: id }, '');
 
