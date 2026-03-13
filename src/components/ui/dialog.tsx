@@ -2,7 +2,6 @@ import * as React from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 
 import { cn } from '@/lib/utils';
-import { useSheetDismiss } from '@/hooks/useSheetDismiss';
 
 const Dialog = DialogPrimitive.Root;
 
@@ -26,31 +25,25 @@ const DialogOverlay = React.forwardRef<
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
 const DialogContent = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & { onSwipeDismiss?: () => void }
->(({ className, children, onSwipeDismiss, ...props }, _ref) => {
-  const { sheetRef, touchHandlers, dragHandleStyle } = useSheetDismiss(onSwipeDismiss);
-
-  return (
-    <DialogPortal>
-      <DialogOverlay />
-      <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
-        <DialogPrimitive.Content
-          ref={sheetRef}
-          className={cn(
-            'animate-slide-up border-ohm-border bg-ohm-surface relative max-h-[90dvh] w-full overflow-y-auto rounded-t-xl border p-5 shadow-2xl sm:max-w-lg sm:rounded-xl',
-            className,
-          )}
-          {...touchHandlers}
-          {...props}
-        >
-          {onSwipeDismiss && <div className="sm:hidden" style={dragHandleStyle} />}
-          {children}
-        </DialogPrimitive.Content>
-      </div>
-    </DialogPortal>
-  );
-});
+  React.ComponentRef<typeof DialogPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
+>(({ className, children, ...props }, ref) => (
+  <DialogPortal>
+    <DialogOverlay />
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+      <DialogPrimitive.Content
+        ref={ref}
+        className={cn(
+          'animate-slide-up border-ohm-border bg-ohm-surface relative max-h-[90dvh] w-full overflow-y-auto rounded-t-xl border p-5 shadow-2xl sm:max-w-lg sm:rounded-xl',
+          className,
+        )}
+        {...props}
+      >
+        {children}
+      </DialogPrimitive.Content>
+    </div>
+  </DialogPortal>
+));
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (

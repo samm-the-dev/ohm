@@ -4,7 +4,6 @@ import {
   X,
   Minus,
   Plus,
-  ChevronLeft,
   Download,
   Upload,
   Save,
@@ -14,6 +13,12 @@ import {
   LayoutGrid,
   Database,
 } from 'lucide-react';
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogTitle,
+  ResponsiveDialogDescription,
+} from './ui/responsive-dialog';
 import type { OhmBoard } from '../types/board';
 import {
   ENERGY_MIN,
@@ -33,7 +38,7 @@ import {
   mergeBoards,
   type RestorePoint,
 } from '../utils/restore-points';
-import { toastImportComplete } from '../utils/toast';
+import { toastImportComplete, toastCategoryDeleted, toastActivityDeleted } from '../utils/toast';
 import { getAuthLevel } from '../utils/google-drive';
 import type { Activity } from '../types/activity';
 import type { StoredSchedule } from '../types/schedule';
@@ -153,56 +158,69 @@ export function SettingsPage({
   onReplaceBoard,
 }: SettingsPageProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>('board');
+  const [snapPoint, setSnapPoint] = useState<number | string | null>(0.95);
+
+  useEffect(() => {
+    if (isOpen) setSnapPoint(0.95);
+  }, [isOpen]);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set());
+  const [pendingActivityDeletes, setPendingActivityDeletes] = useState<Set<string>>(new Set());
   const [restorePoints, setRestorePoints] = useState<RestorePoint[]>([]);
   const [confirmRestoreId, setConfirmRestoreId] = useState<string | null>(null);
   const [importPending, setImportPending] = useState<OhmBoard | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const overlayRef = useRef<HTMLDivElement>(null);
+  const pendingDeleteTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const pendingActivityTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
-  // Close on Escape
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  const handleRemoveCategory = (cat: string) => {
+    setPendingDeletes((prev) => new Set([...prev, cat]));
+    const timer = setTimeout(() => {
+      onRemoveCategory(cat);
+      setPendingDeletes((prev) => {
+        const next = new Set(prev);
+        next.delete(cat);
+        return next;
+      });
+      pendingDeleteTimers.current.delete(cat);
+    }, 5000);
+    pendingDeleteTimers.current.set(cat, timer);
+    toastCategoryDeleted(cat, () => {
+      clearTimeout(pendingDeleteTimers.current.get(cat));
+      pendingDeleteTimers.current.delete(cat);
+      setPendingDeletes((prev) => {
+        const next = new Set(prev);
+        next.delete(cat);
+        return next;
+      });
+    });
+  };
 
-  // Focus trap — re-queries live DOM on each Tab press so it stays fresh across tab switches
-  useEffect(() => {
-    if (!isOpen) return;
-    const overlay = overlayRef.current;
-    if (!overlay) return;
-
-    const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
-
-    // Focus the active tab button on tab switch so screen readers announce the new tab
-    const activeTabEl = document.getElementById(`tab-${activeTab}`);
-    if (activeTabEl) activeTabEl.focus();
-
-    const trap = (e: KeyboardEvent) => {
-      if (e.key !== 'Tab') return;
-      const els = overlay.querySelectorAll<HTMLElement>(FOCUSABLE);
-      if (els.length === 0) return;
-      const first = els[0]!;
-      const last = els[els.length - 1]!;
-      if (e.shiftKey) {
-        if (document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        }
-      } else if (document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-    overlay.addEventListener('keydown', trap);
-    return () => overlay.removeEventListener('keydown', trap);
-  }, [isOpen, activeTab]);
-
-  if (!isOpen) return null;
+  const handleDeleteActivity = (id: string) => {
+    if (!onDeleteActivity || !onAddActivity) return;
+    const activity = activities?.find((a) => a.id === id);
+    if (!activity) return;
+    setPendingActivityDeletes((prev) => new Set([...prev, id]));
+    const timer = setTimeout(() => {
+      void onDeleteActivity(id);
+      setPendingActivityDeletes((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      pendingActivityTimers.current.delete(id);
+    }, 5000);
+    pendingActivityTimers.current.set(id, timer);
+    toastActivityDeleted(activity.name, () => {
+      clearTimeout(pendingActivityTimers.current.get(id));
+      pendingActivityTimers.current.delete(id);
+      setPendingActivityDeletes((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    });
+  };
 
   const handleAddCategory = () => {
     const trimmed = newCategoryName.trim();
@@ -281,6 +299,9 @@ export function SettingsPage({
   const handleTabChange = (tab: SettingsTab) => {
     setActiveTab(tab);
     if (tab === 'data') refreshRestorePoints();
+    // Ensure the newly active tab button receives focus (for keyboard nav)
+    // Use setTimeout(0) to run after React's batched re-render
+    setTimeout(() => document.getElementById(`tab-${tab}`)?.focus(), 0);
   };
 
   const handleTabKeyDown = (e: React.KeyboardEvent) => {
@@ -297,71 +318,77 @@ export function SettingsPage({
   };
 
   return (
-    <div
-      ref={overlayRef}
-      className="bg-ohm-bg fixed inset-0 z-50 flex flex-col"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Settings"
+    <ResponsiveDialog
+      open={isOpen}
+      onOpenChange={(open) => !open && onClose()}
+      snapPoints={[0.5, 0.95]}
+      activeSnapPoint={snapPoint}
+      onSnapPointChange={setSnapPoint}
+      fadeFromIndex={1}
     >
-      {/* Header */}
-      <header className="border-ohm-border relative flex items-center justify-center border-b px-4 py-3">
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-ohm-muted hover:text-ohm-text absolute left-4 flex items-center gap-1.5 rounded-md p-1 transition-colors"
-          aria-label="Back to board"
-        >
-          <ChevronLeft size={18} />
-          <span className="font-display text-xs tracking-wider uppercase">Back</span>
-        </button>
-        <div className="flex items-center gap-2">
-          <Settings size={16} className="text-ohm-muted" aria-hidden="true" />
-          <h1 className="font-display text-ohm-text text-sm font-bold tracking-widest uppercase">
-            Settings
-          </h1>
-        </div>
-      </header>
-
-      {/* Tabs */}
-      <nav className="border-ohm-border border-b px-4" aria-label="Settings tabs">
-        <div className="flex gap-1" role="tablist">
-          {TABS.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => handleTabChange(id)}
-              onKeyDown={handleTabKeyDown}
-              className={`font-display flex items-center gap-1.5 border-b-2 px-3 py-2.5 text-[11px] tracking-wider uppercase transition-colors ${
-                activeTab === id
-                  ? 'border-ohm-spark text-ohm-spark'
-                  : 'text-ohm-muted hover:text-ohm-text border-transparent'
-              }`}
-              aria-selected={activeTab === id}
-              aria-controls={`tabpanel-${id}`}
-              id={`tab-${id}`}
-              role="tab"
-              tabIndex={activeTab === id ? 0 : -1}
-            >
-              <Icon size={14} aria-hidden="true" />
-              {label}
-            </button>
-          ))}
-        </div>
-      </nav>
-
-      {/* Tab content */}
-      <div
-        className="flex-1 overflow-y-auto px-4 py-5"
-        role="tabpanel"
-        id={`tabpanel-${activeTab}`}
-        aria-labelledby={`tab-${activeTab}`}
+      <ResponsiveDialogContent
+        managed
+        className="sm:h-[80dvh] sm:max-w-xl"
+        style={{ height: 'calc(100dvh - var(--budget-bar-height, 0px))' }}
+        aria-label="Settings"
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          document.getElementById(`tab-${activeTab}`)?.focus();
+        }}
       >
-        <div className="mx-auto max-w-md">
+        <ResponsiveDialogTitle className="sr-only">Settings</ResponsiveDialogTitle>
+        <ResponsiveDialogDescription className="sr-only">
+          Configure board, schedule, and data settings
+        </ResponsiveDialogDescription>
+
+        {/* Fixed header + tabs */}
+        <div className="shrink-0 px-5 sm:pt-5">
+          <header className="flex items-center justify-center pb-3">
+            <div className="flex items-center gap-2">
+              <Settings size={16} className="text-ohm-muted" aria-hidden="true" />
+              <h2 className="font-display text-ohm-text text-sm font-bold tracking-widest uppercase">
+                Settings
+              </h2>
+            </div>
+          </header>
+          <nav className="border-ohm-border border-b" aria-label="Settings tabs">
+            <div className="flex gap-1" role="tablist">
+              {TABS.map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => handleTabChange(id)}
+                  onKeyDown={handleTabKeyDown}
+                  className={`font-display flex items-center gap-1.5 border-b-2 px-3 py-2.5 text-[11px] tracking-wider uppercase transition-colors ${
+                    activeTab === id
+                      ? 'border-ohm-spark text-ohm-spark'
+                      : 'text-ohm-muted hover:text-ohm-text border-transparent'
+                  }`}
+                  aria-selected={activeTab === id}
+                  aria-controls={`tabpanel-${id}`}
+                  id={`tab-${id}`}
+                  role="tab"
+                  tabIndex={activeTab === id ? 0 : -1}
+                >
+                  <Icon size={14} aria-hidden="true" />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </nav>
+        </div>
+
+        {/* Scrollable tab content */}
+        <div
+          className="flex-1 overflow-y-auto p-5"
+          role="tabpanel"
+          id={`tabpanel-${activeTab}`}
+          aria-labelledby={`tab-${activeTab}`}
+        >
           {activeTab === 'board' && (
             <BoardTab
-              categories={categories}
-              onRemoveCategory={onRemoveCategory}
+              categories={categories.filter((c) => !pendingDeletes.has(c))}
+              onRemoveCategory={handleRemoveCategory}
               onRenameCategory={onRenameCategory}
               newCategoryName={newCategoryName}
               setNewCategoryName={setNewCategoryName}
@@ -386,11 +413,11 @@ export function SettingsPage({
               autoBudget={autoBudget}
               onSetAutoBudget={onSetAutoBudget}
               liveCapacity={liveCapacity}
-              activities={activities}
+              activities={activities?.filter((a) => !pendingActivityDeletes.has(a.id))}
               categories={categories}
               onAddActivity={onAddActivity}
               onUpdateActivity={onUpdateActivity}
-              onDeleteActivity={onDeleteActivity}
+              onDeleteActivity={onDeleteActivity ? handleDeleteActivity : undefined}
               energyMax={energyMax}
             />
           )}
@@ -417,8 +444,8 @@ export function SettingsPage({
             />
           )}
         </div>
-      </div>
-    </div>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }
 
@@ -457,71 +484,6 @@ function BoardTab({
 }) {
   return (
     <>
-      {/* Categories */}
-      <section className="mb-8">
-        <span className="font-display text-ohm-muted mb-3 block text-[10px] tracking-widest uppercase">
-          Categories
-        </span>
-        <div className="flex flex-col gap-1.5">
-          {categories.map((cat) => (
-            <div key={cat} className="flex items-center gap-2">
-              <Input
-                defaultValue={cat}
-                onBlur={(e) => {
-                  const trimmed = e.target.value.trim();
-                  if (trimmed && trimmed !== cat) {
-                    onRenameCategory(cat, trimmed);
-                  } else {
-                    e.target.value = cat;
-                  }
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-                  if (e.key === 'Escape') {
-                    (e.target as HTMLInputElement).value = cat;
-                    (e.target as HTMLInputElement).blur();
-                  }
-                }}
-                aria-label={`Rename category ${cat}`}
-                className="border-ohm-border bg-ohm-bg font-body text-ohm-text focus-visible:ring-ohm-spark/20 flex-1 px-3 py-1.5 text-sm focus-visible:ring-offset-0"
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => onRemoveCategory(cat)}
-                className="text-ohm-live/60 hover:text-ohm-live h-9 w-9 shrink-0 hover:bg-transparent"
-                aria-label={`Remove ${cat} category`}
-              >
-                <Trash2 size={14} />
-              </Button>
-            </div>
-          ))}
-        </div>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleAddCategory();
-          }}
-          className="mt-2 flex gap-2"
-        >
-          <Input
-            value={newCategoryName}
-            onChange={(e) => setNewCategoryName(e.target.value)}
-            placeholder="New category..."
-            aria-label="New category name"
-            className="border-ohm-border bg-ohm-bg font-body text-ohm-text placeholder:text-ohm-muted/40 focus-visible:ring-ohm-spark/20 flex-1 px-3 py-1.5 text-sm focus-visible:ring-offset-0"
-          />
-          <Button
-            type="submit"
-            disabled={!newCategoryName.trim()}
-            className="bg-ohm-spark/20 font-display text-ohm-spark hover:bg-ohm-spark/30 active:bg-ohm-spark/40 text-xs tracking-wider uppercase"
-          >
-            Add
-          </Button>
-        </form>
-      </section>
-
       {/* Energy Scale */}
       {onSetEnergyMax && (
         <section className="mb-8">
@@ -612,6 +574,71 @@ function BoardTab({
             Total is auto-calculated ({windowSize ?? WINDOW_DEFAULT} x {liveCapacity}).
           </p>
         )}
+      </section>
+
+      {/* Categories */}
+      <section className="mt-8">
+        <span className="font-display text-ohm-muted mb-3 block text-[10px] tracking-widest uppercase">
+          Categories
+        </span>
+        <div className="flex max-h-[28dvh] flex-col gap-1.5 overflow-y-auto">
+          {categories.map((cat) => (
+            <div key={cat} className="flex items-center gap-2">
+              <Input
+                defaultValue={cat}
+                onBlur={(e) => {
+                  const trimmed = e.target.value.trim();
+                  if (trimmed && trimmed !== cat) {
+                    onRenameCategory(cat, trimmed);
+                  } else {
+                    e.target.value = cat;
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                  if (e.key === 'Escape') {
+                    (e.target as HTMLInputElement).value = cat;
+                    (e.target as HTMLInputElement).blur();
+                  }
+                }}
+                aria-label={`Rename category ${cat}`}
+                className="border-ohm-border bg-ohm-bg font-body text-ohm-text focus-visible:ring-ohm-spark/20 flex-1 px-3 py-1.5 text-sm focus-visible:ring-offset-0"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => onRemoveCategory(cat)}
+                className="text-ohm-live/60 hover:text-ohm-live h-9 w-9 shrink-0 hover:bg-transparent"
+                aria-label={`Remove ${cat} category`}
+              >
+                <Trash2 size={14} />
+              </Button>
+            </div>
+          ))}
+        </div>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleAddCategory();
+          }}
+          className="mt-2 flex gap-2"
+        >
+          <Input
+            value={newCategoryName}
+            onChange={(e) => setNewCategoryName(e.target.value)}
+            placeholder="New category..."
+            aria-label="New category name"
+            className="border-ohm-border bg-ohm-bg font-body text-ohm-text placeholder:text-ohm-muted/40 focus-visible:ring-ohm-spark/20 flex-1 px-3 py-1.5 text-sm focus-visible:ring-offset-0"
+          />
+          <Button
+            type="submit"
+            disabled={!newCategoryName.trim()}
+            className="bg-ohm-spark/20 font-display text-ohm-spark hover:bg-ohm-spark/30 active:bg-ohm-spark/40 text-xs tracking-wider uppercase"
+          >
+            Add
+          </Button>
+        </form>
       </section>
     </>
   );
@@ -918,7 +945,7 @@ function DataTab({
       </section>
 
       {/* Restore points */}
-      <section className="mb-8">
+      <section className="mb-8 sm:mb-0">
         <div className="mb-2 flex items-center justify-between">
           <span className="font-display text-ohm-muted text-[10px] tracking-widest uppercase">
             Restore Points
@@ -935,7 +962,7 @@ function DataTab({
         {restorePoints.length === 0 ? (
           <p className="font-body text-ohm-muted/60 text-[11px]">No restore points yet.</p>
         ) : (
-          <div className="flex max-h-60 flex-col gap-1 overflow-y-auto">
+          <div className="flex flex-col gap-1">
             {[...restorePoints].reverse().map((rp) => (
               <div
                 key={rp.id}

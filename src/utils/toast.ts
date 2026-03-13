@@ -39,6 +39,26 @@ export function toastCardDeleted(card: OhmCard, onUndo: () => void) {
   });
 }
 
+export function toastCategoryDeleted(name: string, onUndo: () => void) {
+  toast('Category removed', {
+    description: name,
+    duration: 5000,
+    action: { label: 'Undo', onClick: onUndo },
+    style: accentStyle(),
+    icon: trashIcon,
+  });
+}
+
+export function toastActivityDeleted(name: string, onUndo: () => void) {
+  toast('Activity deleted', {
+    description: name,
+    duration: 5000,
+    action: { label: 'Undo', onClick: onUndo },
+    style: accentStyle(),
+    icon: trashIcon,
+  });
+}
+
 export function toastQuickAdd(title: string) {
   const col = COLUMNS[STATUS.CHARGING]!;
   toast('Charging', {

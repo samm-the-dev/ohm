@@ -53,7 +53,12 @@ import { useDriveSync } from '../hooks/useDriveSync';
 import { useWelcomeBack } from '../hooks/useWelcomeBack';
 import { useInstallPrompt } from '../hooks/useInstallPrompt';
 import { Button } from './ui/button';
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from './ui/dialog';
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogTitle,
+  ResponsiveDialogDescription,
+} from './ui/responsive-dialog';
 import { Column } from './Column';
 import { BudgetBar } from './BudgetBar';
 import { DayFocusDialog } from './DayFocusDialog';
@@ -975,6 +980,7 @@ export function Board() {
       {focusDate && (
         <DayFocusDialog
           date={focusDate}
+          availableDates={budgetData.daily.map((d) => d.date)}
           board={board}
           todayStr={budgetData.todayStr}
           energyMax={eMax}
@@ -1083,14 +1089,14 @@ export function Board() {
 
       {/* Expired cards prompt */}
       {pendingExpired.length > 0 && (
-        <Dialog open onOpenChange={() => setPendingExpired([])}>
-          <DialogContent className="bg-ohm-surface border-ohm-border max-w-sm">
-            <DialogTitle className="font-display text-ohm-text text-sm tracking-wider uppercase">
+        <ResponsiveDialog open onOpenChange={() => setPendingExpired([])}>
+          <ResponsiveDialogContent className="max-w-sm">
+            <ResponsiveDialogTitle className="font-display text-ohm-text text-sm tracking-wider uppercase">
               Expired tasks
-            </DialogTitle>
-            <DialogDescription className="font-body text-ohm-muted text-xs">
+            </ResponsiveDialogTitle>
+            <ResponsiveDialogDescription className="font-body text-ohm-muted text-xs">
               These tasks have dates in the past. What happened?
-            </DialogDescription>
+            </ResponsiveDialogDescription>
             <div className="flex flex-col gap-2 pt-2">
               {pendingExpired.map((card) => {
                 const isActivity = !!card.activityInstanceId;
@@ -1151,8 +1157,8 @@ export function Board() {
                 );
               })}
             </div>
-          </DialogContent>
-        </Dialog>
+          </ResponsiveDialogContent>
+        </ResponsiveDialog>
       )}
 
       {/* Settings full-page */}
@@ -1204,7 +1210,8 @@ export function Board() {
       <Button
         size="icon"
         onClick={handleQuickSpark}
-        className="bg-ohm-spark text-ohm-bg hover:bg-ohm-spark/90 fixed right-6 bottom-24 z-40 h-14 w-14 rounded-full transition-transform active:scale-95 md:hidden [&_svg]:size-7"
+        className="bg-ohm-spark text-ohm-bg hover:bg-ohm-spark/90 fixed right-6 z-40 h-14 w-14 rounded-full transition-transform active:scale-95 md:hidden [&_svg]:size-7"
+        style={{ bottom: 'calc(var(--budget-bar-height, 0px) + 1.5rem)' }}
         aria-label="Quick spark"
       >
         <Zap fill="currentColor" stroke="none" />

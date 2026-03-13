@@ -11,7 +11,12 @@ import {
 import { EnergySlider } from './ui/energy-slider';
 import { Settings, List, Trash2, Calendar } from 'lucide-react';
 import { toISODate } from '../utils/schedule-utils';
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from './ui/dialog';
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogTitle,
+  ResponsiveDialogDescription,
+} from './ui/responsive-dialog';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Button } from './ui/button';
@@ -127,24 +132,25 @@ export function CardDetail({
     : (VALID_TRANSITIONS[editing.status] ?? []);
 
   return (
-    <Dialog
+    <ResponsiveDialog
       open={true}
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
     >
-      <DialogContent
-        onSwipeDismiss={onClose}
+      <ResponsiveDialogContent
         onOpenAutoFocus={(e) => {
           e.preventDefault();
           (e.currentTarget as HTMLElement).focus();
         }}
       >
         {/* Header -- title + close */}
-        <DialogTitle className="sr-only">{editing.title || 'Card details'}</DialogTitle>
-        <DialogDescription className="sr-only">
+        <ResponsiveDialogTitle className="sr-only">
+          {editing.title || 'Card details'}
+        </ResponsiveDialogTitle>
+        <ResponsiveDialogDescription className="sr-only">
           {isNew ? 'Create a new card' : 'Edit card details'}
-        </DialogDescription>
+        </ResponsiveDialogDescription>
 
         {/* Title */}
         <div className="mb-4">
@@ -409,7 +415,7 @@ export function CardDetail({
                   Delete
                 </Button>
               </AlertDialogTrigger>
-              <AlertDialogContent onSwipeDismiss={() => setDeleteOpen(false)}>
+              <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertTitle className="text-ohm-text">Delete this card?</AlertTitle>
                   <AlertDialogDescription>
@@ -472,7 +478,7 @@ export function CardDetail({
             {new Date(card.updatedAt).toLocaleDateString()}
           </div>
         )}
-      </DialogContent>
-    </Dialog>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }
