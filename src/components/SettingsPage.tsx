@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Settings,
   X,
@@ -154,12 +154,13 @@ export function SettingsPage({
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab ?? 'board');
   const [snapPoint, setSnapPoint] = useState<number | string | null>(0.95);
 
-  const prevOpen = useRef(false);
-  if (isOpen && !prevOpen.current) {
-    setSnapPoint(0.95);
-    if (initialTab) setActiveTab(initialTab);
-  }
-  prevOpen.current = isOpen;
+  // eslint-disable-next-line react-hooks/react-compiler -- intentional reset on open
+  useEffect(() => {
+    if (isOpen) {
+      setSnapPoint(0.95);
+      if (initialTab) setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set());
   const [pendingActivityDeletes, setPendingActivityDeletes] = useState<Set<string>>(new Set());
