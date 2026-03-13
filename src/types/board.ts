@@ -69,7 +69,7 @@ export interface OhmCard {
   updatedAt: string;
   /** Sort order within its column */
   sortOrder: number;
-  /** ISO date -- when this card is scheduled (time features) */
+  /** ISO date -- when this card is scheduled */
   scheduledDate?: string;
   /** Links this card to a generated activity instance */
   activityInstanceId?: string;
