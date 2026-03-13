@@ -154,13 +154,14 @@ export function SettingsPage({
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab ?? 'board');
   const [snapPoint, setSnapPoint] = useState<number | string | null>(0.95);
 
-  // eslint-disable-next-line react-hooks/react-compiler -- intentional reset on open
+  /* eslint-disable react-hooks/set-state-in-effect -- intentional reset on open */
   useEffect(() => {
     if (isOpen) {
       setSnapPoint(0.95);
       if (initialTab) setActiveTab(initialTab);
     }
   }, [isOpen, initialTab]);
+  /* eslint-enable react-hooks/set-state-in-effect */
   const [newCategoryName, setNewCategoryName] = useState('');
   const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set());
   const [pendingActivityDeletes, setPendingActivityDeletes] = useState<Set<string>>(new Set());
