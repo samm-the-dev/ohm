@@ -11,6 +11,7 @@ import {
 } from '../utils/google-drive';
 import { DRIVE_CLIENT_ID } from '../config/drive';
 import { createRestorePoint, mergeBoards } from '../utils/restore-points';
+import { stripTransientCards } from '../utils/storage';
 import { toastSyncResult } from '../utils/toast';
 
 export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error' | 'offline';
@@ -48,7 +49,7 @@ export function useDriveSync(
     const remote = await loadFromDrive();
     if (!remote) {
       // Nothing in Drive yet — push local
-      const ok = await saveToDrive(boardRef.current);
+      const ok = await saveToDrive(stripTransientCards(boardRef.current));
       setSyncStatus(ok ? 'synced' : 'error');
       return ok;
     }
@@ -70,13 +71,13 @@ export function useDriveSync(
       createRestorePoint(local, 'Before Drive sync');
       const merged = mergeBoards(local, remote);
       onBoardLoaded(merged);
-      const ok = await saveToDrive(merged);
+      const ok = await saveToDrive(stripTransientCards(merged));
       setSyncStatus(ok ? 'synced' : 'error');
       return ok;
     }
 
     // Local has cards and remote is empty, or both empty — push local
-    const ok = await saveToDrive(local);
+    const ok = await saveToDrive(stripTransientCards(local));
     setSyncStatus(ok ? 'synced' : 'error');
     return ok;
   }, [onBoardLoaded]);
@@ -162,7 +163,7 @@ export function useDriveSync(
     }
     setSyncStatus('syncing');
     try {
-      const ok = await saveToDrive(board);
+      const ok = await saveToDrive(stripTransientCards(board));
       setSyncStatus(ok ? 'synced' : 'error');
     } catch {
       setSyncStatus('error');

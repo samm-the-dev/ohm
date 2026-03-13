@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { DayGroup as DayGroupType } from '../utils/board-utils';
 import type { OhmCard } from '../types/board';
@@ -15,6 +15,8 @@ interface DayGroupProps {
   energyMax?: number;
   /** Day energy limit for budget coloring (matches BudgetBar logic) */
   dayLimit?: number;
+  /** Initial collapsed/expanded state (default: true) */
+  defaultExpanded?: boolean;
 }
 
 export function DayGroup({
@@ -24,8 +26,14 @@ export function DayGroup({
   indexOffset,
   energyMax,
   dayLimit,
+  defaultExpanded = true,
 }: DayGroupProps) {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(defaultExpanded);
+
+  // Sync with parent when defaultExpanded changes (e.g. filter applied/cleared)
+  useEffect(() => {
+    setExpanded(defaultExpanded);
+  }, [defaultExpanded]);
 
   return (
     <div className="rounded-lg">

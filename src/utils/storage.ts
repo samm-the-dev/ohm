@@ -87,10 +87,14 @@ const localSync = createLocalStorage<OhmBoard>({
 
 const { saveToLocal: rawSave, loadFromLocal, clearLocal } = localSync;
 
-/** Save board, filtering out non-edited activity cards (they get re-materialized from Dexie) */
-const saveToLocal = (board: OhmBoard) => {
+/** Strip non-edited activity cards -- they get re-materialized from Dexie on load */
+export function stripTransientCards(board: OhmBoard): OhmBoard {
   const persistCards = board.cards.filter((c) => !c.activityInstanceId || c.edited);
-  rawSave({ ...board, cards: persistCards });
+  return persistCards.length === board.cards.length ? board : { ...board, cards: persistCards };
+}
+
+const saveToLocal = (board: OhmBoard) => {
+  rawSave(stripTransientCards(board));
 };
 
 export { saveToLocal, loadFromLocal, clearLocal };

@@ -207,7 +207,7 @@ function formatDayLabel(dateStr: string, today: string, tomorrow: string): strin
 
 /** Group already-sorted cards by scheduledDate into DayGroup[].
  *  Cards without a scheduledDate go into an "Unscheduled" group at the end. */
-export function groupCardsByDate(cards: OhmCard[], today: string): DayGroup[] {
+export function groupCardsByDate(cards: OhmCard[], today: string, desc = false): DayGroup[] {
   const tomorrowDate = new Date(today + 'T00:00:00');
   tomorrowDate.setDate(tomorrowDate.getDate() + 1);
   const tomorrow = `${tomorrowDate.getFullYear()}-${String(tomorrowDate.getMonth() + 1).padStart(2, '0')}-${String(tomorrowDate.getDate()).padStart(2, '0')}`;
@@ -232,6 +232,8 @@ export function groupCardsByDate(cards: OhmCard[], today: string): DayGroup[] {
       isToday: key === today,
     });
   }
+
+  groups.sort((a, b) => (desc ? b.key.localeCompare(a.key) : a.key.localeCompare(b.key)));
 
   const unscheduled = groupMap.get('unscheduled');
   if (unscheduled) {

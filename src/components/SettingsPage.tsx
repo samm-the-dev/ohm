@@ -41,7 +41,6 @@ import {
 import { toastImportComplete, toastCategoryDeleted, toastActivityDeleted } from '../utils/toast';
 import { getAuthLevel } from '../utils/google-drive';
 import type { Activity } from '../types/activity';
-import type { StoredSchedule } from '../types/schedule';
 import { ActivityManager } from './ActivityManager';
 
 type SettingsTab = 'board' | 'schedule' | 'data';
@@ -70,10 +69,6 @@ export interface SettingsPageProps {
   autoBudget?: boolean;
   onSetAutoBudget?: (enabled: boolean) => void;
   activities?: Activity[];
-  onAddActivity?: (
-    name: string,
-    opts?: { description?: string; schedule?: StoredSchedule; energy?: number; category?: string },
-  ) => Activity;
   onUpdateActivity?: (id: string, changes: Partial<Omit<Activity, 'id'>>) => void;
   onDeleteActivity?: (id: string) => void | Promise<void>;
   driveAvailable?: boolean;
@@ -82,6 +77,8 @@ export interface SettingsPageProps {
   onDisconnectDrive?: () => void;
   board: OhmBoard;
   onReplaceBoard: (board: OhmBoard) => void;
+  initialTab?: SettingsTab;
+  editActivityId?: string;
 }
 
 const CAPACITY_ROWS = [
@@ -143,7 +140,6 @@ export function SettingsPage({
   autoBudget,
   onSetAutoBudget,
   activities,
-  onAddActivity,
   onUpdateActivity,
   onDeleteActivity,
   driveAvailable,
@@ -152,13 +148,18 @@ export function SettingsPage({
   onDisconnectDrive,
   board,
   onReplaceBoard,
+  initialTab,
+  editActivityId,
 }: SettingsPageProps) {
-  const [activeTab, setActiveTab] = useState<SettingsTab>('board');
+  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab ?? 'board');
   const [snapPoint, setSnapPoint] = useState<number | string | null>(0.95);
 
   useEffect(() => {
-    if (isOpen) setSnapPoint(0.95);
-  }, [isOpen]);
+    if (isOpen) {
+      setSnapPoint(0.95);
+      if (initialTab) setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set());
   const [pendingActivityDeletes, setPendingActivityDeletes] = useState<Set<string>>(new Set());
@@ -193,7 +194,7 @@ export function SettingsPage({
   };
 
   const handleDeleteActivity = (id: string) => {
-    if (!onDeleteActivity || !onAddActivity) return;
+    if (!onDeleteActivity) return;
     const activity = activities?.find((a) => a.id === id);
     if (!activity) return;
     setPendingActivityDeletes((prev) => new Set([...prev, id]));
@@ -409,10 +410,10 @@ export function SettingsPage({
               liveCapacity={liveCapacity}
               activities={activities?.filter((a) => !pendingActivityDeletes.has(a.id))}
               categories={categories}
-              onAddActivity={onAddActivity}
               onUpdateActivity={onUpdateActivity}
               onDeleteActivity={onDeleteActivity ? handleDeleteActivity : undefined}
               energyMax={energyMax}
+              editActivityId={editActivityId}
             />
           )}
 
@@ -575,7 +576,7 @@ function BoardTab({
         <span className="font-display text-ohm-muted mb-3 block text-[10px] tracking-widest uppercase">
           Categories
         </span>
-        <div className="flex max-h-[28dvh] flex-col gap-1.5 overflow-y-auto">
+        <div className="flex flex-col gap-1.5">
           {categories.map((cat) => (
             <div key={cat} className="flex items-center gap-2">
               <Input
@@ -648,10 +649,10 @@ function ScheduleTab({
   liveCapacity,
   activities,
   categories,
-  onAddActivity,
   onUpdateActivity,
   onDeleteActivity,
   energyMax,
+  editActivityId,
 }: {
   windowSize?: number;
   onSetWindowSize?: (size: number) => void;
@@ -660,13 +661,10 @@ function ScheduleTab({
   liveCapacity: number;
   activities?: Activity[];
   categories: string[];
-  onAddActivity?: (
-    name: string,
-    opts?: { description?: string; schedule?: StoredSchedule; energy?: number; category?: string },
-  ) => Activity;
   onUpdateActivity?: (id: string, changes: Partial<Omit<Activity, 'id'>>) => void;
   onDeleteActivity?: (id: string) => void | Promise<void>;
   energyMax?: number;
+  editActivityId?: string;
 }) {
   return (
     <>
@@ -684,7 +682,7 @@ function ScheduleTab({
 
         {onSetWindowSize && (
           <div className="mt-3 flex items-center gap-3">
-            <span className="font-display text-ohm-muted w-20 text-[10px] tracking-widest uppercase">
+            <span className="font-display text-ohm-muted w-20 shrink-0 text-[10px] tracking-widest uppercase">
               Window
             </span>
             <Button
@@ -720,7 +718,7 @@ function ScheduleTab({
 
         {onSetAutoBudget && (
           <div className="mt-3 flex items-center gap-3">
-            <span className="font-display text-ohm-muted w-20 text-[10px] tracking-widest uppercase">
+            <span className="font-display text-ohm-muted w-20 shrink-0 text-[10px] tracking-widest uppercase">
               Auto total
             </span>
             <button
@@ -729,7 +727,7 @@ function ScheduleTab({
               aria-checked={!!autoBudget}
               aria-label="Auto total budget"
               onClick={() => onSetAutoBudget(!autoBudget)}
-              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors ${
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
                 autoBudget ? 'bg-ohm-spark' : 'bg-ohm-border'
               }`}
             >
@@ -750,15 +748,15 @@ function ScheduleTab({
       </section>
 
       {/* Activities */}
-      {activities && onAddActivity && onUpdateActivity && onDeleteActivity && (
+      {activities && onUpdateActivity && onDeleteActivity && (
         <section>
           <ActivityManager
             activities={activities}
             categories={categories}
-            onAdd={onAddActivity}
             onUpdate={onUpdateActivity}
             onDelete={onDeleteActivity}
             energyMax={energyMax}
+            initialEditId={editActivityId}
           />
         </section>
       )}

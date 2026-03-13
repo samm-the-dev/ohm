@@ -8,8 +8,12 @@ import {
   STATUS_CLASSES,
   SPARK_CLASSES,
 } from '../types/board';
+import type { Activity } from '../types/activity';
+import type { StoredSchedule } from '../types/schedule';
 import { EnergySlider } from './ui/energy-slider';
-import { Settings, List, Trash2, Calendar } from 'lucide-react';
+import { ScheduleEditor } from './ActivityManager';
+import { Settings, List, Trash2, Calendar, Repeat } from 'lucide-react';
+import { DatePicker } from './ui/date-picker';
 import { formatDateLabel, toISODate } from '../utils/schedule-utils';
 import {
   ResponsiveDialog,
@@ -39,6 +43,11 @@ interface CardDetailProps {
   onDelete: (cardId: string) => void;
   onClose: () => void;
   onOpenSettings: () => void;
+  onAddActivity?: (
+    name: string,
+    opts?: { description?: string; schedule?: StoredSchedule; energy?: number; category?: string },
+  ) => Activity;
+  onEditSchedule?: (activityId: string) => void;
   isNew?: boolean;
   energyMax?: number;
 }
@@ -50,12 +59,16 @@ export function CardDetail({
   onDelete,
   onClose,
   onOpenSettings,
+  onAddActivity,
+  onEditSchedule,
   isNew,
   energyMax,
 }: CardDetailProps) {
   const [editing, setEditing] = useState(card);
   const [newNote, setNewNote] = useState('');
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [schedule, setSchedule] = useState<Partial<StoredSchedule>>({ repeatFrequency: 'P1D' });
   const titleRef = useRef<HTMLInputElement>(null);
 
   const isPowered = editing.status === STATUS.POWERED;
@@ -78,6 +91,19 @@ export function CardDetail({
 
   const handleSave = () => {
     if (isNew && !editing.title.trim()) return;
+    if (isNew && isRecurring && onAddActivity) {
+      onAddActivity(editing.title.trim(), {
+        description: editing.description || undefined,
+        schedule: {
+          ...schedule,
+          repeatFrequency: schedule.repeatFrequency ?? 'P1D',
+        } as StoredSchedule,
+        energy: editing.energy,
+        category: editing.category || undefined,
+      });
+      onClose();
+      return;
+    }
     const pendingTask = newNote.trim();
     const finalTasks = pendingTask ? [...editing.tasks, pendingTask] : editing.tasks;
     onSave({ ...editing, tasks: finalTasks, updatedAt: new Date().toISOString() });
@@ -277,13 +303,39 @@ export function CardDetail({
           )}
         </div>
 
-        {/* Scheduled date */}
+        {/* Scheduled date / Recurring toggle */}
         <div className="mb-3">
           <span className="font-display text-ohm-muted mb-2 flex items-center gap-1 text-xs tracking-widest uppercase">
             <Calendar size={10} />
             Scheduled
+            {isNew && onAddActivity && (
+              <button
+                type="button"
+                onClick={() => setIsRecurring((v) => !v)}
+                className={`ml-2 flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[10px] transition-colors ${
+                  isRecurring
+                    ? 'bg-ohm-spark/20 text-ohm-spark'
+                    : 'bg-ohm-border/50 text-ohm-muted hover:text-ohm-text'
+                }`}
+              >
+                <Repeat size={9} />
+                Repeat
+              </button>
+            )}
+            {!isNew && editing.activityInstanceId && onEditSchedule && (
+              <button
+                type="button"
+                onClick={() => onEditSchedule(editing.activityInstanceId!)}
+                className="bg-ohm-border/50 text-ohm-muted hover:text-ohm-text ml-2 flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[10px] transition-colors"
+              >
+                <Settings size={9} />
+                Edit schedule
+              </button>
+            )}
           </span>
-          {editing.activityInstanceId ? (
+          {isRecurring && isNew ? (
+            <ScheduleEditor schedule={schedule} onChange={setSchedule} />
+          ) : editing.activityInstanceId ? (
             <p className="font-body text-ohm-muted text-base">
               {editing.scheduledDate
                 ? formatDateLabel(editing.scheduledDate, toISODate(new Date()), true)
@@ -291,20 +343,11 @@ export function CardDetail({
             </p>
           ) : (
             <div className="flex items-center gap-2">
-              <input
-                id="card-scheduled-date"
-                type="date"
-                autoComplete="off"
-                data-form-type="other"
-                value={editing.scheduledDate ?? ''}
-                onChange={(e) =>
-                  setEditing((prev) => ({
-                    ...prev,
-                    scheduledDate: e.target.value || undefined,
-                  }))
-                }
+              <DatePicker
+                value={editing.scheduledDate}
+                onChange={(date) => setEditing((prev) => ({ ...prev, scheduledDate: date }))}
                 max={isPowered ? toISODate(new Date()) : undefined}
-                className={`${accent.border} bg-ohm-bg font-body text-ohm-text focus:ring-ohm-text/10 rounded-md border px-3 py-1.5 text-base focus:ring-1 focus:outline-hidden`}
+                accent={accent}
               />
               {editing.scheduledDate && !isPowered && (
                 <button

@@ -53,6 +53,9 @@ import { useDriveSync } from '../hooks/useDriveSync';
 import { useWelcomeBack } from '../hooks/useWelcomeBack';
 import { useInstallPrompt } from '../hooks/useInstallPrompt';
 import { Button } from './ui/button';
+import { Popover, PopoverTrigger, PopoverContent } from './ui/popover';
+import { Calendar } from './ui/calendar';
+import { parseISO } from 'date-fns';
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
@@ -452,6 +455,8 @@ export function Board() {
   const [selectedCard, setSelectedCard] = useState<OhmCard | null>(null);
   const [newCard, setNewCard] = useState<OhmCard | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<'board' | 'schedule' | 'data' | undefined>();
+  const [editActivityId, setEditActivityId] = useState<string | undefined>();
   const [energyMin, setEnergyMin] = useState<number | null>(null);
   const [energyMax, setEnergyMax] = useState<number | null>(null);
   const eMax = board.energyMax ?? ENERGY_MAX_DEFAULT;
@@ -845,6 +850,40 @@ export function Board() {
 
         {/* Desktop: category + search + reset (own row, won't squish energy slider) */}
         <div className="mt-1.5 hidden items-center gap-2 md:flex">
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                aria-label="Filter by date"
+                className={`border-ohm-border font-body focus:ring-ohm-text/10 flex items-center gap-1.5 rounded-full border bg-transparent py-1 pr-2 pl-2.5 text-xs focus:ring-1 focus:outline-hidden ${
+                  dateFilter ? 'text-ohm-text' : 'text-ohm-muted'
+                }`}
+              >
+                <CalendarDays size={12} />
+                {dateFilter ? formatDateLabel(dateFilter, budgetData.todayStr) : 'Date'}
+                {dateFilter && (
+                  <span
+                    role="button"
+                    aria-label="Clear date filter"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDateFilter(null);
+                    }}
+                    className="text-ohm-muted hover:text-ohm-text -mr-0.5 ml-0.5"
+                  >
+                    <X size={10} />
+                  </span>
+                )}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="border-ohm-border bg-ohm-bg p-0">
+              <Calendar
+                mode="single"
+                selected={dateFilter ? parseISO(dateFilter) : undefined}
+                onSelect={(day) => setDateFilter(day ? toISODate(day) : null)}
+              />
+            </PopoverContent>
+          </Popover>
           <CategoryFilter
             categories={board.categories}
             selected={categoryFilter}
@@ -868,26 +907,6 @@ export function Board() {
                 onClick={() => setSearchFilter('')}
                 className="text-ohm-muted hover:text-ohm-text absolute right-1.5"
                 aria-label="Clear search"
-              >
-                <X size={10} />
-              </button>
-            )}
-          </div>
-          <div className="relative flex items-center">
-            <CalendarDays size={12} className="text-ohm-muted absolute left-2" />
-            <input
-              type="date"
-              value={dateFilter ?? ''}
-              onChange={(e) => setDateFilter(e.target.value || null)}
-              aria-label="Filter by date"
-              className="border-ohm-border font-body text-ohm-text focus:ring-ohm-text/10 w-36 rounded-full border bg-transparent py-1 pr-2 pl-7 text-xs focus:ring-1 focus:outline-hidden"
-            />
-            {dateFilter && (
-              <button
-                type="button"
-                onClick={() => setDateFilter(null)}
-                className="text-ohm-muted hover:text-ohm-text absolute right-1.5"
-                aria-label="Clear date filter"
               >
                 <X size={10} />
               </button>
@@ -999,10 +1018,11 @@ export function Board() {
                   energyMax={eMax}
                   dayGroups={
                     status === STATUS.CHARGING || status === STATUS.POWERED
-                      ? groupCardsByDate(cards, todayStr)
+                      ? groupCardsByDate(cards, todayStr, status === STATUS.POWERED)
                       : undefined
                   }
                   dayLimit={board.liveCapacity}
+                  filterDate={dateFilter}
                 />
               );
             })}
@@ -1068,6 +1088,16 @@ export function Board() {
           isNew={!!newCard}
           categories={board.categories}
           energyMax={eMax}
+          onAddActivity={addActivity}
+          onEditSchedule={(instanceId) => {
+            const inst = instances.find((i) => i.id === instanceId);
+            if (!inst) return;
+            setSelectedCard(null);
+            setNewCard(null);
+            setEditActivityId(inst.activityId);
+            setSettingsTab('schedule');
+            setSettingsOpen(true);
+          }}
           onSave={(saved) => {
             let updated = saved;
             if (newCard) {
@@ -1221,7 +1251,13 @@ export function Board() {
       {/* Settings full-page */}
       <SettingsPage
         isOpen={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
+        onClose={() => {
+          setSettingsOpen(false);
+          setSettingsTab(undefined);
+          setEditActivityId(undefined);
+        }}
+        initialTab={settingsTab}
+        editActivityId={editActivityId}
         categories={board.categories}
         onAddCategory={addCategory}
         onRemoveCategory={removeCategory}
@@ -1237,7 +1273,6 @@ export function Board() {
         autoBudget={board.autoBudget}
         onSetAutoBudget={setAutoBudget}
         activities={activities}
-        onAddActivity={addActivity}
         onUpdateActivity={updateActivity}
         onDeleteActivity={async (id) => {
           // Remove board cards linked to this activity's instances
