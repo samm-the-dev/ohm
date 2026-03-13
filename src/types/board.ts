@@ -69,10 +69,12 @@ export interface OhmCard {
   updatedAt: string;
   /** Sort order within its column */
   sortOrder: number;
-  /** ISO date -- when this card is scheduled (time features) */
+  /** ISO date -- when this card is scheduled */
   scheduledDate?: string;
   /** Links this card to a generated activity instance */
   activityInstanceId?: string;
+  /** User has explicitly edited this card (gates persistence for activity cards) */
+  edited?: boolean;
 }
 
 /** Column definition */
@@ -100,8 +102,6 @@ export interface OhmBoard {
   capacitiesUpdatedAt?: string;
   /** ISO timestamp of last save */
   lastSaved: string;
-  /** Enable rolling window + schedule features */
-  timeFeatures?: boolean;
   /** Rolling window size in days (default 4) */
   windowSize?: number;
   /** Auto-calculate energyBudget = windowSize * liveCapacity */
@@ -119,25 +119,25 @@ export interface OhmBoard {
 export const COLUMNS: readonly OhmColumn[] = [
   {
     label: 'Grounded',
-    description: 'Paused or deferred -- saved for later',
+    description: 'Unscheduled -- no date set',
     color: 'ohm-grounded',
     hex: '#6366f1',
   },
   {
     label: 'Charging',
-    description: 'Captured ideas -- shape with a clear next step',
+    description: 'Scheduled ahead -- future dates',
     color: 'ohm-charging',
     hex: '#f97316',
   },
   {
     label: 'Live',
-    description: 'Actively working on it',
+    description: 'Today -- actively working',
     color: 'ohm-live',
     hex: '#ef4444',
   },
   {
     label: 'Powered',
-    description: 'Done -- circuit complete',
+    description: 'Done -- today or past',
     color: 'ohm-powered',
     hex: '#22c55e',
   },

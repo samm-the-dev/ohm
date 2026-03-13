@@ -3,7 +3,6 @@ import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog';
 
 import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button';
-import { useSheetDismiss } from '@/hooks/useSheetDismiss';
 
 const AlertDialog = AlertDialogPrimitive.Root;
 
@@ -27,33 +26,25 @@ const AlertDialogOverlay = React.forwardRef<
 AlertDialogOverlay.displayName = AlertDialogPrimitive.Overlay.displayName;
 
 const AlertDialogContent = React.forwardRef<
-  React.ElementRef<typeof AlertDialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content> & {
-    onSwipeDismiss?: () => void;
-  }
->(({ className, children, onSwipeDismiss, ...props }, _ref) => {
-  const { sheetRef, touchHandlers, dragHandleStyle } = useSheetDismiss(onSwipeDismiss);
-
-  return (
-    <AlertDialogPortal>
-      <AlertDialogOverlay />
-      <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
-        <AlertDialogPrimitive.Content
-          ref={sheetRef}
-          className={cn(
-            'animate-slide-up border-ohm-border bg-ohm-surface relative w-full rounded-t-xl border p-5 shadow-2xl sm:max-w-md sm:rounded-xl',
-            className,
-          )}
-          {...touchHandlers}
-          {...props}
-        >
-          {onSwipeDismiss && <div className="sm:hidden" style={dragHandleStyle} />}
-          {children}
-        </AlertDialogPrimitive.Content>
-      </div>
-    </AlertDialogPortal>
-  );
-});
+  React.ComponentRef<typeof AlertDialogPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content>
+>(({ className, children, ...props }, ref) => (
+  <AlertDialogPortal>
+    <AlertDialogOverlay />
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+      <AlertDialogPrimitive.Content
+        ref={ref}
+        className={cn(
+          'animate-slide-up border-ohm-border bg-ohm-surface relative w-full rounded-t-xl border p-5 shadow-2xl sm:max-w-md sm:rounded-xl',
+          className,
+        )}
+        {...props}
+      >
+        {children}
+      </AlertDialogPrimitive.Content>
+    </div>
+  </AlertDialogPortal>
+));
 AlertDialogContent.displayName = AlertDialogPrimitive.Content.displayName;
 
 const AlertDialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (

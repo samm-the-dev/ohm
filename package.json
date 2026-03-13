@@ -2,7 +2,7 @@
   "name": "ohm",
   "version": "0.1.0",
   "private": true,
-  "description": "A personal kanban for ADHD brains — manage the current",
+  "description": "A personal kanban for ADHD brains, a bottle for cognitive thunderstorms.",
   "type": "module",
   "scripts": {
     "prepare": "husky",
@@ -15,6 +15,8 @@
     "test": "vitest",
     "test:run": "vitest run",
     "audit:a11y": "node scripts/audit-a11y.mjs",
+    "gen:og": "node scripts/gen-og.mjs",
+    "gen:icons": "node scripts/gen-icons.mjs",
     "deploy": "gh-pages -d dist"
   },
   "lint-staged": {
@@ -26,15 +28,19 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-popover": "^1.1.15",
     "@radix-ui/react-slot": "^1.2.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
     "dexie": "^4.3.0",
     "lucide-react": "^0.575.0",
     "react": "^19.0.0",
+    "react-day-picker": "^9.14.0",
     "react-dom": "^19.0.0",
     "sonner": "^2.0.7",
-    "tailwind-merge": "^3.5.0"
+    "tailwind-merge": "^3.5.0",
+    "vaul": "^1.1.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.3",
@@ -54,6 +60,7 @@
     "husky": "^9.1.7",
     "jsdom": "^28.1.0",
     "lint-staged": "^16.2.7",
+    "playwright": "^1.52.0",
     "prettier": "^3.8.1",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "schema-dts": "^1.1.5",

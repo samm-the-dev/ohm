@@ -145,20 +145,18 @@ describe('mergeBoards', () => {
     });
   });
 
-  describe('time features merging', () => {
-    it('preserves local timeFeatures when set', () => {
-      const local = makeBoard({ timeFeatures: true, windowSize: 14 });
+  describe('window size merging', () => {
+    it('preserves local windowSize when set', () => {
+      const local = makeBoard({ windowSize: 14 });
       const imported = makeBoard({});
       const merged = mergeBoards(local, imported);
-      expect(merged.timeFeatures).toBe(true);
       expect(merged.windowSize).toBe(14);
     });
 
-    it('falls back to imported timeFeatures when local is unset', () => {
+    it('falls back to imported windowSize when local is unset', () => {
       const local = makeBoard({});
-      const imported = makeBoard({ timeFeatures: true, windowSize: 7 });
+      const imported = makeBoard({ windowSize: 7 });
       const merged = mergeBoards(local, imported);
-      expect(merged.timeFeatures).toBe(true);
       expect(merged.windowSize).toBe(7);
     });
   });

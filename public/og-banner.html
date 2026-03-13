@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Quicksand:wght@700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 1200px;
+        height: 630px;
+        overflow: hidden;
+      }
+
+      .banner {
+        width: 1200px;
+        height: 630px;
+        background: #0a0a0f;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .title-row {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 256px;
+      }
+
+      .bolt-wrap {
+        display: flex;
+        align-items: center;
+      }
+
+      .bolt {
+        width: 0.8em;
+        height: 0.8em;
+        flex-shrink: 0;
+      }
+
+      .title-text {
+        font-family: 'Quicksand', sans-serif;
+        font-weight: 700;
+        font-size: inherit;
+        color: #f0f0f8;
+        letter-spacing: 4px;
+        line-height: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="banner">
+      <div class="title-row">
+        <span class="bolt-wrap"><svg
+          class="bolt"
+          viewBox="1.5 0 21 22"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"
+            fill="#f0a830"
+          />
+        </svg></span>
+        <span class="title-text">OHM</span>
+      </div>
+    </div>
+  </body>
+</html>

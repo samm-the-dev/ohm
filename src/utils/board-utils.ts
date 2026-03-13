@@ -1,5 +1,6 @@
 import type { OhmCard, OhmBoard, ColumnStatus } from '../types/board';
 import { STATUS, ENERGY_DEFAULT } from '../types/board';
+import { toISODate } from './schedule-utils';
 
 /** A group of cards sharing the same scheduledDate (or unscheduled). */
 export interface DayGroup {
@@ -50,7 +51,7 @@ export function moveCard(card: OhmCard, newStatus: ColumnStatus): OhmCard {
   return {
     ...card,
     status: newStatus,
-    ...(newStatus === STATUS.LIVE ? { scheduledDate: now.toISOString().slice(0, 10) } : {}),
+    ...(newStatus === STATUS.LIVE ? { scheduledDate: toISODate(now) } : {}),
     ...(newStatus === STATUS.GROUNDED ? { scheduledDate: undefined } : {}),
     updatedAt: now.toISOString(),
   };
@@ -77,7 +78,7 @@ export function getColumnCapacity(
   today?: string,
 ): { used: number; total: number } | null {
   if (status !== STATUS.LIVE) return null;
-  const todayStr = today ?? new Date().toISOString().slice(0, 10);
+  const todayStr = today ?? toISODate(new Date());
   const used = board.cards
     .filter(
       (c) =>
@@ -206,7 +207,7 @@ function formatDayLabel(dateStr: string, today: string, tomorrow: string): strin
 
 /** Group already-sorted cards by scheduledDate into DayGroup[].
  *  Cards without a scheduledDate go into an "Unscheduled" group at the end. */
-export function groupCardsByDate(cards: OhmCard[], today: string): DayGroup[] {
+export function groupCardsByDate(cards: OhmCard[], today: string, desc = false): DayGroup[] {
   const tomorrowDate = new Date(today + 'T00:00:00');
   tomorrowDate.setDate(tomorrowDate.getDate() + 1);
   const tomorrow = `${tomorrowDate.getFullYear()}-${String(tomorrowDate.getMonth() + 1).padStart(2, '0')}-${String(tomorrowDate.getDate()).padStart(2, '0')}`;
@@ -231,6 +232,8 @@ export function groupCardsByDate(cards: OhmCard[], today: string): DayGroup[] {
       isToday: key === today,
     });
   }
+
+  groups.sort((a, b) => (desc ? b.key.localeCompare(a.key) : a.key.localeCompare(b.key)));
 
   const unscheduled = groupMap.get('unscheduled');
   if (unscheduled) {

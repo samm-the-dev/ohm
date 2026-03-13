@@ -1,9 +1,22 @@
-import { useState } from 'react';
-import { CalendarArrowUp, CalendarX, CalendarDays, GripVertical } from 'lucide-react';
+import { useState, useRef } from 'react';
+import {
+  CalendarArrowUp,
+  CalendarX,
+  CalendarDays,
+  GripVertical,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 import type { OhmBoard, OhmCard } from '../types/board';
 import { STATUS, COLUMNS, energyColor, budgetColor } from '../types/board';
 import { getCardsForDate } from '../utils/board-utils';
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from './ui/dialog';
+import { formatDateLabel, toISODate } from '../utils/schedule-utils';
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogTitle,
+  ResponsiveDialogDescription,
+} from './ui/responsive-dialog';
 import {
   DndContext,
   DragOverlay,
@@ -26,6 +39,8 @@ import { CSS } from '@dnd-kit/utilities';
 
 interface DayFocusDialogProps {
   date: string;
+  /** Ordered list of navigable dates (from budget window). If provided, enables swipe/arrow navigation. */
+  availableDates?: string[];
   board: OhmBoard;
   todayStr: string;
   energyMax: number;
@@ -34,21 +49,10 @@ interface DayFocusDialogProps {
   onClose: () => void;
 }
 
-function formatDateLabel(dateStr: string, todayStr: string): string {
-  if (dateStr === todayStr) return 'Today';
-  const today = new Date(todayStr + 'T00:00:00');
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
-  if (dateStr === tomorrowStr) return 'Tomorrow';
-  const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
-}
-
 function getTomorrow(todayStr: string): string {
   const d = new Date(todayStr + 'T00:00:00');
   d.setDate(d.getDate() + 1);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return toISODate(d);
 }
 
 /** Group cards by column status for display */
@@ -69,6 +73,7 @@ function groupByStatus(
 
 export function DayFocusDialog({
   date,
+  availableDates,
   board,
   todayStr,
   energyMax,
@@ -76,12 +81,35 @@ export function DayFocusDialog({
   onReorder,
   onClose,
 }: DayFocusDialogProps) {
-  const cards = getCardsForDate(board, date);
+  const [currentDate, setCurrentDate] = useState(date);
+  const cards = getCardsForDate(board, currentDate);
   const totalEnergy = cards.reduce((sum, c) => sum + c.energy, 0);
   const statusGroups = groupByStatus(cards);
-  const label = formatDateLabel(date, todayStr);
+  const label = formatDateLabel(currentDate, todayStr, true);
   const tomorrowStr = getTomorrow(todayStr);
   const [draggingCard, setDraggingCard] = useState<OhmCard | null>(null);
+
+  const dateIdx = availableDates ? availableDates.indexOf(currentDate) : -1;
+  const canPrev = availableDates && dateIdx > 0;
+  const canNext = availableDates && dateIdx >= 0 && dateIdx < availableDates.length - 1;
+  const goTo = (d: string) => setCurrentDate(d);
+
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    if (t) touchStartRef.current = { x: t.clientX, y: t.clientY };
+  };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStartRef.current || !availableDates) return;
+    const t = e.changedTouches[0];
+    if (!t) return;
+    const dx = t.clientX - touchStartRef.current.x;
+    const dy = t.clientY - touchStartRef.current.y;
+    touchStartRef.current = null;
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    if (dx < 0 && canNext) goTo(availableDates[dateIdx + 1]!);
+    else if (dx > 0 && canPrev) goTo(availableDates[dateIdx - 1]!);
+  };
 
   const pointerSensor = useSensor(PointerSensor, { activationConstraint: { distance: 8 } });
   const touchSensor = useSensor(TouchSensor, {
@@ -114,21 +142,39 @@ export function DayFocusDialog({
   }
 
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent onSwipeDismiss={onClose}>
-        <DialogTitle className="font-display text-ohm-text flex items-center gap-3">
-          <CalendarDays size={18} className="text-ohm-muted" />
-          <span>{label}</span>
+    <ResponsiveDialog open onOpenChange={(open) => !open && onClose()}>
+      <ResponsiveDialogContent onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+        <ResponsiveDialogTitle className="font-display text-ohm-text flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => canPrev && goTo(availableDates![dateIdx - 1]!)}
+            disabled={!canPrev}
+            className="text-ohm-muted hover:text-ohm-text shrink-0 transition-colors disabled:opacity-20"
+            aria-label="Previous day"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <CalendarDays size={16} className="text-ohm-muted shrink-0" />
+          <span className="flex-1 truncate">{label}</span>
           <span
-            className="font-display ml-auto text-sm font-bold"
+            className="font-display shrink-0 text-sm font-bold"
             style={{ color: budgetColor(totalEnergy / board.liveCapacity) }}
           >
             {totalEnergy}/{board.liveCapacity}
           </span>
-        </DialogTitle>
-        <DialogDescription className="sr-only">
+          <button
+            type="button"
+            onClick={() => canNext && goTo(availableDates![dateIdx + 1]!)}
+            disabled={!canNext}
+            className="text-ohm-muted hover:text-ohm-text shrink-0 transition-colors disabled:opacity-20"
+            aria-label="Next day"
+          >
+            <ChevronRight size={16} />
+          </button>
+        </ResponsiveDialogTitle>
+        <ResponsiveDialogDescription className="sr-only">
           Cards scheduled for {label} with energy breakdown and reschedule actions
-        </DialogDescription>
+        </ResponsiveDialogDescription>
 
         {cards.length === 0 ? (
           <p className="text-ohm-muted/60 font-body py-6 text-center text-base italic">
@@ -142,13 +188,13 @@ export function DayFocusDialog({
             onDragEnd={handleDragEnd}
             onDragCancel={handleDragCancel}
           >
-            <div className="mt-3 space-y-4">
+            <div className="mt-4">
               {statusGroups.map((group) => {
                 const col = COLUMNS[group.status]!;
                 return (
-                  <div key={group.status} className="rounded-lg p-1">
+                  <div key={group.status} className="rounded-lg">
                     {/* Column-styled section header */}
-                    <div className="mb-2 flex items-center gap-2">
+                    <div className="mb-4 flex items-center gap-2">
                       <div className={`h-2 w-2 rounded-full bg-${col.color}`} aria-hidden="true" />
                       <h3 className="font-display text-ohm-text text-sm font-bold tracking-widest uppercase">
                         {group.label}
@@ -188,8 +234,8 @@ export function DayFocusDialog({
             </DragOverlay>
           </DndContext>
         )}
-      </DialogContent>
-    </Dialog>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }
 
@@ -227,7 +273,7 @@ function SortableCardRow({
   );
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} data-no-sheet-swipe>
+    <div ref={setNodeRef} style={style} {...attributes}>
       <CardRow
         card={card}
         energyMax={energyMax}

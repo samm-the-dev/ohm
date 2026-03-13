@@ -150,7 +150,6 @@ export function mergeBoards(local: OhmBoard, imported: OhmBoard): OhmBoard {
     energyBudget: useImportedCapacities ? imported.energyBudget : local.energyBudget,
     liveCapacity: useImportedCapacities ? imported.liveCapacity : local.liveCapacity,
     capacitiesUpdatedAt: useImportedCapacities ? importCapTs : localCapTs,
-    timeFeatures: local.timeFeatures ?? imported.timeFeatures,
     windowSize: local.windowSize ?? imported.windowSize,
     autoBudget: local.autoBudget ?? imported.autoBudget,
     activities: mergedActivities.length > 0 ? mergedActivities : undefined,

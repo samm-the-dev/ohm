@@ -1,9 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import type { OhmCard, OhmColumn as OhmColumnType } from '../types/board';
 import { budgetColor } from '../types/board';
 import type { DayGroup as DayGroupType } from '../utils/board-utils';
+import { toISODate } from '../utils/schedule-utils';
 import { Card } from './Card';
 import { DayGroup } from './DayGroup';
 
@@ -20,6 +21,8 @@ interface ColumnProps {
   dayGroups?: DayGroupType[];
   /** Day energy limit for budget coloring in group headers */
   dayLimit?: number;
+  /** Active date filter — matching day groups expand regardless of proximity */
+  filterDate?: string | null;
 }
 
 export function Column({
@@ -33,8 +36,22 @@ export function Column({
   energyMax,
   dayGroups,
   dayLimit,
+  filterDate,
 }: ColumnProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
+
+  /** Dates near today that should default to expanded in day groups */
+  const nearbyDates = useMemo(() => {
+    if (!dayGroups) return undefined;
+    const now = new Date();
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const dates = new Set([toISODate(now), toISODate(yesterday), toISODate(tomorrow)]);
+    if (filterDate) dates.add(filterDate);
+    return dates;
+  }, [dayGroups, filterDate]);
 
   const handleReorder = useCallback(
     (idx: number, cardId: string, dir: -1 | 1) => {
@@ -118,6 +135,7 @@ export function Column({
                   indexOffset={currentOffset}
                   energyMax={energyMax}
                   dayLimit={dayLimit}
+                  defaultExpanded={nearbyDates?.has(group.key) ?? true}
                 />
               );
             });

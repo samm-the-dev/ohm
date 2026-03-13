@@ -3,7 +3,7 @@
 
 ---
 
-## Ohm — Personal Kanban for ADHD Brains
+## OHM — Personal Kanban for ADHD Brains
 
 A kanban app using an electrical metaphor to map energy cycles into a visual workflow.
 

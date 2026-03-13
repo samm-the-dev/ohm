@@ -8,10 +8,19 @@ import {
   STATUS_CLASSES,
   SPARK_CLASSES,
 } from '../types/board';
+import type { Activity } from '../types/activity';
+import type { StoredSchedule } from '../types/schedule';
 import { EnergySlider } from './ui/energy-slider';
-import { Settings, List, Trash2, Calendar } from 'lucide-react';
-import { toISODate } from '../utils/schedule-utils';
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from './ui/dialog';
+import { ScheduleEditor } from './ActivityManager';
+import { Settings, List, Trash2, Calendar, Repeat } from 'lucide-react';
+import { DatePicker } from './ui/date-picker';
+import { formatDateLabel, toISODate } from '../utils/schedule-utils';
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogTitle,
+  ResponsiveDialogDescription,
+} from './ui/responsive-dialog';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Button } from './ui/button';
@@ -34,8 +43,12 @@ interface CardDetailProps {
   onDelete: (cardId: string) => void;
   onClose: () => void;
   onOpenSettings: () => void;
+  onAddActivity?: (
+    name: string,
+    opts?: { description?: string; schedule?: StoredSchedule; energy?: number; category?: string },
+  ) => Activity;
+  onEditSchedule?: (activityId: string) => void;
   isNew?: boolean;
-  timeFeatures?: boolean;
   energyMax?: number;
 }
 
@@ -46,13 +59,16 @@ export function CardDetail({
   onDelete,
   onClose,
   onOpenSettings,
+  onAddActivity,
+  onEditSchedule,
   isNew,
-  timeFeatures,
   energyMax,
 }: CardDetailProps) {
   const [editing, setEditing] = useState(card);
   const [newNote, setNewNote] = useState('');
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [schedule, setSchedule] = useState<Partial<StoredSchedule>>({ repeatFrequency: 'P1D' });
   const titleRef = useRef<HTMLInputElement>(null);
 
   const isPowered = editing.status === STATUS.POWERED;
@@ -75,6 +91,19 @@ export function CardDetail({
 
   const handleSave = () => {
     if (isNew && !editing.title.trim()) return;
+    if (isNew && isRecurring && onAddActivity) {
+      onAddActivity(editing.title.trim(), {
+        description: editing.description || undefined,
+        schedule: {
+          ...schedule,
+          repeatFrequency: schedule.repeatFrequency ?? 'P1D',
+        } as StoredSchedule,
+        energy: editing.energy,
+        category: editing.category || undefined,
+      });
+      onClose();
+      return;
+    }
     const pendingTask = newNote.trim();
     const finalTasks = pendingTask ? [...editing.tasks, pendingTask] : editing.tasks;
     onSave({ ...editing, tasks: finalTasks, updatedAt: new Date().toISOString() });
@@ -84,16 +113,13 @@ export function CardDetail({
   const handleStatusChange = (newStatus: ColumnStatus) => {
     setEditing((prev) => {
       const updated = { ...prev, status: newStatus };
-      // Reset scheduledDate to today when moving from Grounded→Charging,
-      // Powered→Live, or Powered→Charging (re-activating a card)
-      if (timeFeatures) {
-        const reactivating =
-          (prev.status === STATUS.GROUNDED && newStatus === STATUS.CHARGING) ||
-          (prev.status === STATUS.POWERED &&
-            (newStatus === STATUS.LIVE || newStatus === STATUS.CHARGING));
-        if (reactivating) {
-          updated.scheduledDate = toISODate(new Date());
-        }
+      // Reset scheduledDate to today when re-activating a card
+      const reactivating =
+        (prev.status === STATUS.GROUNDED && newStatus === STATUS.CHARGING) ||
+        (prev.status === STATUS.POWERED &&
+          (newStatus === STATUS.LIVE || newStatus === STATUS.CHARGING));
+      if (reactivating) {
+        updated.scheduledDate = toISODate(new Date());
       }
       return updated;
     });
@@ -127,24 +153,25 @@ export function CardDetail({
     : (VALID_TRANSITIONS[editing.status] ?? []);
 
   return (
-    <Dialog
+    <ResponsiveDialog
       open={true}
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
     >
-      <DialogContent
-        onSwipeDismiss={onClose}
+      <ResponsiveDialogContent
         onOpenAutoFocus={(e) => {
           e.preventDefault();
           (e.currentTarget as HTMLElement).focus();
         }}
       >
         {/* Header -- title + close */}
-        <DialogTitle className="sr-only">{editing.title || 'Card details'}</DialogTitle>
-        <DialogDescription className="sr-only">
+        <ResponsiveDialogTitle className="sr-only">
+          {editing.title || 'Card details'}
+        </ResponsiveDialogTitle>
+        <ResponsiveDialogDescription className="sr-only">
           {isNew ? 'Create a new card' : 'Edit card details'}
-        </DialogDescription>
+        </ResponsiveDialogDescription>
 
         {/* Title */}
         <div className="mb-4">
@@ -276,44 +303,64 @@ export function CardDetail({
           )}
         </div>
 
-        {/* Scheduled date (when time features enabled) */}
-        {timeFeatures && (
-          <div className="mb-3">
-            <span className="font-display text-ohm-muted mb-2 flex items-center gap-1 text-xs tracking-widest uppercase">
-              <Calendar size={10} />
-              Scheduled
-            </span>
-            {editing.activityInstanceId ? (
-              <p className="font-body text-ohm-muted text-base">{editing.scheduledDate}</p>
-            ) : (
-              <div className="flex items-center gap-2">
-                <input
-                  id="card-scheduled-date"
-                  type="date"
-                  autoComplete="off"
-                  data-form-type="other"
-                  value={editing.scheduledDate ?? ''}
-                  onChange={(e) =>
-                    setEditing((prev) => ({
-                      ...prev,
-                      scheduledDate: e.target.value || undefined,
-                    }))
-                  }
-                  className={`${accent.border} bg-ohm-bg font-body text-ohm-text focus:ring-ohm-text/10 rounded-md border px-3 py-1.5 text-base focus:ring-1 focus:outline-hidden`}
-                />
-                {editing.scheduledDate && (
-                  <button
-                    type="button"
-                    onClick={() => setEditing((prev) => ({ ...prev, scheduledDate: undefined }))}
-                    className="text-ohm-muted hover:text-ohm-text text-xs underline decoration-dotted"
-                  >
-                    Clear
-                  </button>
-                )}
-              </div>
+        {/* Scheduled date / Recurring toggle */}
+        <div className="mb-3">
+          <span className="font-display text-ohm-muted mb-2 flex items-center gap-1 text-xs tracking-widest uppercase">
+            <Calendar size={10} />
+            Scheduled
+            {isNew && onAddActivity && (
+              <button
+                type="button"
+                onClick={() => setIsRecurring((v) => !v)}
+                className={`ml-2 flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[10px] transition-colors ${
+                  isRecurring
+                    ? 'bg-ohm-spark/20 text-ohm-spark'
+                    : 'bg-ohm-border/50 text-ohm-muted hover:text-ohm-text'
+                }`}
+              >
+                <Repeat size={9} />
+                Repeat
+              </button>
             )}
-          </div>
-        )}
+            {!isNew && editing.activityInstanceId && onEditSchedule && (
+              <button
+                type="button"
+                onClick={() => onEditSchedule(editing.activityInstanceId!)}
+                className="bg-ohm-border/50 text-ohm-muted hover:text-ohm-text ml-2 flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[10px] transition-colors"
+              >
+                <Settings size={9} />
+                Edit schedule
+              </button>
+            )}
+          </span>
+          {isRecurring && isNew ? (
+            <ScheduleEditor schedule={schedule} onChange={setSchedule} />
+          ) : editing.activityInstanceId ? (
+            <p className="font-body text-ohm-muted text-base">
+              {editing.scheduledDate
+                ? formatDateLabel(editing.scheduledDate, toISODate(new Date()), true)
+                : 'None'}
+            </p>
+          ) : (
+            <div className="flex items-center gap-2">
+              <DatePicker
+                value={editing.scheduledDate}
+                onChange={(date) => setEditing((prev) => ({ ...prev, scheduledDate: date }))}
+                max={isPowered ? toISODate(new Date()) : undefined}
+                accent={accent}
+              />
+              {editing.scheduledDate && !isPowered && (
+                <button
+                  type="button"
+                  onClick={() => setEditing((prev) => ({ ...prev, scheduledDate: undefined }))}
+                  className="text-ohm-muted hover:text-ohm-text text-xs underline decoration-dotted"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Category */}
         {!isPowered && (
@@ -409,7 +456,7 @@ export function CardDetail({
                   Delete
                 </Button>
               </AlertDialogTrigger>
-              <AlertDialogContent onSwipeDismiss={() => setDeleteOpen(false)}>
+              <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertTitle className="text-ohm-text">Delete this card?</AlertTitle>
                   <AlertDialogDescription>
@@ -472,7 +519,7 @@ export function CardDetail({
             {new Date(card.updatedAt).toLocaleDateString()}
           </div>
         )}
-      </DialogContent>
-    </Dialog>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }

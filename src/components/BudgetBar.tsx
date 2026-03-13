@@ -1,3 +1,4 @@
+import { useRef, useEffect } from 'react';
 import { budgetColor } from '../types/board';
 
 interface BudgetBarProps {
@@ -11,9 +12,23 @@ interface BudgetBarProps {
 export function BudgetBar({ daily, dayLimit, total, todayStr, onDayClick }: BudgetBarProps) {
   const totalRatio = total.used / total.total;
   const totalColor = budgetColor(totalRatio);
+  const barRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = barRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      document.documentElement.style.setProperty('--budget-bar-height', `${el.offsetHeight}px`);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   return (
-    <div className="border-ohm-border bg-ohm-bg/95 fixed right-0 bottom-0 left-0 z-30 flex flex-col gap-1 border-t px-4 py-2 backdrop-blur-md">
+    <div
+      ref={barRef}
+      className="border-ohm-border bg-ohm-bg/95 fixed right-0 bottom-0 left-0 z-[60] flex flex-col gap-1 border-t px-4 py-2 backdrop-blur-md"
+    >
       {/* Daily row — day segments above total */}
       {daily.length > 0 && (
         <div className="flex gap-1">

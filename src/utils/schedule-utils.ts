@@ -23,6 +23,21 @@ export function toISODate(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
+/** Human-friendly date label: "Today", "Tomorrow", or localized weekday + date.
+ *  Pass `long: true` for full weekday names (e.g. "Monday, Mar 11"). */
+export function formatDateLabel(dateStr: string, todayStr: string, long?: boolean): string {
+  if (dateStr === todayStr) return 'Today';
+  const tomorrow = new Date(todayStr + 'T00:00:00');
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (dateStr === toISODate(tomorrow)) return 'Tomorrow';
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString(undefined, {
+    weekday: long ? 'long' : 'short',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
 /** Get the ordinal position of a weekday within its month (1-based).
  *  E.g. the 2nd Tuesday → position 2. Also returns negative position from end (-1 = last). */
 function weekdayPositionInMonth(date: Date): { pos: number; negPos: number } {

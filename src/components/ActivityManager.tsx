@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Trash2, Calendar } from 'lucide-react';
+import { Trash2, Calendar } from 'lucide-react';
 import type { Activity } from '../types/activity';
 import type { StoredSchedule } from '../types/schedule';
 import { ENERGY_DEFAULT, energyColor } from '../types/board';
@@ -87,7 +87,7 @@ export function parseDayInput(input: string): number[] | undefined {
   return unique.length > 0 ? unique : undefined;
 }
 
-function ScheduleEditor({ schedule, onChange }: ScheduleEditorProps) {
+export function ScheduleEditor({ schedule, onChange }: ScheduleEditorProps) {
   const freq = schedule.repeatFrequency ?? 'P1D';
 
   // Infer monthly mode from existing data
@@ -395,33 +395,22 @@ function ActivityForm({ initial, categories, onSubmit, onCancel, energyMax }: Ac
 interface ActivityManagerProps {
   activities: Activity[];
   categories?: string[];
-  onAdd: (
-    name: string,
-    opts?: { description?: string; schedule?: StoredSchedule; energy?: number; category?: string },
-  ) => Activity;
   onUpdate: (id: string, changes: Partial<Omit<Activity, 'id'>>) => void;
   onDelete: (id: string) => void | Promise<void>;
   energyMax?: number;
+  /** Pre-select an activity for editing (e.g. from CardDetail "edit schedule") */
+  initialEditId?: string;
 }
 
 export function ActivityManager({
   activities,
   categories,
-  onAdd,
   onUpdate,
   onDelete,
   energyMax,
+  initialEditId,
 }: ActivityManagerProps) {
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-
-  const handleAdd = (
-    name: string,
-    opts: { description?: string; schedule?: StoredSchedule; energy?: number; category?: string },
-  ) => {
-    onAdd(name, opts);
-    setShowForm(false);
-  };
+  const [editingId, setEditingId] = useState<string | null>(initialEditId ?? null);
 
   const handleUpdate = (
     name: string,
@@ -441,22 +430,12 @@ export function ActivityManager({
             Activities
           </span>
         </div>
-        {!showForm && !editingId && (
-          <Button
-            variant="outline"
-            onClick={() => setShowForm(true)}
-            className="border-ohm-border text-ohm-muted hover:text-ohm-text h-6 gap-1 px-2 text-[10px]"
-          >
-            <Plus size={10} />
-            Add
-          </Button>
-        )}
       </div>
 
       {/* Activity list */}
-      {activities.length === 0 && !showForm && (
+      {activities.length === 0 && (
         <p className="font-body text-ohm-muted/60 text-[11px]">
-          No activities yet. Add one to get started.
+          No activities yet. Create one from the spark button.
         </p>
       )}
 
@@ -514,18 +493,6 @@ export function ActivityManager({
           ),
         )}
       </div>
-
-      {/* New activity form */}
-      {showForm && (
-        <div className="mt-2">
-          <ActivityForm
-            categories={categories}
-            onSubmit={handleAdd}
-            onCancel={() => setShowForm(false)}
-            energyMax={energyMax}
-          />
-        </div>
-      )}
     </div>
   );
 }

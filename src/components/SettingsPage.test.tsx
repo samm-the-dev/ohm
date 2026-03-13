@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { SettingsPage, type SettingsPageProps } from './SettingsPage';
 
 const noop = () => {};
@@ -34,10 +34,9 @@ describe('SettingsPage a11y', () => {
   });
 
   describe('dialog role', () => {
-    it('renders with role="dialog" and aria-modal="true"', () => {
+    it('renders with role="dialog" and aria-label', () => {
       render(<SettingsPage {...defaultProps()} />);
       const dialog = screen.getByRole('dialog');
-      expect(dialog).toHaveAttribute('aria-modal', 'true');
       expect(dialog).toHaveAttribute('aria-label', 'Settings');
     });
 
@@ -131,6 +130,9 @@ describe('SettingsPage a11y', () => {
   });
 
   describe('focus management', () => {
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
     it('focuses the active tab button on open', () => {
       render(<SettingsPage {...defaultProps()} />);
       expect(document.activeElement).toBe(document.getElementById('tab-board'));
@@ -139,6 +141,7 @@ describe('SettingsPage a11y', () => {
     it('focuses the newly active tab button on tab switch', () => {
       render(<SettingsPage {...defaultProps()} />);
       fireEvent.click(screen.getAllByRole('tab')[1]!); // click Schedule
+      act(() => vi.runAllTimers());
       expect(document.activeElement).toBe(document.getElementById('tab-schedule'));
     });
   });

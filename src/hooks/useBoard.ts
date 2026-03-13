@@ -204,17 +204,6 @@ export function useBoard() {
     });
   }, []);
 
-  /** Toggle time features on/off. Disabling also turns off autoBudget. */
-  const setTimeFeatures = useCallback((enabled: boolean) => {
-    const now = new Date().toISOString();
-    setBoard((prev) => ({
-      ...prev,
-      timeFeatures: enabled,
-      ...(!enabled && prev.autoBudget ? { autoBudget: false } : {}),
-      lastSaved: now,
-    }));
-  }, []);
-
   /** Update rolling window size */
   const setWindowSize = useCallback((size: number) => {
     const now = new Date().toISOString();
@@ -373,7 +362,6 @@ export function useBoard() {
     addCategory,
     removeCategory,
     renameCategory,
-    setTimeFeatures,
     setWindowSize,
     setAutoBudget,
     setActivities,

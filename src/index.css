@@ -43,8 +43,8 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
 
-  --font-display: 'Space Mono', monospace;
-  --font-body: 'IBM Plex Sans', sans-serif;
+  --font-display: 'Quicksand', sans-serif;
+  --font-body: 'Nunito Sans', sans-serif;
 }
 
 /*
@@ -98,7 +98,7 @@ body {
   margin: 0;
   background-color: #0a0a0f;
   color: #e0e0e8;
-  font-family: 'IBM Plex Sans', sans-serif;
+  font-family: 'Nunito Sans', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overscroll-behavior: none;
@@ -163,7 +163,7 @@ body {
 }
 
 [data-sonner-toaster] [data-sonner-toast] [data-title] {
-  font-family: 'Space Mono', monospace;
+  font-family: 'Quicksand', sans-serif;
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -171,7 +171,7 @@ body {
 }
 
 [data-sonner-toaster] [data-sonner-toast] [data-description] {
-  font-family: 'IBM Plex Sans', sans-serif;
+  font-family: 'Nunito Sans', sans-serif;
   font-size: 11px;
   color: #6b6b80;
 }
@@ -211,7 +211,7 @@ body {
 [data-sonner-toaster] [data-sonner-toast] [data-button] {
   background: #fbbf24 !important;
   color: #0a0a0f !important;
-  font-family: 'Space Mono', monospace;
+  font-family: 'Quicksand', sans-serif;
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -229,7 +229,7 @@ body {
   padding: 0.5rem 1rem;
   background: #fbbf24;
   color: #0a0a0f;
-  font-family: 'Space Mono', monospace;
+  font-family: 'Quicksand', sans-serif;
   font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;

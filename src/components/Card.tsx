@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { ArrowRight, GripVertical, Repeat } from 'lucide-react';
+import { ArrowRight, GripVertical, PenLine, Repeat } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { OhmCard } from '../types/board';
 import { STATUS, energyColor } from '../types/board';
+import { formatDateLabel, toISODate } from '../utils/schedule-utils';
 import { Card as CardContainer } from './ui/card';
 import { Badge } from './ui/badge';
 
@@ -61,7 +62,16 @@ export function Card({ card, onTap, onReorder, energyMax }: CardProps) {
         {/* Title row with drag handle */}
         <div className="flex items-center gap-1.5">
           {card.activityInstanceId && (
-            <Repeat size={12} className="text-ohm-muted shrink-0" aria-label="Recurring" />
+            <span className="relative shrink-0">
+              <Repeat size={12} className="text-ohm-muted" aria-label="Recurring" />
+              {card.edited && (
+                <PenLine
+                  size={7}
+                  className="text-ohm-muted absolute -right-1 -bottom-1"
+                  aria-label="Edited"
+                />
+              )}
+            </span>
           )}
           <p className="font-body text-ohm-text min-w-0 flex-1 text-base leading-snug font-medium">
             {card.title}
@@ -80,7 +90,9 @@ export function Card({ card, onTap, onReorder, energyMax }: CardProps) {
 
         {/* Scheduled date */}
         {card.scheduledDate && (
-          <p className="font-body text-ohm-muted mt-1 text-xs">{card.scheduledDate}</p>
+          <p className="font-body text-ohm-muted mt-1 text-xs">
+            {formatDateLabel(card.scheduledDate, toISODate(new Date()))}
+          </p>
         )}
 
         {/* Meta row */}
@@ -110,8 +122,8 @@ export function Card({ card, onTap, onReorder, energyMax }: CardProps) {
         {card.tasks.length > 0 && (
           <div className="border-ohm-border text-ohm-muted mt-2 flex flex-col gap-1 border-t pt-1.5 text-sm">
             {card.tasks.map((note, i) => (
-              <div key={i} className="flex items-start gap-1">
-                <ArrowRight size={12} className="mt-0.5 shrink-0" />
+              <div key={i} className="flex items-center gap-1">
+                <ArrowRight size={12} className="shrink-0" />
                 <span>{note.length > 60 ? note.slice(0, 60) + '...' : note}</span>
               </div>
             ))}
