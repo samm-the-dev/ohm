@@ -926,14 +926,18 @@ function DataTab({
         <div className="border-ohm-border bg-ohm-bg flex items-center gap-2.5 rounded-md border px-3 py-2">
           {storageAdapter === null ? (
             <>
-              <DatabaseZap size={14} className="text-ohm-muted/40 shrink-0 animate-pulse" />
+              <DatabaseZap
+                size={14}
+                className="text-ohm-muted/40 shrink-0 animate-pulse"
+                aria-hidden="true"
+              />
               <div>
                 <span className="font-body text-ohm-muted/60 block text-xs">Detecting...</span>
               </div>
             </>
           ) : storageAdapter === 'opfs' ? (
             <>
-              <HardDrive size={14} className="text-ohm-powered shrink-0" />
+              <HardDrive size={14} className="text-ohm-powered shrink-0" aria-hidden="true" />
               <div>
                 <span className="font-body text-ohm-text block text-xs">Enhanced storage</span>
                 <span className="font-body text-ohm-muted/60 text-[10px]">
@@ -944,7 +948,7 @@ function DataTab({
             </>
           ) : (
             <>
-              <DatabaseZap size={14} className="text-ohm-muted shrink-0" />
+              <DatabaseZap size={14} className="text-ohm-muted shrink-0" aria-hidden="true" />
               <div>
                 <span className="font-body text-ohm-text block text-xs">Basic storage</span>
                 <span className="font-body text-ohm-muted/60 text-[10px]">

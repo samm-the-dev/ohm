@@ -17,7 +17,7 @@ export function StorageIndicator({ adapter }: StorageIndicatorProps) {
 
   return (
     <span className="text-ohm-powered rounded-md p-1.5" aria-label={label} title={label}>
-      <HardDrive size={16} />
+      <HardDrive size={16} aria-hidden="true" />
     </span>
   );
 }

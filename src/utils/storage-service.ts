@@ -1,5 +1,8 @@
-import { createStorageService } from '../../.toolbox/lib/storage-service';
-import type { StorageService, StorageAdapterType } from '../../.toolbox/lib/storage-service';
+import {
+  createStorageService,
+  type StorageService,
+  type StorageAdapterType,
+} from '../../.toolbox/lib/storage-service';
 
 export type { StorageService, StorageAdapterType };
 
