@@ -183,19 +183,26 @@ Specifically:
 2. `useDriveSync` continues calling `storage.ts` exports — it never touches StorageService directly
 3. Token keys (`ohm-drive-*`) stay in localStorage — owned by toolbox module, out of scope
 
-### What Stays on localStorage
+### What Stays on localStorage (for now)
 
-Not everything needs to migrate. The primitive/transient keys stay on localStorage permanently:
+| Key | Owner | Migrate? | Notes |
+|-----|-------|----------|-------|
+| `ohm-last-opened` | `useWelcomeBack` | No | Transient timestamp, one read/write per session. Losing it just means no welcome-back prompt — harmless. |
+| `ohm-drive-synced` | `useDriveSync` | No | Session flag. If lost, user just reconnects — the refresh token is the real value. |
+| `ohm-drive-*` tokens | `.toolbox/lib/google-drive-sync` | **Yes, eventually** | See below. |
 
-| Key | Owner | Why it stays |
-|-----|-------|-------------|
-| `ohm-last-opened` | `useWelcomeBack` | Transient timestamp, one read/write per session |
-| `ohm-drive-synced` | `useDriveSync` | Session flag, uses `removeItem` semantics |
-| `ohm-drive-*` tokens | `.toolbox/lib/google-drive-sync` | Auth lifecycle, owned by toolbox module |
+**Token durability matters.** The whole impetus for OPFS is surviving Chrome data clearing / storage pressure. If the refresh token is lost, the user has to re-authorize with Google — that's the exact failure this migration aims to prevent. But the tokens are currently managed opaquely by `createDriveSync` via its `storageKeyPrefix` option; the app has no hook into how they're stored.
 
-These are small, infrequently written, owned by unrelated hooks with independent lifecycles, and don't benefit from durable file storage. Bundling them into a single JSON object would add read-modify-write overhead and couple hooks that shouldn't know about each other.
+**Path forward for tokens:**
+1. Extend `createDriveSync` to accept a `storage` option (a StorageService or similar async get/set interface) alongside `storageKeyPrefix`
+2. When provided, the toolbox module uses the injected storage instead of raw localStorage
+3. This is a toolbox-level change — should happen alongside or after StorageService is promoted to `.toolbox/lib/` (Phase 5)
+4. Until then, tokens remain on localStorage. The app still works — users just re-auth if storage is cleared
 
-**Migration targets are the two structured payloads only:** `ohm-board` and `ohm-restore-points`.
+This keeps the migration phases clean: Phases 1–4 prove StorageService in-app on the structured payloads, Phase 5 promotes to toolbox and wires token storage through it.
+
+**Primary migration targets:** `ohm-board` and `ohm-restore-points`.
+**Deferred migration target:** `ohm-drive-*` tokens (requires toolbox module change).
 
 ### Migration Path
 
