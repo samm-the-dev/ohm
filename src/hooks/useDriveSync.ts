@@ -27,6 +27,8 @@ interface UseDriveSyncReturn {
   driveConnected: boolean;
   syncStatus: SyncStatus;
   needsReconnect: boolean;
+  /** True when reconnect prompt is a recovery suggestion (empty board, no prior sync flag) vs a token-expired reconnect. */
+  recoveryPrompt: boolean;
   connect: () => Promise<void>;
   disconnect: () => void;
   manualSync: () => Promise<void>;
@@ -41,6 +43,7 @@ export function useDriveSync(
   const [driveConnected, setDriveConnected] = useState(false);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
   const [needsReconnect, setNeedsReconnect] = useState(false);
+  const [recoveryPrompt, setRecoveryPrompt] = useState(false);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const boardRef = useRef(currentBoard);
 
@@ -102,7 +105,15 @@ export function useDriveSync(
     };
 
     const onReady = async () => {
-      if (!wasPreviouslySynced()) return;
+      if (!wasPreviouslySynced()) {
+        // No sync flag (cleared browsing data?) -- if the board is empty,
+        // prompt reconnect so the user can restore from Drive with one tap.
+        if (boardRef.current.cards.length === 0) {
+          setNeedsReconnect(true);
+          setRecoveryPrompt(true);
+        }
+        return;
+      }
 
       // Code flow: try silent refresh (uses stored refresh token)
       const token = await silentRefresh();
@@ -178,6 +189,7 @@ export function useDriveSync(
 
     setDriveConnected(true);
     setNeedsReconnect(false);
+    setRecoveryPrompt(false);
     localStorage.setItem(SYNC_FLAG_KEY, '1');
     setSyncStatus('syncing');
 
@@ -192,6 +204,7 @@ export function useDriveSync(
     disconnectDrive();
     setDriveConnected(false);
     setNeedsReconnect(false);
+    setRecoveryPrompt(false);
     localStorage.removeItem(SYNC_FLAG_KEY);
     setSyncStatus('idle');
   }, []);
@@ -229,6 +242,7 @@ export function useDriveSync(
     driveConnected,
     syncStatus,
     needsReconnect,
+    recoveryPrompt,
     connect,
     disconnect,
     manualSync,

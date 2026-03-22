@@ -437,6 +437,7 @@ export function Board() {
     driveConnected,
     syncStatus,
     needsReconnect,
+    recoveryPrompt,
     connect,
     disconnect,
     manualSync,
@@ -642,14 +643,16 @@ export function Board() {
         <div className="border-ohm-border bg-ohm-surface flex items-center justify-center gap-3 border-b px-4 py-2">
           <CloudOff size={14} className="text-ohm-muted" />
           <span className="font-body text-ohm-muted text-xs">
-            This board was previously synced with Google Drive.
+            {recoveryPrompt
+              ? 'Have a board on Google Drive?'
+              : 'This board was previously synced with Google Drive.'}
           </span>
           <button
             type="button"
             onClick={connect}
             className="font-display text-ohm-spark hover:text-ohm-spark/80 text-xs tracking-wider uppercase transition-colors"
           >
-            Reconnect
+            {recoveryPrompt ? 'Connect with Drive' : 'Reconnect'}
           </button>
         </div>
       )}
