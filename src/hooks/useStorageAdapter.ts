@@ -7,7 +7,17 @@ export function useStorageAdapter(): StorageAdapterType | null {
   const [adapter, setAdapter] = useState<StorageAdapterType | null>(null);
 
   useEffect(() => {
-    storageService.then((s) => setAdapter(s.adapter));
+    let mounted = true;
+    storageService
+      .then((s) => {
+        if (mounted) setAdapter(s.adapter);
+      })
+      .catch(() => {
+        if (mounted) setAdapter('localstorage');
+      });
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return adapter;

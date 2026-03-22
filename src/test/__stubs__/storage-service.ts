@@ -1,9 +1,20 @@
 /** Test stub for .toolbox/lib/storage-service */
 
-import type { StorageService, StorageServiceOptions } from '../../.toolbox/lib/storage-service';
+export type StorageAdapterType = 'opfs' | 'localstorage';
 
-export type { StorageService, StorageServiceOptions };
-export type { StorageAdapterType } from '../../.toolbox/lib/storage-service';
+export interface StorageService {
+  readonly adapter: StorageAdapterType;
+  get<T>(key: string): Promise<T | null>;
+  set<T>(key: string, value: T): Promise<void>;
+  delete(key: string): Promise<void>;
+  clear(): Promise<void>;
+  keys(): Promise<string[]>;
+}
+
+export interface StorageServiceOptions {
+  prefix?: string;
+  logPrefix?: string;
+}
 
 export async function createStorageService(_opts?: StorageServiceOptions): Promise<StorageService> {
   const store = new Map<string, string>();

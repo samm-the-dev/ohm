@@ -924,7 +924,14 @@ function DataTab({
           Device Storage
         </span>
         <div className="border-ohm-border bg-ohm-bg flex items-center gap-2.5 rounded-md border px-3 py-2">
-          {storageAdapter === 'opfs' ? (
+          {storageAdapter === null ? (
+            <>
+              <DatabaseZap size={14} className="text-ohm-muted/40 shrink-0 animate-pulse" />
+              <div>
+                <span className="font-body text-ohm-muted/60 block text-xs">Detecting...</span>
+              </div>
+            </>
+          ) : storageAdapter === 'opfs' ? (
             <>
               <HardDrive size={14} className="text-ohm-powered shrink-0" />
               <div>
