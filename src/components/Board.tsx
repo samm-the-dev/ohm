@@ -1295,6 +1295,7 @@ export function Board() {
         onDisconnectDrive={disconnect}
         board={board}
         onReplaceBoard={replaceBoard}
+        storageAdapter={storageAdapter}
       />
 
       {/* Quick spark FAB -- mobile only */}

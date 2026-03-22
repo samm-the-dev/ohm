@@ -12,6 +12,8 @@ import {
   CalendarDays,
   LayoutGrid,
   Database,
+  HardDrive,
+  DatabaseZap,
 } from 'lucide-react';
 import {
   ResponsiveDialog,
@@ -40,6 +42,7 @@ import {
 } from '../utils/restore-points';
 import { toastImportComplete, toastCategoryDeleted, toastActivityDeleted } from '../utils/toast';
 import { getAuthLevel } from '../utils/google-drive';
+import type { StorageAdapterType } from '../utils/storage-service';
 import type { Activity } from '../types/activity';
 import { ActivityManager } from './ActivityManager';
 
@@ -77,6 +80,7 @@ export interface SettingsPageProps {
   onDisconnectDrive?: () => void;
   board: OhmBoard;
   onReplaceBoard: (board: OhmBoard) => void;
+  storageAdapter?: StorageAdapterType | null;
   initialTab?: SettingsTab;
   editActivityId?: string;
 }
@@ -148,6 +152,7 @@ export function SettingsPage({
   onDisconnectDrive,
   board,
   onReplaceBoard,
+  storageAdapter,
   initialTab,
   editActivityId,
 }: SettingsPageProps) {
@@ -440,6 +445,7 @@ export function SettingsPage({
               handleDeleteRestorePoint={handleDeleteRestorePoint}
               confirmRestoreId={confirmRestoreId}
               formatDate={formatDate}
+              storageAdapter={storageAdapter}
             />
           )}
         </div>
@@ -788,6 +794,7 @@ function DataTab({
   handleDeleteRestorePoint,
   confirmRestoreId,
   formatDate,
+  storageAdapter,
 }: {
   driveAvailable?: boolean;
   driveConnected?: boolean;
@@ -806,6 +813,7 @@ function DataTab({
   handleDeleteRestorePoint: (id: string) => void;
   confirmRestoreId: string | null;
   formatDate: (iso: string) => string;
+  storageAdapter?: StorageAdapterType | null;
 }) {
   return (
     <>
@@ -908,6 +916,38 @@ function DataTab({
       {/* Auth level */}
       <section className="mb-8">
         <AuthLevelIndicator />
+      </section>
+
+      {/* Device storage */}
+      <section className="mb-8">
+        <span className="font-display text-ohm-muted mb-2 block text-[10px] tracking-widest uppercase">
+          Device Storage
+        </span>
+        <div className="border-ohm-border bg-ohm-bg flex items-center gap-2.5 rounded-md border px-3 py-2">
+          {storageAdapter === 'opfs' ? (
+            <>
+              <HardDrive size={14} className="text-ohm-powered shrink-0" />
+              <div>
+                <span className="font-body text-ohm-text block text-xs">Enhanced storage</span>
+                <span className="font-body text-ohm-muted/60 text-[10px]">
+                  Your data is saved securely on this device and protected from routine browser
+                  cleanup.
+                </span>
+              </div>
+            </>
+          ) : (
+            <>
+              <DatabaseZap size={14} className="text-ohm-muted shrink-0" />
+              <div>
+                <span className="font-body text-ohm-text block text-xs">Basic storage</span>
+                <span className="font-body text-ohm-muted/60 text-[10px]">
+                  Your data is saved in browser storage, which may be cleared during cleanup or low
+                  disk space. Connect Google Drive above to keep a backup.
+                </span>
+              </div>
+            </>
+          )}
+        </div>
       </section>
 
       {/* Restore points */}
