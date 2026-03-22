@@ -181,8 +181,21 @@ After:   useDriveSync → mergeBoards() → replaceBoard() → storageService.se
 Specifically:
 1. `storage.ts` exports (`saveToLocal`, `loadFromLocal`) become thin wrappers around `storageService.get('board')` / `storageService.set('board', board)`
 2. `useDriveSync` continues calling `storage.ts` exports — it never touches StorageService directly
-3. The `ohm-drive-synced` flag moves to `storageService.get/set('drive-synced')` — tiny value, no urgency
-4. Token keys (`ohm-drive-*`) stay in localStorage — owned by toolbox module, out of scope
+3. Token keys (`ohm-drive-*`) stay in localStorage — owned by toolbox module, out of scope
+
+### What Stays on localStorage
+
+Not everything needs to migrate. The primitive/transient keys stay on localStorage permanently:
+
+| Key | Owner | Why it stays |
+|-----|-------|-------------|
+| `ohm-last-opened` | `useWelcomeBack` | Transient timestamp, one read/write per session |
+| `ohm-drive-synced` | `useDriveSync` | Session flag, uses `removeItem` semantics |
+| `ohm-drive-*` tokens | `.toolbox/lib/google-drive-sync` | Auth lifecycle, owned by toolbox module |
+
+These are small, infrequently written, owned by unrelated hooks with independent lifecycles, and don't benefit from durable file storage. Bundling them into a single JSON object would add read-modify-write overhead and couple hooks that shouldn't know about each other.
+
+**Migration targets are the two structured payloads only:** `ohm-board` and `ohm-restore-points`.
 
 ### Migration Path
 
@@ -201,12 +214,10 @@ Specifically:
 - Add `StorageIndicator` component (mirrors `SyncIndicator` pattern) — shows OPFS icon when active
 - Thread `adapter` value from StorageService to the header via hook/context
 
-**Phase 3: Migrate consumers one-by-one**
+**Phase 3: Migrate structured payloads**
 - `storage.ts` (ohm-board) — highest value, migrate first
-- `restore-points.ts` — second, largest payload benefits most from OPFS
-- `useWelcomeBack.ts` (ohm-last-opened) — trivial
-- `useDriveSync.ts` (ohm-drive-synced) — trivial
-- Each migration is a small, independently testable PR
+- `restore-points.ts` (ohm-restore-points) — second, largest payload benefits most from OPFS
+- Transient/primitive keys (`ohm-last-opened`, `ohm-drive-synced`, `ohm-drive-*` tokens) stay on localStorage — no migration needed
 
 **Phase 4: Multi-tab safety**
 - Add `BroadcastChannel` write notifications to the OPFS adapter
