@@ -96,14 +96,6 @@ export function useDriveSync(
     boardRef.current = currentBoard;
   }, [currentBoard]);
 
-  // Clear recovery prompt if async recovery (e.g. OPFS) populates the board
-  useEffect(() => {
-    if (recoveryPrompt && currentBoard.cards.length > 0) {
-      setNeedsReconnect(false);
-      setRecoveryPrompt(false);
-    }
-  }, [recoveryPrompt, currentBoard.cards.length]);
-
   // Initialize GIS on mount
   useEffect(() => {
     if (!DRIVE_CLIENT_ID) return;
