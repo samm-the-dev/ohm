@@ -2,6 +2,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { SettingsPage, type SettingsPageProps } from './SettingsPage';
 
+const mockGetAuthLevel = vi.fn<() => 0 | 1 | 2 | 3>(() => 1);
+vi.mock('../utils/google-drive', () => ({
+  getAuthLevel: (...args: []) => mockGetAuthLevel(...args),
+}));
+
 const noop = () => {};
 
 function defaultProps(overrides?: Partial<SettingsPageProps>): SettingsPageProps {
@@ -144,5 +149,23 @@ describe('SettingsPage a11y', () => {
       act(() => vi.runAllTimers());
       expect(document.activeElement).toBe(document.getElementById('tab-schedule'));
     });
+  });
+});
+
+describe('AuthLevelIndicator', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    mockGetAuthLevel.mockReturnValue(1);
+  });
+
+  it('updates storage level description when driveConnected changes', () => {
+    const { rerender } = render(
+      <SettingsPage {...defaultProps({ initialTab: 'data', driveConnected: false })} />,
+    );
+    expect(screen.getByText('Local only')).toBeInTheDocument();
+
+    mockGetAuthLevel.mockReturnValue(3);
+    rerender(<SettingsPage {...defaultProps({ initialTab: 'data', driveConnected: true })} />);
+    expect(screen.getByText('Persistent sync')).toBeInTheDocument();
   });
 });
