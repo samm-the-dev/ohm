@@ -17,9 +17,14 @@ import { toastSyncResult } from '../utils/toast';
 export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error' | 'offline';
 
 const SYNC_FLAG_KEY = 'ohm-drive-synced';
+const DISMISS_FLAG_KEY = 'ohm-drive-dismissed';
 
 function wasPreviouslySynced(): boolean {
   return localStorage.getItem(SYNC_FLAG_KEY) === '1';
+}
+
+function wasDismissed(): boolean {
+  return localStorage.getItem(DISMISS_FLAG_KEY) === '1';
 }
 
 interface UseDriveSyncReturn {
@@ -31,6 +36,7 @@ interface UseDriveSyncReturn {
   recoveryPrompt: boolean;
   connect: () => Promise<void>;
   disconnect: () => void;
+  dismissRecovery: () => void;
   manualSync: () => Promise<void>;
   queueSync: (board: OhmBoard) => void;
 }
@@ -106,9 +112,9 @@ export function useDriveSync(
 
     const onReady = async () => {
       if (!wasPreviouslySynced()) {
-        // No sync flag (cleared browsing data?) -- if the board is empty,
-        // prompt reconnect so the user can restore from Drive with one tap.
-        if (boardRef.current.cards.length === 0) {
+        // No sync flag (cleared browsing data?) -- if the board is empty
+        // and the user hasn't dismissed before, prompt to connect with Drive.
+        if (boardRef.current.cards.length === 0 && !wasDismissed()) {
           setNeedsReconnect(true);
           setRecoveryPrompt(true);
         }
@@ -191,6 +197,7 @@ export function useDriveSync(
     setNeedsReconnect(false);
     setRecoveryPrompt(false);
     localStorage.setItem(SYNC_FLAG_KEY, '1');
+    localStorage.removeItem(DISMISS_FLAG_KEY);
     setSyncStatus('syncing');
 
     try {
@@ -199,6 +206,12 @@ export function useDriveSync(
       setSyncStatus('error');
     }
   }, [mergeWithRemote]);
+
+  const dismissRecovery = useCallback(() => {
+    setNeedsReconnect(false);
+    setRecoveryPrompt(false);
+    localStorage.setItem(DISMISS_FLAG_KEY, '1');
+  }, []);
 
   const disconnect = useCallback(() => {
     disconnectDrive();
@@ -245,6 +258,7 @@ export function useDriveSync(
     recoveryPrompt,
     connect,
     disconnect,
+    dismissRecovery,
     manualSync,
     queueSync,
   };

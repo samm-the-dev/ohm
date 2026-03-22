@@ -125,6 +125,42 @@ describe('useDriveSync', () => {
       expect(result.current.recoveryPrompt).toBe(false);
       expect(result.current.needsReconnect).toBe(false);
       expect(result.current.driveConnected).toBe(true);
+      // Dismiss flag should be cleared when user connects
+      expect(localStorage.getItem('ohm-drive-dismissed')).toBeNull();
+    });
+
+    it('dismissRecovery hides banner and persists dismissal', async () => {
+      const emptyBoard = createDefaultBoard();
+      const onBoardLoaded = vi.fn();
+
+      const { result } = renderHook(() => useDriveSync(emptyBoard, onBoardLoaded));
+
+      await waitFor(() => {
+        expect(result.current.recoveryPrompt).toBe(true);
+      });
+
+      act(() => {
+        result.current.dismissRecovery();
+      });
+
+      expect(result.current.needsReconnect).toBe(false);
+      expect(result.current.recoveryPrompt).toBe(false);
+      expect(localStorage.getItem('ohm-drive-dismissed')).toBe('1');
+    });
+
+    it('does not show recovery prompt when previously dismissed', async () => {
+      localStorage.setItem('ohm-drive-dismissed', '1');
+      const emptyBoard = createDefaultBoard();
+      const onBoardLoaded = vi.fn();
+
+      const { result } = renderHook(() => useDriveSync(emptyBoard, onBoardLoaded));
+
+      await waitFor(() => {
+        expect(mockInitDriveAuth).toHaveBeenCalled();
+      });
+
+      expect(result.current.needsReconnect).toBe(false);
+      expect(result.current.recoveryPrompt).toBe(false);
     });
   });
 

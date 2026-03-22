@@ -440,6 +440,7 @@ export function Board() {
     recoveryPrompt,
     connect,
     disconnect,
+    dismissRecovery,
     manualSync,
     queueSync,
   } = useDriveSync(board, replaceBoard);
@@ -654,6 +655,16 @@ export function Board() {
           >
             {recoveryPrompt ? 'Connect with Drive' : 'Reconnect'}
           </button>
+          {recoveryPrompt && (
+            <button
+              type="button"
+              onClick={dismissRecovery}
+              aria-label="Dismiss"
+              className="text-ohm-muted hover:text-ohm-text transition-colors"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
       )}
 
