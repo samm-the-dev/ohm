@@ -148,6 +148,29 @@ describe('useDriveSync', () => {
       expect(localStorage.getItem('ohm-drive-dismissed')).toBe('1');
     });
 
+    it('clears recovery prompt when board becomes non-empty via async recovery', async () => {
+      const emptyBoard = createDefaultBoard();
+      const onBoardLoaded = vi.fn();
+
+      const { result, rerender } = renderHook(({ board }) => useDriveSync(board, onBoardLoaded), {
+        initialProps: { board: emptyBoard },
+      });
+
+      await waitFor(() => {
+        expect(result.current.recoveryPrompt).toBe(true);
+      });
+
+      // Simulate OPFS recovery populating the board
+      const populatedBoard = createDefaultBoard();
+      populatedBoard.cards = [createCard('Recovered card')];
+      rerender({ board: populatedBoard });
+
+      await waitFor(() => {
+        expect(result.current.recoveryPrompt).toBe(false);
+        expect(result.current.needsReconnect).toBe(false);
+      });
+    });
+
     it('does not show recovery prompt when previously dismissed', async () => {
       localStorage.setItem('ohm-drive-dismissed', '1');
       const emptyBoard = createDefaultBoard();
