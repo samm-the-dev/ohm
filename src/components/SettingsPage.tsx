@@ -98,7 +98,8 @@ const AUTH_LEVEL_DESCRIPTIONS = [
   'Persistent sync',
 ] as const;
 
-function AuthLevelIndicator() {
+function AuthLevelIndicator(_props: { driveConnected: boolean }) {
+  // driveConnected prop triggers re-render so getAuthLevel() reads fresh state
   const level = getAuthLevel();
   return (
     <div>
@@ -915,7 +916,7 @@ function DataTab({
 
       {/* Auth level */}
       <section className="mb-8">
-        <AuthLevelIndicator />
+        <AuthLevelIndicator driveConnected={!!driveConnected} />
       </section>
 
       {/* Device storage */}
