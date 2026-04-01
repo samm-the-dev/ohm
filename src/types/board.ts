@@ -117,17 +117,10 @@ export interface OhmBoard {
   energyMax?: number;
   /** Maximum cards in Live + today's Powered (default 3, range 1-5). Replaces liveCapacity for capacity math. */
   dailyLimit?: number;
-  /** Opt-in engagement features */
-  funSettings?: FunSettings;
   /** Recurring activity templates (synced via Drive) */
   activities?: import('./activity').Activity[];
   /** ISO timestamp — last time activities were changed */
   activitiesUpdatedAt?: string;
-}
-
-export interface FunSettings {
-  dailyTheme?: boolean;
-  darkSoulsMessages?: boolean;
 }
 
 /** Column config — static definition, indexed by ColumnStatus.

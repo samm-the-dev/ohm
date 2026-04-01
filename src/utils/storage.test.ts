@@ -154,18 +154,6 @@ describe('sanitizeBoard', () => {
     expect(result.dailyLimit).toBe(5);
   });
 
-  it('defaults funSettings to empty object when missing', () => {
-    const board = makeBoard();
-    const result = sanitizeBoard(board);
-    expect(result.funSettings).toEqual({});
-  });
-
-  it('preserves existing funSettings', () => {
-    const board = makeBoard({ funSettings: { dailyTheme: true } });
-    const result = sanitizeBoard(board);
-    expect(result.funSettings).toEqual({ dailyTheme: true });
-  });
-
   it('prunes archived cards older than 14 days', () => {
     const old = new Date();
     old.setDate(old.getDate() - 15);

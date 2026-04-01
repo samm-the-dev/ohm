@@ -93,11 +93,6 @@ export function sanitizeBoard(board: OhmBoard): OhmBoard {
     board.dailyLimit = DAILY_LIMIT_DEFAULT;
   }
 
-  // Default funSettings if missing or non-object
-  if (!board.funSettings || typeof board.funSettings !== 'object') {
-    board.funSettings = {};
-  }
-
   return board;
 }
 
