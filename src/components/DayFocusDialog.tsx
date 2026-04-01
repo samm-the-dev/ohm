@@ -85,6 +85,7 @@ export function DayFocusDialog({
   const cards = getCardsForDate(board, currentDate);
   const dailyLimit = board.dailyLimit ?? DAILY_LIMIT_DEFAULT;
   const cardCount = cards.length;
+  const avgEnergy = cardCount > 0 ? cards.reduce((sum, c) => sum + c.energy, 0) / cardCount : 0;
   const statusGroups = groupByStatus(cards);
   const label = formatDateLabel(currentDate, todayStr, true);
   const tomorrowStr = getTomorrow(todayStr);
@@ -157,12 +158,29 @@ export function DayFocusDialog({
           </button>
           <CalendarDays size={16} className="text-ohm-muted shrink-0" />
           <span className="flex-1 truncate">{label}</span>
-          <span
-            className="font-display shrink-0 text-sm font-bold"
-            style={{ color: budgetColor(cardCount / dailyLimit) }}
-          >
-            {cardCount}/{dailyLimit}
-          </span>
+          <div className="flex shrink-0 items-center gap-1">
+            {Array.from({ length: dailyLimit }, (_, i) => {
+              const filled = i < cardCount;
+              const pipColor =
+                filled && avgEnergy > 0 ? energyColor(avgEnergy, undefined, energyMax) : undefined;
+              return (
+                <div
+                  key={i}
+                  className={`h-2 w-2 rounded-full transition-all duration-300 ${filled ? '' : 'bg-ohm-border'}`}
+                  style={
+                    filled
+                      ? { backgroundColor: pipColor ?? budgetColor(cardCount / dailyLimit) }
+                      : undefined
+                  }
+                />
+              );
+            })}
+            {cardCount > dailyLimit && (
+              <span className="text-ohm-live font-display text-[10px] font-bold">
+                +{cardCount - dailyLimit}
+              </span>
+            )}
+          </div>
           <button
             type="button"
             onClick={() => canNext && goTo(availableDates![dateIdx + 1]!)}

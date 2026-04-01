@@ -1091,7 +1091,11 @@ export function Board() {
       {focusDate && (
         <DayFocusDialog
           date={focusDate}
-          availableDates={budgetData.daily.map((d) => d.date)}
+          availableDates={Array.from({ length: 14 }, (_, i) => {
+            const d = new Date();
+            d.setDate(d.getDate() + i);
+            return toISODate(d);
+          })}
           board={board}
           todayStr={budgetData.todayStr}
           energyMax={eMax}

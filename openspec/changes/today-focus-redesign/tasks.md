@@ -55,11 +55,11 @@
 
 ## 6. DayFocusDialog Redesign
 
-- [ ] 6.1 Replace energy ratio display with mini 3-segment meter per day (item count vs `dailyLimit`)
-- [ ] 6.2 Add energy tinting to mini-meter segments
-- [ ] 6.3 Update `availableDates` to source from 14-day forward window (not BudgetBar rolling window)
+- [x] 6.1 Replace energy ratio display with mini 3-segment meter per day (item count vs `dailyLimit`)
+- [x] 6.2 Add energy tinting to mini-meter segments
+- [x] 6.3 Update `availableDates` to source from 14-day forward window (not BudgetBar rolling window)
 - [ ] 6.4 Verify navigation (arrows + swipe), reschedule actions, and drag-and-drop reorder still work
-- [ ] 6.5 Run build
+- [x] 6.5 Run build
 
 ## 7. Daily Color Theme
 
