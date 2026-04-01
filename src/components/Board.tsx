@@ -44,7 +44,6 @@ import {
   getColumnCards,
   getDailyItemCounts,
   getTotalItemCount,
-  getExpiredPowered,
   groupCardsByDate,
 } from '../utils/board-utils';
 import { formatDateLabel, toISODate } from '../utils/schedule-utils';
@@ -343,15 +342,22 @@ export function Board() {
     for (const u of updates) updateCard(u);
   }, [board.cards, activities, instances, updateCard]);
 
-  // Auto-archive Powered cards that have fallen outside the trailing window
+  // Soft-archive Powered cards from before today (set archivedAt instead of deleting)
   useEffect(() => {
-    const trailingStart = new Date();
-    trailingStart.setDate(trailingStart.getDate() - ((board.windowSize ?? WINDOW_DEFAULT) - 1));
-    const expired = getExpiredPowered(board, toISODate(trailingStart));
-    if (expired.length > 0) {
-      deleteCards(expired.map((c) => c.id));
+    const todayStr = toISODate(new Date());
+    const now = new Date().toISOString();
+    const toArchive = board.cards.filter(
+      (c) =>
+        c.status === STATUS.POWERED &&
+        !c.archivedAt &&
+        (c.scheduledDate ?? c.updatedAt.slice(0, 10)) < todayStr,
+    );
+    if (toArchive.length > 0) {
+      for (const card of toArchive) {
+        updateCard({ ...card, archivedAt: now });
+      }
     }
-  }, [board.windowSize, board.cards, deleteCards]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [board.cards, updateCard]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Drag-and-drop sensors
   const pointerSensor = useSensor(PointerSensor, {
@@ -534,8 +540,10 @@ export function Board() {
     // Today's count: Live cards + today's Powered cards
     const todayCount = board.cards.filter(
       (c) =>
-        c.status === STATUS.LIVE ||
-        (c.status === STATUS.POWERED && (c.scheduledDate ?? c.updatedAt.slice(0, 10)) === todayStr),
+        !c.archivedAt &&
+        (c.status === STATUS.LIVE ||
+          (c.status === STATUS.POWERED &&
+            (c.scheduledDate ?? c.updatedAt.slice(0, 10)) === todayStr)),
     ).length;
     return { daily, dailyLimit, total, todayCount, todayStr };
   })();

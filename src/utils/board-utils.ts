@@ -61,7 +61,7 @@ export function moveCard(card: OhmCard, newStatus: ColumnStatus): OhmCard {
  *  then sortOrder as tiebreaker within the same date group. */
 export function getColumnCards(board: OhmBoard, status: ColumnStatus): OhmCard[] {
   return board.cards
-    .filter((c) => c.status === status)
+    .filter((c) => c.status === status && !c.archivedAt)
     .sort((a, b) => {
       const dateA = a.scheduledDate ?? '\uffff';
       const dateB = b.scheduledDate ?? '\uffff';
@@ -182,7 +182,7 @@ export function getDailyItemCounts(
   const byDate = new Map<string, { count: number; totalEnergy: number }>();
 
   for (const card of board.cards) {
-    if (card.status === STATUS.GROUNDED) continue;
+    if (card.status === STATUS.GROUNDED || card.archivedAt) continue;
     let date: string;
     if (card.status === STATUS.LIVE) {
       date = todayStr;
@@ -222,7 +222,7 @@ export function getTotalItemCount(
   const dailyLimit = board.dailyLimit ?? DAILY_LIMIT_DEFAULT;
   let count = 0;
   for (const card of board.cards) {
-    if (card.status === STATUS.GROUNDED) continue;
+    if (card.status === STATUS.GROUNDED || card.archivedAt) continue;
     if (card.status === STATUS.LIVE) {
       count++;
       continue;

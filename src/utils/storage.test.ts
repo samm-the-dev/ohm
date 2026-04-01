@@ -5,6 +5,7 @@ import {
   ENERGY_MAX_DEFAULT,
   BUDGET_DEFAULT,
   LIVE_DEFAULT,
+  DAILY_LIMIT_DEFAULT,
 } from '../types/board';
 import type { OhmBoard } from '../types/board';
 import { sanitizeBoard } from './storage';
@@ -139,5 +140,89 @@ describe('sanitizeBoard', () => {
     });
     const result = sanitizeBoard(board);
     expect(result.cards[0].tasks).toEqual([]);
+  });
+
+  it('defaults dailyLimit to 3 when missing', () => {
+    const board = makeBoard();
+    const result = sanitizeBoard(board);
+    expect(result.dailyLimit).toBe(DAILY_LIMIT_DEFAULT);
+  });
+
+  it('preserves existing dailyLimit', () => {
+    const board = makeBoard({ dailyLimit: 5 });
+    const result = sanitizeBoard(board);
+    expect(result.dailyLimit).toBe(5);
+  });
+
+  it('defaults funSettings to empty object when missing', () => {
+    const board = makeBoard();
+    const result = sanitizeBoard(board);
+    expect(result.funSettings).toEqual({});
+  });
+
+  it('preserves existing funSettings', () => {
+    const board = makeBoard({ funSettings: { dailyTheme: true } });
+    const result = sanitizeBoard(board);
+    expect(result.funSettings).toEqual({ dailyTheme: true });
+  });
+
+  it('prunes archived cards older than 14 days', () => {
+    const old = new Date();
+    old.setDate(old.getDate() - 15);
+    const board = makeBoard({
+      cards: [
+        {
+          id: 'old',
+          title: 'Old',
+          description: '',
+          status: STATUS.POWERED,
+          tasks: [],
+          energy: 1,
+          category: '',
+          createdAt: '',
+          updatedAt: '',
+          sortOrder: 0,
+          archivedAt: old.toISOString(),
+        },
+        {
+          id: 'recent',
+          title: 'Recent',
+          description: '',
+          status: STATUS.POWERED,
+          tasks: [],
+          energy: 1,
+          category: '',
+          createdAt: '',
+          updatedAt: '',
+          sortOrder: 0,
+          archivedAt: new Date().toISOString(),
+        },
+      ],
+    });
+    const result = sanitizeBoard(board);
+    expect(result.cards).toHaveLength(1);
+    expect(result.cards[0].id).toBe('recent');
+  });
+
+  it('strips archivedAt from non-Powered cards', () => {
+    const board = makeBoard({
+      cards: [
+        {
+          id: 'a',
+          title: 'Charging card',
+          description: '',
+          status: STATUS.CHARGING,
+          tasks: [],
+          energy: 1,
+          category: '',
+          createdAt: '',
+          updatedAt: '',
+          sortOrder: 0,
+          archivedAt: new Date().toISOString(),
+        },
+      ],
+    });
+    const result = sanitizeBoard(board);
+    expect(result.cards[0].archivedAt).toBeUndefined();
   });
 });

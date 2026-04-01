@@ -11,6 +11,7 @@ import {
   WINDOW_MAX,
   BUDGET_DEFAULT,
   LIVE_DEFAULT,
+  DAILY_LIMIT_DEFAULT,
 } from '../types/board';
 import { storageService } from './storage-service';
 
@@ -74,7 +75,29 @@ export function sanitizeBoard(board: OhmBoard): OhmBoard {
     if (!Array.isArray(card.tasks)) {
       card.tasks = [];
     }
+
+    // Strip archivedAt from non-Powered cards (defensive cleanup)
+    if (card.archivedAt && card.status !== STATUS.POWERED) {
+      delete card.archivedAt;
+    }
   }
+
+  // Prune archived cards older than 14 days
+  const fourteenDaysAgo = new Date();
+  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+  const pruneThreshold = fourteenDaysAgo.toISOString();
+  board.cards = board.cards.filter((c) => !c.archivedAt || c.archivedAt > pruneThreshold);
+
+  // Default dailyLimit if missing
+  if (typeof board.dailyLimit !== 'number' || board.dailyLimit < 1) {
+    board.dailyLimit = DAILY_LIMIT_DEFAULT;
+  }
+
+  // Default funSettings if missing or non-object
+  if (!board.funSettings || typeof board.funSettings !== 'object') {
+    board.funSettings = {};
+  }
+
   return board;
 }
 

@@ -26,15 +26,15 @@
 
 ## 3. Powered Today-Only + Soft-Delete Archive
 
-- [ ] 3.1 Add `archivedAt?: string` to `OhmCard` in `src/types/board.ts`
-- [ ] 3.2 Add archive prune to `sanitizeBoard()` in `src/utils/storage.ts`: delete cards with `archivedAt` >14 days, strip `archivedAt` from non-Powered cards
-- [ ] 3.3 Add `dailyLimit` migration to `sanitizeBoard()`: default to 3 if missing
-- [ ] 3.4 Add `funSettings` migration to `sanitizeBoard()`: default to `{}` if missing/non-object
-- [ ] 3.5 Replace hard-delete archive in Board.tsx useEffect with soft-delete: set `archivedAt` on yesterday's Powered cards instead of `deleteCards()`
-- [ ] 3.6 Filter archived cards from all rendering (Board column cards, capacity counts, filter results)
-- [ ] 3.7 Update Powered column to show today-only cards (no date grouping)
-- [ ] 3.8 Add/update tests for sanitizeBoard migration steps and archive filtering
-- [ ] 3.9 Run build
+- [x] 3.1 Add `archivedAt?: string` to `OhmCard` in `src/types/board.ts`
+- [x] 3.2 Add archive prune to `sanitizeBoard()` in `src/utils/storage.ts`: delete cards with `archivedAt` >14 days, strip `archivedAt` from non-Powered cards
+- [x] 3.3 Add `dailyLimit` migration to `sanitizeBoard()`: default to 3 if missing
+- [x] 3.4 Add `funSettings` migration to `sanitizeBoard()`: default to `{}` if missing/non-object
+- [x] 3.5 Replace hard-delete archive in Board.tsx useEffect with soft-delete: set `archivedAt` on yesterday's Powered cards instead of `deleteCards()`
+- [x] 3.6 Filter archived cards from all rendering (Board column cards, capacity counts, filter results)
+- [x] 3.7 Update Powered column to show today-only cards (no date grouping)
+- [x] 3.8 Add/update tests for sanitizeBoard migration steps and archive filtering
+- [x] 3.9 Run build
 
 ## 4. Expanded Card Layout
 
