@@ -13,11 +13,13 @@ interface CardProps {
   onTap: (card: OhmCard) => void;
   onReorder?: (direction: -1 | 1) => void;
   energyMax?: number;
+  /** Show expanded layout with description and full task list (Live/Powered columns) */
+  expanded?: boolean;
 }
 
 const STALE_THRESHOLD_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
 
-export function Card({ card, onTap, onReorder, energyMax }: CardProps) {
+export function Card({ card, onTap, onReorder, energyMax, expanded }: CardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: card.id,
   });
@@ -73,7 +75,9 @@ export function Card({ card, onTap, onReorder, energyMax }: CardProps) {
               )}
             </span>
           )}
-          <p className="font-body text-ohm-text min-w-0 flex-1 text-base leading-snug font-medium">
+          <p
+            className={`font-body text-ohm-text min-w-0 flex-1 leading-snug font-medium ${expanded ? 'text-lg' : 'text-base'}`}
+          >
             {card.title}
           </p>
           <button
@@ -92,6 +96,13 @@ export function Card({ card, onTap, onReorder, energyMax }: CardProps) {
         {card.scheduledDate && (
           <p className="font-body text-ohm-muted mt-1 text-xs">
             {formatDateLabel(card.scheduledDate, toISODate(new Date()))}
+          </p>
+        )}
+
+        {/* Description preview (expanded only) */}
+        {expanded && card.description && (
+          <p className="font-body text-ohm-muted mt-1.5 line-clamp-3 text-sm leading-relaxed">
+            {card.description}
           </p>
         )}
 
@@ -118,13 +129,13 @@ export function Card({ card, onTap, onReorder, energyMax }: CardProps) {
           )}
         </div>
 
-        {/* Notes preview */}
+        {/* Tasks */}
         {card.tasks.length > 0 && (
           <div className="border-ohm-border text-ohm-muted mt-2 flex flex-col gap-1 border-t pt-1.5 text-sm">
             {card.tasks.map((note, i) => (
               <div key={i} className="flex items-center gap-1">
                 <ArrowRight size={12} className="shrink-0" />
-                <span>{note.length > 60 ? note.slice(0, 60) + '...' : note}</span>
+                <span>{expanded ? note : note.length > 60 ? note.slice(0, 60) + '...' : note}</span>
               </div>
             ))}
           </div>

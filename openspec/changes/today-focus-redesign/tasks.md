@@ -38,11 +38,11 @@
 
 ## 4. Expanded Card Layout
 
-- [ ] 4.1 Create expanded card variant for Live/Powered: larger title, description preview (2-3 lines), interactive task checklist
-- [ ] 4.2 Add column-aware card sizing: expanded in Live/Powered, compact in Charging/Grounded
-- [ ] 4.3 Task checklist: interactive toggles in Live, read-only in Powered
-- [ ] 4.4 Verify compact card layout unchanged in Charging/Grounded (energy badge, category pill, task preview, stale indicator)
-- [ ] 4.5 Run build
+- [x] 4.1 Create expanded card variant for Live/Powered: larger title, description preview (2-3 lines), full task list
+- [x] 4.2 Add column-aware card sizing: expanded in Live/Powered, compact in Charging/Grounded
+- [ ] 4.3 Task checklist: interactive toggles in Live, read-only in Powered (deferred — tasks are plain strings, needs data model change)
+- [x] 4.4 Verify compact card layout unchanged in Charging/Grounded (energy badge, category pill, task preview, stale indicator)
+- [x] 4.5 Run build
 
 ## 5. What's Ahead Summary
 

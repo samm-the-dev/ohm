@@ -23,6 +23,8 @@ interface ColumnProps {
   dayLimit?: number;
   /** Active date filter — matching day groups expand regardless of proximity */
   filterDate?: string | null;
+  /** Show expanded card layout (description, full tasks) */
+  expandedCards?: boolean;
 }
 
 export function Column({
@@ -37,6 +39,7 @@ export function Column({
   dayGroups,
   dayLimit,
   filterDate,
+  expandedCards,
 }: ColumnProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
@@ -149,6 +152,7 @@ export function Column({
                 onTap={onCardTap}
                 onReorder={(dir) => handleReorder(idx, card.id, dir)}
                 energyMax={energyMax}
+                expanded={expandedCards}
               />
             ))}
           </SortableContext>

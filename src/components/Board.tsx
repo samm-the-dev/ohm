@@ -1061,6 +1061,7 @@ export function Board() {
                   }
                   dayLimit={budgetData.dailyLimit}
                   filterDate={dateFilter}
+                  expandedCards={status === STATUS.LIVE || status === STATUS.POWERED}
                 />
               );
             })}
