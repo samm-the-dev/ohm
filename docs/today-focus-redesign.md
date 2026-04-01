@@ -147,6 +147,23 @@ Opt-in engagement features under `board.funSettings`.
 - Separate package: `@ohm/dark-souls-messages` or similar. Exports `getMessage(date: Date): string`.
 - Could be a submodule or npm package — keep it out of the main bundle unless enabled.
 
+#### Data source
+
+Message templates and vocabulary can be extracted directly from a local PC install of Dark Souls (DSR/DS3) or Elden Ring. The soapstone message system is two parts:
+
+- **`BloodMsg.fmg`** — sentence templates with blanks (e.g. "try ___ ahead")
+- **`Word_*.fmg`** — vocabulary by category (`ActionConcepts`, `Body`, `Directions`, `Objects`, `Creatures`, etc.)
+
+These FMG files live inside `<game>/msg/engus/item.msgbnd.dcx` (compressed BND archive). Extraction options:
+
+| Tool | Type | Notes |
+|---|---|---|
+| **soulstruct** (`pip install soulstruct`) | Python lib | Reads BND+FMG directly, exports to dict/JSON. Supports DSR and DS3. |
+| **Smithbox** | GUI (Windows) | Text Editor tab browses all FMG text. Supports DS1/2/3/ER/AC6. |
+| **Yabber+** | CLI (Windows) | Unpacks `.msgbnd.dcx` → individual `.fmg` files for separate parsing. |
+
+Quickest path: soulstruct one-liner to dump `BloodMsg` + `Word_*` entries to JSON, then ship as static data in the package.
+
 ### Architecture
 
 ```ts
@@ -200,3 +217,25 @@ On load, `sanitizeBoard()` handles transition:
 5. **What's Ahead** — category summary bar
 6. **Daily color theme** — hue rotation, fun settings
 7. **Settings cleanup** — remove old capacity controls, add Fun tab
+8. **Documentation overhaul** — update all docs to reflect the redesign (see below)
+
+---
+
+## Process & Documentation
+
+### BMAD + Open Spec adoption
+
+Once the redesign is implemented, adopt **BMAD** (Build Measure Analyze Decide) and **Open Spec** methodologies for the project going forward:
+
+- **BMAD workflow**: structure future feature work as cycles — define the build scope, identify what to measure (user engagement, task completion patterns), analyze results, decide next iteration. This fits naturally with the Fun Modules pattern where features are opt-in and can be evaluated independently.
+- **Open Spec**: publish a living specification for OHM's data model, column semantics, and extension points (fun modules, sync adapters). This makes the project's design decisions transparent and gives structure to contributions or forks.
+- Evaluate which BMAD/Open Spec artifacts make sense at OHM's scale — avoid over-process for a personal tool. Likely candidates: a lightweight product spec, a decision log, and per-feature build/measure criteria.
+
+### Documentation update (post-implementation)
+
+All project docs should be updated once the redesign lands:
+
+- **README.md** — update the column table, philosophy bullets, features list, and both standards alignment tables (Kanban Method + ADHD Research) to reflect the new model. The 3-item capacity strengthens several alignment claims (see analysis in the redesign discussion).
+- **CLAUDE.md** — update architecture notes: column model, capacity system (`dailyLimit` replacing energy budget), new components (Today Meter, What's Ahead), fun settings. Remove references to rolling window, `liveCapacity`, `energyBudget`, BudgetBar, DayFocusDialog.
+- **todo.md** — remove completed items from this redesign, add any new items surfaced during implementation (e.g. analytics groundwork, fun module ideas).
+- **docs/** — consider whether the redesign plan itself should be archived or replaced with a living spec (ties into Open Spec adoption above).
