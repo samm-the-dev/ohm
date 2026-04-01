@@ -14,6 +14,8 @@ import {
   Database,
   HardDrive,
   DatabaseZap,
+  Zap,
+  Tag,
 } from 'lucide-react';
 import {
   ResponsiveDialog,
@@ -61,16 +63,10 @@ export interface SettingsPageProps {
   onAddCategory: (category: string) => void;
   onRemoveCategory: (category: string) => void;
   onRenameCategory: (oldName: string, newName: string) => void;
-  energyBudget: number;
-  liveCapacity: number;
-  onSetEnergyBudget: (budget: number) => void;
-  onSetLiveCapacity: (capacity: number) => void;
   energyMax?: number;
   onSetEnergyMax?: (max: number) => void;
   windowSize?: number;
   onSetWindowSize?: (size: number) => void;
-  autoBudget?: boolean;
-  onSetAutoBudget?: (enabled: boolean) => void;
   activities?: Activity[];
   onUpdateActivity?: (id: string, changes: Partial<Omit<Activity, 'id'>>) => void;
   onDeleteActivity?: (id: string) => void | Promise<void>;
@@ -84,11 +80,6 @@ export interface SettingsPageProps {
   initialTab?: SettingsTab;
   editActivityId?: string;
 }
-
-const CAPACITY_ROWS = [
-  { label: 'Live', field: 'liveCapacity' as const, color: 'text-ohm-live' },
-  { label: 'Total', field: 'energyBudget' as const, color: 'text-ohm-spark' },
-];
 
 const AUTH_LEVEL_SEGMENTS = ['Local', 'Sync', 'Persist'] as const;
 const AUTH_LEVEL_DESCRIPTIONS = [
@@ -134,16 +125,10 @@ export function SettingsPage({
   onAddCategory,
   onRemoveCategory,
   onRenameCategory,
-  energyBudget,
-  liveCapacity,
-  onSetEnergyBudget,
-  onSetLiveCapacity,
   energyMax,
   onSetEnergyMax,
   windowSize,
   onSetWindowSize,
-  autoBudget,
-  onSetAutoBudget,
   activities,
   onUpdateActivity,
   onDeleteActivity,
@@ -400,14 +385,8 @@ export function SettingsPage({
               newCategoryName={newCategoryName}
               setNewCategoryName={setNewCategoryName}
               handleAddCategory={handleAddCategory}
-              energyBudget={energyBudget}
-              liveCapacity={liveCapacity}
-              onSetEnergyBudget={onSetEnergyBudget}
-              onSetLiveCapacity={onSetLiveCapacity}
               energyMax={energyMax}
               onSetEnergyMax={onSetEnergyMax}
-              autoBudget={autoBudget}
-              windowSize={windowSize}
             />
           )}
 
@@ -415,9 +394,6 @@ export function SettingsPage({
             <ScheduleTab
               windowSize={windowSize}
               onSetWindowSize={onSetWindowSize}
-              autoBudget={autoBudget}
-              onSetAutoBudget={onSetAutoBudget}
-              liveCapacity={liveCapacity}
               activities={activities?.filter((a) => !pendingActivityDeletes.has(a.id))}
               categories={categories}
               onUpdateActivity={onUpdateActivity}
@@ -464,14 +440,8 @@ function BoardTab({
   newCategoryName,
   setNewCategoryName,
   handleAddCategory,
-  energyBudget,
-  liveCapacity,
-  onSetEnergyBudget,
-  onSetLiveCapacity,
   energyMax,
   onSetEnergyMax,
-  autoBudget,
-  windowSize,
 }: {
   categories: string[];
   onRemoveCategory: (c: string) => void;
@@ -479,24 +449,24 @@ function BoardTab({
   newCategoryName: string;
   setNewCategoryName: (v: string) => void;
   handleAddCategory: () => void;
-  energyBudget: number;
-  liveCapacity: number;
-  onSetEnergyBudget: (v: number) => void;
-  onSetLiveCapacity: (v: number) => void;
   energyMax?: number;
   onSetEnergyMax?: (v: number) => void;
-  autoBudget?: boolean;
-  windowSize?: number;
 }) {
   return (
     <>
       {/* Energy Scale */}
       {onSetEnergyMax && (
         <section className="mb-8">
-          <span className="font-display text-ohm-muted mb-3 block text-[10px] tracking-widest uppercase">
-            Energy Scale
-          </span>
-          <div className="mt-2 flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Zap size={14} className="text-ohm-muted" />
+            <span className="font-display text-ohm-muted text-[10px] tracking-widest uppercase">
+              Energy Scale
+            </span>
+          </div>
+          <p className="font-body text-ohm-muted/60 mt-1.5 text-[11px]">
+            Maximum energy per task. Cards above this will be clamped.
+          </p>
+          <div className="mt-3 flex items-center gap-3">
             <span className="font-display text-ohm-muted w-20 text-[10px] tracking-widest uppercase">
               Max
             </span>
@@ -526,67 +496,20 @@ function BoardTab({
               <Plus size={14} />
             </Button>
           </div>
-          <p className="font-body text-ohm-muted/60 mt-1.5 text-[10px]">
-            Maximum energy per task. Cards above this will be clamped.
-          </p>
         </section>
       )}
 
-      {/* Energy Capacity */}
-      <section>
-        <span className="font-display text-ohm-muted mb-3 block text-[10px] tracking-widest uppercase">
-          Energy Capacity
-        </span>
-        {CAPACITY_ROWS.map(({ label, field, color }) => {
-          const value = field === 'energyBudget' ? energyBudget : liveCapacity;
-          const setter = field === 'energyBudget' ? onSetEnergyBudget : onSetLiveCapacity;
-          const locked = field === 'energyBudget' && !!autoBudget;
-          return (
-            <div
-              key={field}
-              className={`mt-2 flex items-center gap-3 ${locked ? 'opacity-50' : ''}`}
-            >
-              <span className={`font-display w-20 text-[10px] tracking-widest uppercase ${color}`}>
-                {label}
-              </span>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setter(Math.max(1, value - 1))}
-                disabled={value <= 1 || locked}
-                className="border-ohm-border text-ohm-muted hover:text-ohm-text h-8 w-8"
-                aria-label={`Decrease ${label}`}
-              >
-                <Minus size={14} />
-              </Button>
-              <span className="font-display text-ohm-text min-w-[2ch] text-center text-lg font-bold">
-                {value}
-              </span>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setter(value + 1)}
-                disabled={locked}
-                className="border-ohm-border text-ohm-muted hover:text-ohm-text h-8 w-8"
-                aria-label={`Increase ${label}`}
-              >
-                <Plus size={14} />
-              </Button>
-            </div>
-          );
-        })}
-        {autoBudget && (
-          <p className="font-body text-ohm-muted/60 mt-2 text-[10px]">
-            Total is auto-calculated ({windowSize ?? WINDOW_DEFAULT} x {liveCapacity}).
-          </p>
-        )}
-      </section>
-
       {/* Categories */}
       <section className="mt-8">
-        <span className="font-display text-ohm-muted mb-3 block text-[10px] tracking-widest uppercase">
-          Categories
-        </span>
+        <div className="flex items-center gap-2">
+          <Tag size={14} className="text-ohm-muted" />
+          <span className="font-display text-ohm-muted text-[10px] tracking-widest uppercase">
+            Categories
+          </span>
+        </div>
+        <p className="font-body text-ohm-muted/60 mt-1.5 mb-3 text-[11px]">
+          Organize cards by category for filtering.
+        </p>
         <div className="flex flex-col gap-1.5">
           {categories.map((cat) => (
             <div key={cat} className="flex items-center gap-2">
@@ -655,9 +578,6 @@ function BoardTab({
 function ScheduleTab({
   windowSize,
   onSetWindowSize,
-  autoBudget,
-  onSetAutoBudget,
-  liveCapacity,
   activities,
   categories,
   onUpdateActivity,
@@ -667,9 +587,6 @@ function ScheduleTab({
 }: {
   windowSize?: number;
   onSetWindowSize?: (size: number) => void;
-  autoBudget?: boolean;
-  onSetAutoBudget?: (enabled: boolean) => void;
-  liveCapacity: number;
   activities?: Activity[];
   categories: string[];
   onUpdateActivity?: (id: string, changes: Partial<Omit<Activity, 'id'>>) => void;
@@ -724,36 +641,6 @@ function ScheduleTab({
               <Plus size={14} />
             </Button>
             <span className="font-body text-ohm-muted/60 text-[10px]">days</span>
-          </div>
-        )}
-
-        {onSetAutoBudget && (
-          <div className="mt-3 flex items-center gap-3">
-            <span className="font-display text-ohm-muted w-20 shrink-0 text-[10px] tracking-widest uppercase">
-              Auto total
-            </span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={!!autoBudget}
-              aria-label="Auto total budget"
-              onClick={() => onSetAutoBudget(!autoBudget)}
-              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
-                autoBudget ? 'bg-ohm-spark' : 'bg-ohm-border'
-              }`}
-            >
-              <span
-                className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
-                  autoBudget ? 'translate-x-4' : 'translate-x-0'
-                }`}
-              />
-            </button>
-            {autoBudget && (
-              <span className="font-body text-ohm-muted/60 text-[10px]">
-                {windowSize ?? WINDOW_DEFAULT} x {liveCapacity} ={' '}
-                {(windowSize ?? WINDOW_DEFAULT) * liveCapacity}
-              </span>
-            )}
           </div>
         )}
       </section>
@@ -821,9 +708,15 @@ function DataTab({
       {/* Google Drive */}
       {driveAvailable && (
         <section className="mb-8">
-          <span className="font-display text-ohm-muted mb-3 block text-[10px] tracking-widest uppercase">
-            Google Drive Sync
-          </span>
+          <div className="flex items-center gap-2">
+            <Database size={14} className="text-ohm-muted" />
+            <span className="font-display text-ohm-muted text-[10px] tracking-widest uppercase">
+              Google Drive Sync
+            </span>
+          </div>
+          <p className="font-body text-ohm-muted/60 mt-1.5 mb-3 text-[11px]">
+            Sync your board across devices. Data stored privately in app storage.
+          </p>
           {driveConnected ? (
             <div className="flex items-center justify-between">
               <span className="font-body text-ohm-powered text-sm">Connected</span>
@@ -843,17 +736,20 @@ function DataTab({
               Connect Google Drive
             </Button>
           )}
-          <p className="font-body text-ohm-muted/60 mt-1.5 text-[11px]">
-            Sync your board across devices. Data stored privately in app storage.
-          </p>
         </section>
       )}
 
       {/* Export / Import */}
       <section className="mb-8">
-        <span className="font-display text-ohm-muted mb-3 block text-[10px] tracking-widest uppercase">
-          Export / Import
-        </span>
+        <div className="flex items-center gap-2">
+          <Download size={14} className="text-ohm-muted" />
+          <span className="font-display text-ohm-muted text-[10px] tracking-widest uppercase">
+            Export / Import
+          </span>
+        </div>
+        <p className="font-body text-ohm-muted/60 mt-1.5 mb-3 text-[11px]">
+          Back up your board or restore from a file.
+        </p>
         <div className="flex gap-2">
           <Button
             variant="outline"
@@ -921,9 +817,12 @@ function DataTab({
 
       {/* Device storage */}
       <section className="mb-8">
-        <span className="font-display text-ohm-muted mb-2 block text-[10px] tracking-widest uppercase">
-          Device Storage
-        </span>
+        <div className="flex items-center gap-2">
+          <HardDrive size={14} className="text-ohm-muted" />
+          <span className="font-display text-ohm-muted text-[10px] tracking-widest uppercase">
+            Device Storage
+          </span>
+        </div>
         <div className="border-ohm-border bg-ohm-bg flex items-center gap-2.5 rounded-md border px-3 py-2">
           {storageAdapter === null ? (
             <>
@@ -964,10 +863,16 @@ function DataTab({
 
       {/* Restore points */}
       <section className="mb-8 sm:mb-0">
-        <div className="mb-2 flex items-center justify-between">
+        <div className="mb-1 flex items-center gap-2">
+          <RotateCcw size={14} className="text-ohm-muted" />
           <span className="font-display text-ohm-muted text-[10px] tracking-widest uppercase">
             Restore Points
           </span>
+        </div>
+        <div className="mb-3 flex items-center justify-between">
+          <p className="font-body text-ohm-muted/60 text-[11px]">
+            Save and restore board snapshots.
+          </p>
           <Button
             variant="outline"
             onClick={handleCreateRestorePoint}

@@ -12,17 +12,17 @@
 
 ## 2. BudgetBar Adaptation
 
-- [ ] 2.1 Add `dailyLimit: number` to `OhmBoard` type in `src/types/board.ts`
-- [ ] 2.2 Add `setDailyLimit` to `useBoard` hook (clamp 1-5, update `capacitiesUpdatedAt`)
-- [ ] 2.3 Rewrite BudgetBar daily segments: item-count pips instead of energy ratio bars
-- [ ] 2.4 Add energy tinting: color/size pips by card energy levels
-- [ ] 2.5 Add prominent 3-segment today indicator for Live + today's Powered count vs `dailyLimit`
-- [ ] 2.6 Replace total row: item count across 14-day forward window
-- [ ] 2.7 Add "+N" overflow badge when cards exceed `dailyLimit`
-- [ ] 2.8 Move BudgetBar from fixed-bottom to grid header area on desktop (keep mobile positioning)
-- [ ] 2.9 Update Board.tsx budget data calculation: 14-day forward window, item counts
-- [ ] 2.10 Preserve day-click -> DayFocusDialog trigger
-- [ ] 2.11 Run build
+- [x] 2.1 Add `dailyLimit: number` to `OhmBoard` type in `src/types/board.ts`
+- [x] 2.2 Add `setDailyLimit` to `useBoard` hook (clamp 1-5, update `capacitiesUpdatedAt`)
+- [x] 2.3 Rewrite BudgetBar daily segments: item-count pips instead of energy ratio bars
+- [x] 2.4 Add energy tinting: color/size pips by card energy levels
+- [x] 2.5 Add prominent 3-segment today indicator for Live + today's Powered count vs `dailyLimit`
+- [x] 2.6 Replace total row: item count across 14-day forward window
+- [x] 2.7 Add "+N" overflow badge when cards exceed `dailyLimit`
+- [x] 2.8 Move BudgetBar from fixed-bottom to grid header area on desktop (keep mobile positioning)
+- [x] 2.9 Update Board.tsx budget data calculation: 14-day forward window, item counts
+- [x] 2.10 Preserve day-click -> DayFocusDialog trigger
+- [x] 2.11 Run build
 
 ## 3. Powered Today-Only + Soft-Delete Archive
 

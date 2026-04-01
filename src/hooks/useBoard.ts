@@ -1,6 +1,15 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type { OhmBoard, OhmCard, ColumnStatus } from '../types/board';
-import { ENERGY_MIN, WINDOW_MIN, WINDOW_MAX, WINDOW_DEFAULT, STATUS } from '../types/board';
+import {
+  ENERGY_MIN,
+  WINDOW_MIN,
+  WINDOW_MAX,
+  WINDOW_DEFAULT,
+  STATUS,
+  DAILY_LIMIT_MIN,
+  DAILY_LIMIT_MAX,
+  DAILY_LIMIT_DEFAULT,
+} from '../types/board';
 import type { Activity } from '../types/activity';
 import { loadFromLocal, saveToLocal, recoverFromStorage } from '../utils/storage';
 import {
@@ -255,6 +264,17 @@ export function useBoard() {
     });
   }, []);
 
+  /** Set daily item limit (1-5) */
+  const setDailyLimit = useCallback((limit: number) => {
+    const now = new Date().toISOString();
+    setBoard((prev) => ({
+      ...prev,
+      dailyLimit: Math.min(DAILY_LIMIT_MAX, Math.max(DAILY_LIMIT_MIN, Math.round(limit))),
+      capacitiesUpdatedAt: now,
+      lastSaved: now,
+    }));
+  }, []);
+
   /** Toggle auto-budget (Total = Window x Live) */
   const setAutoBudget = useCallback((enabled: boolean) => {
     const now = new Date().toISOString();
@@ -378,6 +398,7 @@ export function useBoard() {
     setEnergyBudget,
     setLiveCapacity,
     setEnergyMax,
+    setDailyLimit,
     addCategory,
     removeCategory,
     renameCategory,

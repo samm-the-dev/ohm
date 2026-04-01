@@ -1,18 +1,35 @@
 import { useRef, useEffect } from 'react';
-import { budgetColor } from '../types/board';
+import { budgetColor, energyColor } from '../types/board';
+
+interface DayData {
+  date: string;
+  count: number;
+  avgEnergy: number;
+}
 
 interface BudgetBarProps {
-  daily: Array<{ date: string; used: number }>;
-  dayLimit: number;
-  total: { used: number; total: number };
+  daily: DayData[];
+  dailyLimit: number;
+  total: { count: number; limit: number };
+  todayCount: number;
   todayStr: string;
+  energyMax: number;
   onDayClick: (date: string) => void;
 }
 
-export function BudgetBar({ daily, dayLimit, total, todayStr, onDayClick }: BudgetBarProps) {
-  const totalRatio = total.used / total.total;
+export function BudgetBar({
+  daily,
+  dailyLimit,
+  total,
+  todayCount,
+  todayStr,
+  energyMax,
+  onDayClick,
+}: BudgetBarProps) {
+  const totalRatio = total.limit > 0 ? total.count / total.limit : 0;
   const totalColor = budgetColor(totalRatio);
   const barRef = useRef<HTMLDivElement>(null);
+  const overflow = todayCount - dailyLimit;
 
   useEffect(() => {
     const el = barRef.current;
@@ -29,12 +46,10 @@ export function BudgetBar({ daily, dayLimit, total, todayStr, onDayClick }: Budg
       ref={barRef}
       className="border-ohm-border bg-ohm-bg/95 fixed right-0 bottom-0 left-0 z-[60] flex flex-col gap-1 border-t px-4 py-2 backdrop-blur-md"
     >
-      {/* Daily row — day segments above total */}
+      {/* Daily row — day segments */}
       {daily.length > 0 && (
         <div className="flex gap-1">
-          {daily.map(({ date, used }) => {
-            const ratio = used / dayLimit;
-            const color = used > 0 ? budgetColor(ratio) : undefined;
+          {daily.map(({ date, count, avgEnergy }) => {
             const isToday = date === todayStr;
             const d = new Date(date + 'T00:00:00');
             const dayInitial = d.toLocaleDateString(undefined, { weekday: 'short' }).slice(0, 2);
@@ -45,29 +60,40 @@ export function BudgetBar({ daily, dayLimit, total, todayStr, onDayClick }: Budg
                 type="button"
                 onClick={() => onDayClick(date)}
                 className="flex min-w-0 flex-1 cursor-pointer flex-col items-center gap-0.5 rounded px-1 py-0.5 transition-colors hover:bg-white/5"
-                title={`${date}: ${used}/${dayLimit}`}
+                title={`${date}: ${count}/${dailyLimit}`}
               >
                 <span
                   className={`font-display text-[11px] leading-tight ${isToday ? 'text-ohm-text font-bold' : 'text-ohm-muted'}`}
                 >
                   {dayInitial}&nbsp;{dateNum}
                 </span>
-                <div className="bg-ohm-border relative h-1 w-full overflow-hidden rounded-full">
-                  {used > 0 && (
-                    <div
-                      className="absolute inset-y-0 left-0 rounded-full transition-all duration-300"
-                      style={{
-                        width: `${Math.min(ratio, 1) * 100}%`,
-                        backgroundColor: color,
-                      }}
-                    />
-                  )}
+                <div className="flex w-full justify-center gap-0.5">
+                  {Array.from({ length: dailyLimit }, (_, i) => {
+                    const filled = i < count;
+                    const pipColor =
+                      filled && avgEnergy > 0
+                        ? energyColor(avgEnergy, undefined, energyMax)
+                        : undefined;
+                    return (
+                      <div
+                        key={i}
+                        className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${filled ? '' : 'bg-ohm-border'}`}
+                        style={
+                          filled
+                            ? {
+                                backgroundColor: pipColor ?? budgetColor(count / dailyLimit),
+                              }
+                            : undefined
+                        }
+                      />
+                    );
+                  })}
                 </div>
                 <span
-                  className={`font-display text-[11px] leading-none font-bold ${used === 0 ? 'text-ohm-muted/30' : ''}`}
-                  style={color ? { color } : undefined}
+                  className={`font-display text-[11px] leading-none font-bold ${count === 0 ? 'text-ohm-muted/30' : ''}`}
+                  style={count > 0 ? { color: budgetColor(count / dailyLimit) } : undefined}
                 >
-                  {used}/{dayLimit}
+                  {count}/{dailyLimit}
                 </span>
               </button>
             );
@@ -75,7 +101,7 @@ export function BudgetBar({ daily, dayLimit, total, todayStr, onDayClick }: Budg
         </div>
       )}
 
-      {/* Total row — full-width bar below daily */}
+      {/* Total row — item count across forward window */}
       <div className="flex items-center gap-3">
         <span className="font-display text-ohm-muted w-10 shrink-0 text-[11px] tracking-widest uppercase">
           Total
@@ -83,14 +109,17 @@ export function BudgetBar({ daily, dayLimit, total, todayStr, onDayClick }: Budg
         <div className="bg-ohm-border relative h-1.5 flex-1 overflow-hidden rounded-full">
           <div
             className="absolute inset-y-0 left-0 rounded-full transition-all duration-300"
-            style={{ width: `${Math.min(totalRatio, 1) * 100}%`, backgroundColor: totalColor }}
+            style={{
+              width: `${Math.min(totalRatio, 1) * 100}%`,
+              backgroundColor: totalColor,
+            }}
           />
         </div>
         <span
-          className={`font-display w-10 shrink-0 text-right text-xs font-bold ${total.used > total.total ? 'animate-pulse' : ''}`}
+          className={`font-display w-10 shrink-0 text-right text-xs font-bold ${total.count > total.limit ? 'animate-pulse' : ''}`}
           style={{ color: totalColor }}
         >
-          {total.used}/{total.total}
+          {total.count}/{total.limit}
         </span>
       </div>
     </div>

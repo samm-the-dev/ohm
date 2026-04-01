@@ -60,9 +60,9 @@ export function DayGroup({
         <span className="text-ohm-muted/50 font-body ml-1 text-xs">{group.cards.length}</span>
         <span
           className="font-display ml-auto text-xs font-bold"
-          style={{ color: dayLimit ? budgetColor(group.energyTotal / dayLimit) : undefined }}
+          style={{ color: dayLimit ? budgetColor(group.cards.length / dayLimit) : undefined }}
         >
-          {group.energyTotal}
+          {group.cards.length}/{dayLimit}
         </span>
       </button>
 

@@ -1,5 +1,5 @@
 import type { OhmCard, OhmBoard, ColumnStatus } from '../types/board';
-import { STATUS, ENERGY_DEFAULT } from '../types/board';
+import { STATUS, ENERGY_DEFAULT, DAILY_LIMIT_DEFAULT } from '../types/board';
 import { toISODate } from './schedule-utils';
 
 /** A group of cards sharing the same scheduledDate (or unscheduled). */
@@ -168,6 +168,80 @@ export function getDailyEnergy(
     current.setDate(current.getDate() + 1);
   }
   return result;
+}
+
+/** Per-day item count and average energy for the BudgetBar.
+ *  Counts cards (not energy) per day in the forward window.
+ *  Live cards are assigned to today. Grounded cards excluded. */
+export function getDailyItemCounts(
+  board: OhmBoard,
+  todayStr: string,
+  windowEnd: string,
+): Array<{ date: string; count: number; avgEnergy: number }> {
+  const limit = board.dailyLimit ?? DAILY_LIMIT_DEFAULT;
+  const byDate = new Map<string, { count: number; totalEnergy: number }>();
+
+  for (const card of board.cards) {
+    if (card.status === STATUS.GROUNDED) continue;
+    let date: string;
+    if (card.status === STATUS.LIVE) {
+      date = todayStr;
+    } else if (card.status === STATUS.POWERED) {
+      date = cardEffectiveDate(card);
+    } else {
+      if (!card.scheduledDate) continue;
+      date = card.scheduledDate;
+    }
+    if (date < todayStr || date > windowEnd) continue;
+    const entry = byDate.get(date) ?? { count: 0, totalEnergy: 0 };
+    entry.count++;
+    entry.totalEnergy += card.energy;
+    byDate.set(date, entry);
+  }
+
+  const result: Array<{ date: string; count: number; avgEnergy: number }> = [];
+  const current = new Date(todayStr + 'T00:00:00');
+  const end = new Date(windowEnd + 'T00:00:00');
+  while (current <= end) {
+    const iso = toISODate(current);
+    const entry = byDate.get(iso);
+    const count = entry?.count ?? 0;
+    const avgEnergy = count > 0 ? entry!.totalEnergy / count : 0;
+    result.push({ date: iso, count, avgEnergy });
+    current.setDate(current.getDate() + 1);
+  }
+  return result;
+}
+
+/** Total item count across a forward window (excludes Grounded). */
+export function getTotalItemCount(
+  board: OhmBoard,
+  todayStr: string,
+  windowEnd: string,
+): { count: number; limit: number } {
+  const dailyLimit = board.dailyLimit ?? DAILY_LIMIT_DEFAULT;
+  let count = 0;
+  for (const card of board.cards) {
+    if (card.status === STATUS.GROUNDED) continue;
+    if (card.status === STATUS.LIVE) {
+      count++;
+      continue;
+    }
+    if (card.status === STATUS.POWERED) {
+      const d = cardEffectiveDate(card);
+      if (d >= todayStr && d <= windowEnd) count++;
+      continue;
+    }
+    // Charging
+    if (card.scheduledDate && card.scheduledDate >= todayStr && card.scheduledDate <= windowEnd) {
+      count++;
+    }
+  }
+  // Total limit = dailyLimit * number of days in window
+  const start = new Date(todayStr + 'T00:00:00');
+  const end = new Date(windowEnd + 'T00:00:00');
+  const days = Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
+  return { count, limit: dailyLimit * days };
 }
 
 /** Update a card in the board immutably */

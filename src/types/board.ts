@@ -18,6 +18,11 @@ export const WINDOW_DEFAULT = 4;
 export const LIVE_DEFAULT = 10;
 export const BUDGET_DEFAULT = WINDOW_DEFAULT * LIVE_DEFAULT;
 
+/** Daily item limit (replaces energy-based capacity for the redesign) */
+export const DAILY_LIMIT_DEFAULT = 3;
+export const DAILY_LIMIT_MIN = 1;
+export const DAILY_LIMIT_MAX = 5;
+
 /** Interpolate hue from indigo (239) at ENERGY_MIN through green (~120) to red (0) at max.
  *  Saturation and lightness ease so the cool end is softer and the warm end pops.
  *  Pass `max` to override ENERGY_MAX_DEFAULT (for boards with configurable energy scale). */
@@ -108,6 +113,8 @@ export interface OhmBoard {
   autoBudget?: boolean;
   /** Maximum energy per task (default ENERGY_MAX_DEFAULT). User-configurable scale ceiling. */
   energyMax?: number;
+  /** Maximum cards in Live + today's Powered (default 3, range 1-5). Replaces liveCapacity for capacity math. */
+  dailyLimit?: number;
   /** Recurring activity templates (synced via Drive) */
   activities?: import('./activity').Activity[];
   /** ISO timestamp — last time activities were changed */
