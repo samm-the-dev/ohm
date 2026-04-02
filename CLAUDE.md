@@ -14,23 +14,27 @@ A kanban app using an electrical metaphor to map energy cycles into a visual wor
 - **localStorage** persistence + optional **Google Drive** sync
 - Single-page app, no router
 
-### Four-Column Model
+### Four-Column Model (display order)
 
-| Column   | Metaphor        | Purpose                                 |
-| -------- | --------------- | --------------------------------------- |
-| Charging | Building energy | Captured ideas with a clear next step   |
-| Grounded | Paused          | Captured "where I left off" context     |
-| Live     | Active          | Currently working on (capacity limited) |
-| Powered  | Done            | Completed                               |
+| Column   | Metaphor         | Purpose                            |
+| -------- | ---------------- | ---------------------------------- |
+| Powered  | Circuit complete | Done today (trophy case)           |
+| Live     | Active           | Currently working on (daily limit) |
+| Charging | Building energy  | Scheduled ahead (future dates)     |
+| Grounded | Paused           | Unscheduled backlog                |
+
+`ColumnStatus` numeric values: Grounded=0, Charging=1, Live=2, Powered=3. `COLUMN_ORDER` array controls display sequence (Powered first) without changing persistence.
 
 ### Key Conventions
 
-- **Index-based data model**: `ColumnStatus` and `EnergyTag` are numeric indices with named constants (`STATUS.CHARGING`, `ENERGY.MED`). Config arrays indexed by these values; `sanitizeBoard()` validates on load.
+- **Index-based data model**: `ColumnStatus` uses numeric indices with named constants (`STATUS.CHARGING`). `COLUMNS` array indexed by status; `COLUMN_ORDER` controls render sequence. `sanitizeBoard()` validates on load, defaults `dailyLimit`, prunes archived cards.
 - **State**: `useBoard` hook (functional updates) + `board-utils.ts` (pure mutation functions). Debounced localStorage saves (500ms).
-- **Capacity**: Live column uses energy segments (Small=1, Med=2, Large=3), not card count. Green-to-red gradient indicator.
-- **Theming**: Dark theme. Status colors = `ohm-charging/live/grounded/powered`. Energy colors = `ohm-energy-low/med/high` (stoplight). Labels/icons are re-themeable without data migration.
+- **Capacity**: Flat daily item limit (`dailyLimit`, default 3, range 1-5) replaces energy-based capacity. BudgetBar shows item-count pips with energy tinting. DayFocusDialog shows mini pip meters per day.
+- **Soft-delete archive**: Powered cards get `archivedAt` timestamp on day rollover. Hidden from UI, pruned after 14 days by `sanitizeBoard()`.
+- **Expanded cards**: Live/Powered columns show larger title, description preview (3-line clamp), and full task list. Charging/Grounded keep compact layout.
+- **Theming**: Dark theme. Status colors = `ohm-charging/live/grounded/powered`. Energy colors use continuous HSL scale (`energyColor()`). Labels/icons are re-themeable without data migration.
 - **CardDetail** handles both creation (`isNew` mode) and editing with contextual field visibility.
-- **Mobile-first** responsive layout. Filter bar: energy chips + expandable category/search.
+- **Mobile-first** responsive layout. Desktop uses CSS grid (4-col with spanning headers). Filter bar: energy/category/date/search with mobile-friendly collapsible UI.
 
 ### Testing
 

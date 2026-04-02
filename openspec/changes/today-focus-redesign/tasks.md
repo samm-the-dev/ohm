@@ -44,14 +44,9 @@
 - [x] 4.4 Verify compact card layout unchanged in Charging/Grounded (energy badge, category pill, task preview, stale indicator)
 - [x] 4.5 Run build
 
-## 5. What's Ahead Summary
+## 5. What's Ahead Summary -- DEFERRED
 
-- [ ] 5.1 Create WhatsAhead component: category count chips from Charging + Grounded cards
-- [ ] 5.2 Desktop: render in grid header slot (cols 3-4, `grid-column: span 2`)
-- [ ] 5.3 Mobile: render as section divider between Live and Charging
-- [ ] 5.4 Handle uncategorized cards (omit or show as "other")
-- [ ] 5.5 Add scrollable overflow for mobile chip row
-- [ ] 5.6 Run build
+Dropped from this change -- BudgetBar already provides forward-looking view. May re-spec later.
 
 ## 6. DayFocusDialog Redesign
 
@@ -61,26 +56,21 @@
 - [ ] 6.4 Verify navigation (arrows + swipe), reschedule actions, and drag-and-drop reorder still work
 - [x] 6.5 Run build
 
-## 7. Daily Color Theme
+## 7. Daily Color Theme -- DEFERRED
 
-- [ ] 7.1 Add `FunSettings` interface to `src/types/board.ts`: `{ dailyTheme?: boolean; darkSoulsMessages?: boolean }`
-- [ ] 7.2 Add `funSettings?: FunSettings` to `OhmBoard`
-- [ ] 7.3 Implement `dailyHue(date)` utility: golden-ratio step `(dayIndex * 137.508) % 360`
-- [ ] 7.4 When `funSettings.dailyTheme` is true: shift `--color-ohm-spark` to daily hue, blend column header tints
-- [ ] 7.5 Verify background/text colors stay fixed for readability
-- [ ] 7.6 Run build
+Deferred to separate PR. funSettings type removed from this change.
 
 ## 8. Settings Cleanup
 
-- [ ] 8.1 Remove from Board tab: live capacity, total budget, auto-budget, window size controls
-- [ ] 8.2 Add Daily limit spinner (1-5, default 3) to Board tab
-- [ ] 8.3 Create Fun tab with daily color theme toggle
-- [ ] 8.4 Add storage usage display to Data tab: `navigator.storage.estimate()` bar, localStorage estimate, Drive quota when connected
-- [ ] 8.5 Run build
+- [x] 8.1 Remove from Board tab: live capacity, total budget, auto-budget, window size controls
+- [x] 8.2 Add Daily limit spinner (1-5, default 3) to Board tab
+- [ ] 8.3 Create Fun tab with daily color theme toggle -- DEFERRED (no funSettings yet)
+- [ ] 8.4 Add storage usage display to Data tab -- DEFERRED (auto-prune bounds growth)
+- [x] 8.5 Run build
 
 ## 9. Documentation Overhaul
 
-- [ ] 9.1 Update README.md: column table, philosophy, features list, standards alignment tables
-- [ ] 9.2 Update CLAUDE.md: architecture notes, capacity system, new/adapted components, remove old references
-- [ ] 9.3 Update todo.md: remove completed redesign items, add new items surfaced during implementation
+- [x] 9.1 Update README.md: column table, philosophy, features list, standards alignment tables
+- [x] 9.2 Update CLAUDE.md: architecture notes, capacity system, new/adapted components, remove old references
+- [x] 9.3 Update todo.md: remove completed redesign items, add new items surfaced during implementation
 - [ ] 9.4 Archive or replace redesign doc with living spec (ties into OpenSpec adoption)
